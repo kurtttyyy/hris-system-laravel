@@ -159,6 +159,7 @@ class EmployeePageController extends Controller
         $latestLeaveApplication = LeaveApplication::query()
             ->where('user_id', $user?->id)
             ->whereDate('created_at', '<=', $monthEnd->toDateString())
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
             ->orderByDesc('created_at')
             ->first();
 
@@ -313,7 +314,11 @@ class EmployeePageController extends Controller
         $missingDocuments = [];
         $documentNotice = '';
         if ($applicant) {
+            $requiredPrefix = '__REQUIRED__::';
+            $noticeType = '__NOTICE__';
             $documents = ApplicantDocument::where('applicant_id', $applicant->id)
+                ->where('type', 'not like', $requiredPrefix.'%')
+                ->where('type', '!=', $noticeType)
                 ->latest('created_at')
                 ->get();
             $latestDocument = $documents->first();
@@ -655,6 +660,7 @@ class EmployeePageController extends Controller
         $latestLeaveApplication = LeaveApplication::query()
             ->where('user_id', $user?->id)
             ->whereDate('created_at', '<=', $monthEnd->toDateString())
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
             ->orderByDesc('created_at')
             ->first();
 
@@ -1200,6 +1206,39 @@ class EmployeePageController extends Controller
     {
         if ($applicantId <= 0) {
             return [];
+        }
+
+        $requiredPrefix = '__REQUIRED__::';
+        $noticeType = '__NOTICE__';
+        $metaDocuments = ApplicantDocument::query()
+            ->where('applicant_id', $applicantId)
+            ->where(function ($query) use ($requiredPrefix, $noticeType) {
+                $query
+                    ->where('type', 'like', $requiredPrefix.'%')
+                    ->orWhere('type', $noticeType);
+            })
+            ->orderByDesc('id')
+            ->get();
+
+        if ($metaDocuments->isNotEmpty()) {
+            $requiredDocuments = $metaDocuments
+                ->filter(fn ($doc) => str_starts_with((string) ($doc->type ?? ''), $requiredPrefix))
+                ->map(function ($doc) use ($requiredPrefix) {
+                    return trim((string) substr((string) $doc->type, strlen($requiredPrefix)));
+                })
+                ->filter()
+                ->unique(function ($value) {
+                    return strtolower($value);
+                })
+                ->values()
+                ->all();
+
+            $notice = (string) optional($metaDocuments->firstWhere('type', $noticeType))->filename;
+
+            return [
+                'required_documents' => $requiredDocuments,
+                'document_notice' => $notice,
+            ];
         }
 
         $disk = Storage::disk('local');

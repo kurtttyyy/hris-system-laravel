@@ -38,7 +38,7 @@
 
 <div class="p-4 md:p-8 space-y-8 pt-20">
     <!-- Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">      // Leave Balance Card
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="relative bg-white rounded-2xl p-6 border border-gray-200">
             <span class="absolute top-9 right-4 bg-blue-500/20 text-black text-sm font-semibold px-2 py-1 rounded-lg backdrop-blur-sm">
                 {{ (int) ($combinedLeavePercentUsed ?? 0) }}% Used
@@ -170,7 +170,7 @@
             </div>
 
             <div class="space-y-6 max-h-96 overflow-y-auto pr-2">
-                @forelse (($weeklyAttendanceRows ?? []) as $weeklyRow)      // Loop through each day's attendance data for the week
+                @forelse (($weeklyAttendanceRows ?? []) as $weeklyRow)
                     <div>
                         <div class="grid grid-cols-12 items-start gap-4">
                             <div class="col-span-2 mt-5 ml-8 relative w-12 h-12 text-green-600">

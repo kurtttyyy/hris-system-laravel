@@ -75,6 +75,14 @@
     </a>
 
     <!-- ✅ Hiring Dropdown (FIXED) -->
+    <!-- Payslip -->
+    <a href="{{ route('admin.adminPayslip') }}"
+       class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
+       {{ request()->routeIs('admin.adminPayslip')
+        ? 'bg-green-600 text-white'
+        : 'text-white hover:bg-green-600/30' }}">
+      <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Payslip</span>
+    </a>
     <details class="space-y-1 hiring-menu" {{ $isHiringRoute ? 'open' : '' }}>
       <summary
         class="w-full flex items-center justify-between px-4 py-2.5 rounded-lg font-medium transition text-white hover:bg-green-600/30 cursor-pointer"
@@ -141,3 +149,4 @@
     </div>
   </div>
 </aside>
+

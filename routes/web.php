@@ -49,6 +49,7 @@ Route::controller(EmployeePageController::class)->group(function () {
 Route::controller(EmployeeStoreController::class)->group(function () {
     //POST
     Route::post('upload/documents', 'upload_store')->name('employee.upload_documents');
+    Route::post('employee/document/{id}/remove', 'remove_document')->name('employee.remove_document');
     Route::post('employee/leave/application', 'leave_application_store')->name('employee.leaveApplication.store');
 
 });
@@ -62,6 +63,7 @@ Route::controller(AdministratorPageController::class)->group(function () {
     Route::get('system/attendance/tardiness', 'display_attendance_tardiness')->name('admin.attendance.tardiness');
     Route::get('system/attendance/total-employee', 'display_attendance_total_employee')->name('admin.attendance.totalEmployee');
     Route::get('system/leave/management', 'display_leave')->name('admin.adminLeaveManagement');
+    Route::get('system/payslip', 'display_payslip')->name('admin.adminPayslip');
     Route::get('system/reports', 'display_reports')->name('admin.adminReports');
     Route::get('system/compare/code', 'display_compare')->name('admin.compareCode');
 

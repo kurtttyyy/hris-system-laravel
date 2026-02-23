@@ -8,6 +8,7 @@ use App\Models\LeaveApplication;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class EmployeeStoreController extends Controller
 {
@@ -54,6 +55,35 @@ class EmployeeStoreController extends Controller
         return back()->with('success', 'Document uploaded successfully.');
     }
 
+    public function remove_document($id)
+    {
+        $userId = Auth::id();
+        $applicant = Applicant::where('user_id', $userId)
+            ->where('application_status', 'Hired')
+            ->first();
+
+        if (!$applicant) {
+            return redirect()->back()->withErrors(['documents' => 'No hired applicant record found.']);
+        }
+
+        $document = ApplicantDocument::where('id', $id)
+            ->where('applicant_id', $applicant->id)
+            ->first();
+
+        if (!$document) {
+            return redirect()->back()->withErrors(['documents' => 'Document not found or unauthorized.']);
+        }
+
+        $relativePath = ltrim((string) ($document->filepath ?? ''), '/');
+        if ($relativePath !== '' && Storage::disk('public')->exists($relativePath)) {
+            Storage::disk('public')->delete($relativePath);
+        }
+
+        $document->delete();
+
+        return redirect()->back()->with('success', 'Document removed successfully.');
+    }
+
     public function leave_application_store(Request $request)
     {
         $attrs = $request->validate([
@@ -93,6 +123,7 @@ class EmployeeStoreController extends Controller
 
         $latestLeaveApplication = LeaveApplication::query()
             ->where('user_id', $authUser->id)
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
             ->orderByDesc('created_at')
             ->first();
 

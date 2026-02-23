@@ -1,9 +1,22 @@
 <!-- Documents -->
 <div x-show="tab === 'documents'" x-transition class="w-full p-6 space-y-6">
 
+    @if (session('success'))
+        <div class="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if ($errors->any())
+        <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {{ $errors->first() }}
+        </div>
+    @endif
+
     <form action="{{ route('admin.saveRequiredDocuments') }}" method="POST" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
         @csrf
         <input type="hidden" name="applicant_id" :value="selectedEmployee?.applicant?.id">
+        <input type="hidden" name="user_id" :value="selectedEmployee?.id">
 
         <div class="flex items-center justify-between gap-4">
             <h3 class="font-semibold text-amber-900">Required Documents Notice</h3>
@@ -72,6 +85,7 @@
         @csrf
 
         <input type="hidden" name="applicant_id" :value="selectedEmployee?.applicant?.id">
+        <input type="hidden" name="user_id" :value="selectedEmployee?.id">
 
         <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-1">Document Name</label>

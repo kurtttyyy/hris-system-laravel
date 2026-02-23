@@ -224,10 +224,25 @@ class AdministratorStoreController extends Controller
     public function store_document(Request $request){
         Log::info($request);
         $attrs = $request->validate([
-            'applicant_id' => 'required|exists:applicants,id',
+            'applicant_id' => 'nullable|exists:applicants,id',
+            'user_id' => 'nullable|exists:users,id',
             'document_name' => 'required|string|max:255',
             'documents' => 'required|file|mimes:pdf,doc,docx|max:5120',
         ]);
+
+        $applicant = null;
+        if (!empty($attrs['applicant_id'])) {
+            $applicant = Applicant::find((int) $attrs['applicant_id']);
+        }
+        if (!$applicant && !empty($attrs['user_id'])) {
+            $applicant = Applicant::query()
+                ->where('user_id', (int) $attrs['user_id'])
+                ->orderByDesc('id')
+                ->first();
+        }
+        if (!$applicant) {
+            return back()->withErrors(['documents' => 'Applicant record not found for this employee.']);
+        }
 
         $file = $request->file('documents');
 
@@ -244,14 +259,17 @@ class AdministratorStoreController extends Controller
         // Store file
         $filePath = $file->storeAs('uploads', $fileName, 'public');
 
-        ApplicantDocument::create([
-            'applicant_id' => $attrs['applicant_id'],
+        $saved = ApplicantDocument::create([
+            'applicant_id' => $applicant->id,
             'type'         => $attrs['document_name'],
             'filename'     => $originalName,
             'filepath'     => $filePath, // already "uploads/filename"
             'mime_type'    => $mimeType,
             'size'         => $size,
         ]);
+        if (!$saved || !$saved->id) {
+            return back()->withErrors(['documents' => 'Document upload failed to save in database.']);
+        }
 
         return back()->with('success', 'Document uploaded successfully.');
 
@@ -260,7 +278,8 @@ class AdministratorStoreController extends Controller
     public function store_required_documents(Request $request)
     {
         $attrs = $request->validate([
-            'applicant_id' => 'required|exists:applicants,id',
+            'applicant_id' => 'nullable|exists:applicants,id',
+            'user_id' => 'nullable|exists:users,id',
             'required_documents' => 'nullable|string',
             'document_notice' => 'nullable|string|max:1000',
         ]);
@@ -277,28 +296,54 @@ class AdministratorStoreController extends Controller
             ->all();
 
         $notice = trim((string) ($attrs['document_notice'] ?? ''));
-        $applicantId = (string) $attrs['applicant_id'];
+        $applicant = null;
+        if (!empty($attrs['applicant_id'])) {
+            $applicant = Applicant::find((int) $attrs['applicant_id']);
+        }
+        if (!$applicant && !empty($attrs['user_id'])) {
+            $applicant = Applicant::query()
+                ->where('user_id', (int) $attrs['user_id'])
+                ->orderByDesc('id')
+                ->first();
+        }
+        if (!$applicant) {
+            return back()->withErrors(['documents' => 'Applicant record not found for this employee.']);
+        }
+        $applicantId = (int) $applicant->id;
 
-        $disk = Storage::disk('local');
-        $path = 'required_employee_documents.json';
-        $payload = [];
+        $requiredPrefix = '__REQUIRED__::';
+        $noticeType = '__NOTICE__';
 
-        if ($disk->exists($path)) {
-            $decoded = json_decode((string) $disk->get($path), true);
-            if (is_array($decoded)) {
-                $payload = $decoded;
-            }
+        ApplicantDocument::query()
+            ->where('applicant_id', $applicantId)
+            ->where(function ($query) use ($requiredPrefix, $noticeType) {
+                $query
+                    ->where('type', 'like', $requiredPrefix.'%')
+                    ->orWhere('type', $noticeType);
+            })
+            ->delete();
+
+        foreach ($requiredDocuments as $requiredDocument) {
+            ApplicantDocument::create([
+                'applicant_id' => $applicantId,
+                'filename' => 'Required Document',
+                'filepath' => 'system/meta/required-document',
+                'size' => 0,
+                'mime_type' => 'text/plain',
+                'type' => $requiredPrefix.$requiredDocument,
+            ]);
         }
 
-        $payload['applicants'] = is_array($payload['applicants'] ?? null) ? $payload['applicants'] : [];
-        $payload['applicants'][$applicantId] = [
-            'required_documents' => $requiredDocuments,
-            'document_notice' => $notice,
-            'updated_at' => now()->toIso8601String(),
-        ];
-        $payload['updated_at'] = now()->toIso8601String();
-
-        $disk->put($path, json_encode($payload, JSON_PRETTY_PRINT));
+        if ($notice !== '') {
+            ApplicantDocument::create([
+                'applicant_id' => $applicantId,
+                'filename' => $notice,
+                'filepath' => 'system/meta/document-notice',
+                'size' => 0,
+                'mime_type' => 'text/plain',
+                'type' => $noticeType,
+            ]);
+        }
 
         return back()->with('success', 'Required document notice saved.');
     }

@@ -214,7 +214,10 @@ class AdministratorPageController extends Controller
                     'mime_type',
                     'size',
                     'created_at',
-                ])->orderByDesc('created_at');
+                ])
+                ->where('type', 'not like', '__REQUIRED__::%')
+                ->where('type', '!=', '__NOTICE__')
+                ->orderByDesc('created_at');
             },
             'applicant.position:id,title,department,employment,collage_name,work_mode,job_description,responsibilities,requirements,experience_level,location,skills,benifits,job_type,one,two,passionate',
             'employee',
@@ -1678,6 +1681,10 @@ class AdministratorPageController extends Controller
         ));
     }
 
+    public function display_payslip(){
+        return view('admin.adminPayslip');
+    }
+
     public function display_reports(){
         return view('admin.adminReports');
     }
@@ -1920,8 +1927,10 @@ class AdministratorPageController extends Controller
     }
 
     public function employee_documents($id){
+        $requiredPrefix = '__REQUIRED__::';
+        $noticeType = '__NOTICE__';
         $employee = User::with([
-            'applicant.documents' => function ($query) {
+            'applicant.documents' => function ($query) use ($requiredPrefix, $noticeType) {
                 $query->select([
                     'id',
                     'applicant_id',
@@ -1931,7 +1940,10 @@ class AdministratorPageController extends Controller
                     'mime_type',
                     'size',
                     'created_at',
-                ])->orderByDesc('created_at');
+                ])
+                ->where('type', 'not like', $requiredPrefix.'%')
+                ->where('type', '!=', $noticeType)
+                ->orderByDesc('created_at');
             },
         ])->where('role', 'Employee')->findOrFail($id);
 
@@ -1999,6 +2011,39 @@ class AdministratorPageController extends Controller
     {
         if ($applicantId <= 0) {
             return [];
+        }
+
+        $requiredPrefix = '__REQUIRED__::';
+        $noticeType = '__NOTICE__';
+        $metaDocuments = ApplicantDocument::query()
+            ->where('applicant_id', $applicantId)
+            ->where(function ($query) use ($requiredPrefix, $noticeType) {
+                $query
+                    ->where('type', 'like', $requiredPrefix.'%')
+                    ->orWhere('type', $noticeType);
+            })
+            ->orderByDesc('id')
+            ->get();
+
+        if ($metaDocuments->isNotEmpty()) {
+            $requiredDocuments = $metaDocuments
+                ->filter(fn ($doc) => str_starts_with((string) ($doc->type ?? ''), $requiredPrefix))
+                ->map(function ($doc) use ($requiredPrefix) {
+                    return trim((string) substr((string) $doc->type, strlen($requiredPrefix)));
+                })
+                ->filter()
+                ->unique(function ($value) {
+                    return strtolower($value);
+                })
+                ->values()
+                ->all();
+
+            $notice = (string) optional($metaDocuments->firstWhere('type', $noticeType))->filename;
+
+            return [
+                'required_documents' => $requiredDocuments,
+                'document_notice' => $notice,
+            ];
         }
 
         $disk = Storage::disk('local');

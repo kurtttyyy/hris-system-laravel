@@ -131,7 +131,7 @@
                 </div>
             </div>
 
-            <!-- PERSONAL DOCUMENTS --> // This section is for documents that are not part of the 201 file but the employee still wants to keep a copy in the system for their own reference. These documents will not be seen by admin and will not be included in the 201 file.
+            <!-- PERSONAL DOCUMENTS -->
             <div class="bg-white border border-gray-200 rounded-2xl p-6">
                 <h2 class="text-lg font-bold text-gray-900">My Personal Documents</h2>
                 <p class="text-gray-500 text-sm mt-1 mb-6">
@@ -172,15 +172,16 @@
                                 <p class="font-medium text-gray-800">{{ $document->type ?: ($document->filename ?? 'Document') }}</p>
                                 <p class="text-sm text-gray-500">{{ $fileType }} - {{ $document->formatted_size }} - {{ $document->formatted_created_at }}</p>
                             </div>
-                            @php
-                                $documentUrl = route('employee.employeeDocument.preview', ['id' => $document->id]);
-                            @endphp
-                            <a
-                                href="{{ $documentUrl }}"
-                                class="text-blue-600 font-medium hover:underline"
-                            >
-                                View
-                            </a>
+                            <form action="{{ route('employee.remove_document', ['id' => $document->id]) }}" method="POST" onsubmit="return confirm('Remove this file?');">
+                                @csrf
+                                <button
+                                    type="submit"
+                                    class="w-8 h-8 rounded-full bg-rose-100 text-rose-700 hover:bg-rose-200 flex items-center justify-center"
+                                    title="Remove file"
+                                >
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </form>
                         </div>
                     @empty
                         <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
@@ -196,7 +197,7 @@
 </div>
 
 <style>
-.nav { //
+.nav {
     @apply flex px-4 py-3 rounded-lg hover:bg-gray-100 cursor-pointer;
 }
 .nav.active {
