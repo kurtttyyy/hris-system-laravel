@@ -131,7 +131,7 @@
                 </div>
             </div>
 
-            <!-- PERSONAL DOCUMENTS -->
+            <!-- PERSONAL DOCUMENTS --> // This section is for documents that are not part of the 201 file but the employee still wants to keep a copy in the system for their own reference. These documents will not be seen by admin and will not be included in the 201 file.
             <div class="bg-white border border-gray-200 rounded-2xl p-6">
                 <h2 class="text-lg font-bold text-gray-900">My Personal Documents</h2>
                 <p class="text-gray-500 text-sm mt-1 mb-6">
@@ -196,7 +196,7 @@
 </div>
 
 <style>
-.nav {
+.nav { //
     @apply flex px-4 py-3 rounded-lg hover:bg-gray-100 cursor-pointer;
 }
 .nav.active {

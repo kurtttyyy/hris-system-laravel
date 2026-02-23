@@ -19,7 +19,7 @@
                 </a>
             </div>
 
-            @if($isPdf)
+            @if($isPdf)// PDF preview with pagination controls
                 <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 mb-3">
                     <div class="flex items-center justify-between">
                         <button id="prevPage" type="button" class="px-3 py-1.5 text-sm rounded bg-slate-200 hover:bg-slate-300">Prev</button>
@@ -31,11 +31,11 @@
                 <div class="overflow-auto rounded-lg border border-slate-200 bg-slate-900 p-3">
                     <canvas id="pdfCanvas" class="mx-auto"></canvas>
                 </div>
-            @elseif($isImage)
+            @elseif($isImage)// Image preview
                 <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
                     <img src="{{ $previewUrl }}" alt="Document Preview" class="w-full h-auto rounded">
                 </div>
-            @else
+            @else// Unsupported file type message
                 <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800 text-sm">
                     Preview for <span class="font-semibold">{{ strtoupper($extension ?: 'FILE') }}</span> is not supported.
                     For secure inline viewing, use PDF or image files.
@@ -45,7 +45,7 @@
     </div>
 
     @if($isPdf)
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>       
         <script>
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
