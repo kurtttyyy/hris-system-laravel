@@ -1,0 +1,352 @@
+<!-- Overview -->
+<div
+  x-show="tab === 'overview'"
+  x-transition
+  class="w-full grid grid-cols-1 md:grid-cols-2 gap-6 p-6"
+>
+  <!-- Contact Information -->
+  <div class="bg-slate-50 p-4 rounded-xl text-sm">
+    <h2 class="font-semibold mb-5">Contact Information</h2>
+
+    <!-- Email -->
+    <div class="flex items-start gap-3 mb-5">
+      <a
+        :href="selectedEmployee?.email ? `mailto:${selectedEmployee.email}` : null"
+        class="text-gray-400 hover:text-gray-600 mt-0.5"
+      >
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15A2.25 2.25 0 0 0 2.25 6.75m19.5 0-9.75 6.75L2.25 6.75"
+          />
+        </svg>
+      </a>
+
+      <div>
+        <span class="block font-semibold text-xs uppercase text-gray-400">
+          Email
+        </span>
+
+        <a
+          x-show="selectedEmployee?.email"
+          :href="`mailto:${selectedEmployee.email}`"
+          class="text-gray-700 hover:text-indigo-600"
+          x-text="selectedEmployee.email"
+        ></a>
+
+        <span
+          x-show="!selectedEmployee?.email"
+          class="text-gray-400"
+        >—</span>
+      </div>
+    </div>
+
+    <!-- Phone -->
+    <div class="flex items-start gap-3 mb-5">
+      <svg
+        class="w-5 h-5 text-gray-400 mt-0.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M2.25 6.75c0 8.284 6.716 15 15 15h1.5a2.25 2.25 0 0 0 2.25-2.25v-1.372a1.125 1.125 0 0 0-.852-1.091l-4.423-1.106a1.125 1.125 0 0 0-1.173.417l-.97 1.293a12.035 12.035 0 0 1-5.292-5.292l1.293-.97a1.125 1.125 0 0 0 .417-1.173L6.963 4.102A1.125 1.125 0 0 0 5.872 3.25H4.5A2.25 2.25 0 0 0 2.25 5.5v1.25z"
+        />
+      </svg>
+
+      <div>
+        <span class="block font-semibold text-xs uppercase text-gray-400">
+          Phone
+        </span>
+        <span
+          class="text-gray-700"
+          x-text="selectedEmployee?.applicant?.phone ?? '—'"
+        ></span>
+      </div>
+    </div>
+
+    <!-- Location -->
+    <div class="flex items-start gap-3 mb-5">
+      <svg
+        class="w-5 h-5 text-gray-400 mt-0.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 21s6-5.686 6-10a6 6 0 1 0-12 0c0 4.314 6 10 6 10z"
+        />
+        <circle cx="12" cy="11" r="2.5" />
+      </svg>
+
+      <div>
+        <span class="block font-semibold text-xs uppercase text-gray-400">
+          Location
+        </span>
+        <span
+          class="text-gray-700"
+          x-text="selectedEmployee?.applicant?.address ?? '—'"
+        ></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Employment Details -->
+  <div class="bg-slate-50 p-4 rounded-xl text-sm">
+    <h2 class="font-semibold mb-5">Employment Details</h2>
+
+    <!-- Employee ID -->
+    <div class="flex items-start gap-3 mb-5">
+      <svg
+        class="w-5 h-5 text-gray-400 mt-0.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0z"
+        />
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M4.5 20.25a7.5 7.5 0 0 1 15 0"
+        />
+      </svg>
+
+      <div>
+        <span class="block font-semibold text-xs uppercase text-gray-400">
+          Employee ID
+        </span>
+        <span class="text-gray-700"
+            x-text="selectedEmployee?.employee.employee_id ?? '—'"
+        ></span>
+      </div>
+    </div>
+
+    <!-- Join Date -->
+    <div class="flex items-start gap-3 mb-5">
+      <svg
+        class="w-5 h-5 text-gray-400 mt-0.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        viewBox="0 0 24 24"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-11 8h14m-15 9.75A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V7.5A2.25 2.25 0 0 0 18.75 5.25H5.25A2.25 2.25 0 0 0 3 7.5v11.25z" />
+      </svg>
+
+      <div>
+        <span class="block font-semibold text-xs uppercase text-gray-400">
+          Join Date
+        </span>
+        <span
+          class="text-gray-700"
+          x-text="(() => {
+            const formatted = selectedEmployee?.applicant?.formatted_date_hired
+              || selectedEmployee?.employee?.formatted_employement_date;
+            if (formatted) return formatted;
+
+            const raw = selectedEmployee?.employee?.employement_date;
+            if (!raw) return '—';
+
+            const parsed = new Date(raw);
+            return Number.isNaN(parsed.getTime())
+              ? raw
+              : parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+          })()"
+        ></span>
+      </div>
+    </div>
+
+    <!-- Position -->
+    <div class="flex items-start gap-3 mb-5">
+      <svg
+        class="w-5 h-5 text-gray-400 mt-0.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M17 20.25v-2.625a4.125 4.125 0 0 0-4.125-4.125h-1.75A4.125 4.125 0 0 0 7 17.625V20.25"
+        />
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0z"
+        />
+      </svg>
+
+      <div>
+        <span class="block font-semibold text-xs uppercase text-gray-400">
+          Position
+        </span>
+        <span
+          class="text-gray-700"
+          x-text="selectedEmployee?.applicant?.position?.title ?? selectedEmployee?.employee?.position ?? '—'"
+        ></span>
+      </div>
+    </div>
+    <!-- Department -->
+    <div class="flex items-start gap-3 mb-5">
+      <svg
+        class="w-5 h-5 text-gray-400 mt-0.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.75A1.75 1.75 0 0 1 11 7.75V18a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 18V7.5zM13 6h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-6V6z"
+        />
+      </svg>
+
+      <div>
+        <span class="block font-semibold text-xs uppercase text-gray-400">
+          Department
+        </span>
+        <span
+          class="text-gray-700"
+          x-text="selectedEmployee?.applicant?.position?.department ?? selectedEmployee?.employee?.department ?? '—'"
+        ></span>
+      </div>
+    </div>
+
+    <!-- Classification -->
+    <div class="flex items-start gap-3 mb-5">
+      <svg
+        class="w-5 h-5 text-gray-400 mt-0.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+        />
+      </svg>
+
+      <div>
+        <span class="block font-semibold text-xs uppercase text-gray-400">
+          Classification
+        </span>
+        <span
+          class="text-gray-700"
+          x-text="selectedEmployee?.employee?.classification ?? selectedEmployee?.applicant?.position?.employment ?? '—'"
+        ></span>
+      </div>
+    </div>
+    <!-- Contract Type -->
+    <div class="flex items-start gap-3 mb-5">
+      <svg
+        class="w-5 h-5 text-gray-400 mt-0.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M16.5 9.4V6.75A2.25 2.25 0 0 0 14.25 4.5h-7.5A2.25 2.25 0 0 0 4.5 6.75v10.5A2.25 2.25 0 0 0 6.75 19.5h7.5a2.25 2.25 0 0 0 2.25-2.25V14.6M9 12h12m0 0-3-3m3 3-3 3"
+        />
+      </svg>
+
+      <div>
+        <span class="block font-semibold text-xs uppercase text-gray-400">
+          Contract Type
+        </span>
+        <span
+          class="text-gray-700"
+          x-text="(() => {
+            const jobTypeRaw = selectedEmployee?.employee?.job_type ?? selectedEmployee?.applicant?.position?.job_type ?? '';
+            const jobType = jobTypeRaw.toString().trim().toLowerCase();
+            const rawJoinDate = selectedEmployee?.applicant?.date_hired ?? selectedEmployee?.employee?.employement_date;
+            if (jobType !== 'non-teaching' && jobType !== 'teaching') return 'N/A';
+            if (!rawJoinDate) return 'Probationary';
+
+            const joinDate = new Date(rawJoinDate);
+            if (Number.isNaN(joinDate.getTime())) return 'Probationary';
+
+            const today = new Date();
+            if (jobType === 'non-teaching') {
+              const sixMonthsAfterJoin = new Date(joinDate);
+              sixMonthsAfterJoin.setMonth(sixMonthsAfterJoin.getMonth() + 6);
+              return today < sixMonthsAfterJoin ? 'Probationary' : 'Permanent';
+            }
+
+            const threeYearsAfterJoin = new Date(joinDate);
+            threeYearsAfterJoin.setFullYear(threeYearsAfterJoin.getFullYear() + 3);
+            return today < threeYearsAfterJoin ? 'Probationary' : 'Permanent';
+          })()"
+        ></span>
+      </div>
+    </div>
+  </div>
+  <!-- Skills -->
+<div class="bg-slate-50 p-4 rounded-xl text-sm">
+  <h3 class="font-semibold mb-5">Skills</h3>
+  <div class="flex flex-wrap gap-2">
+    <template x-for="skill in (selectedEmployee?.applicant?.position?.skills ?? '').split(',')" :key="skill">
+      <span class="px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-full" x-text="skill.trim()"></span>
+    </template>
+  </div>
+</div>
+
+
+  <!-- Recent Activity -->
+  <div class="bg-slate-50 p-4 rounded-xl text-sm">
+    <h3 class="font-semibold mb-5">Recent Activity</h3>
+
+    <ul class="space-y-3">
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 rounded-full bg-green-500 mt-2"></span>
+        <div>
+          <p class="text-gray-700">Completed project milestone</p>
+          <p class="text-xs text-gray-400">2 days ago</p>
+        </div>
+      </li>
+
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 rounded-full bg-blue-500 mt-2"></span>
+        <div>
+          <p class="text-gray-700">Attended team meeting</p>
+          <p class="text-xs text-gray-400">5 days ago</p>
+        </div>
+      </li>
+
+      <li class="flex items-start gap-3">
+        <span class="w-2 h-2 rounded-full bg-purple-500 mt-2"></span>
+        <div>
+          <p class="text-gray-700">Updated profile</p>
+          <p class="text-xs text-gray-400">1 week ago</p>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>
+
+
+
