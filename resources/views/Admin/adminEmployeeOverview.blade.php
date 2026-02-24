@@ -88,9 +88,6 @@
             Send Message
           </button>
           <button class="flex-1 bg-slate-100 py-2 rounded-lg">
-            Schedule Meeting
-          </button>
-          <button class="flex-1 bg-slate-100 py-2 rounded-lg">
             Edit Profile
           </button>
         </div>

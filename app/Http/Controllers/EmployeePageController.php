@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Applicant;
 use App\Models\ApplicantDocument;
 use App\Models\AttendanceRecord;
+use App\Models\Resignation;
 use App\Models\User;
 use App\Models\LeaveApplication;
 use Carbon\Carbon;
@@ -447,6 +448,21 @@ class EmployeePageController extends Controller
             ->get();
 
         return view('employee.employeeCommunication', compact('admins'));
+    }
+
+    public function display_resignation(){
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login_display');
+        }
+
+        $resignations = Resignation::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('employee.employeeResignation', compact('resignations'));
     }
 
     private function formatEmployeeDisplayName($firstName, $middleName, $lastName): ?string
@@ -1090,6 +1106,14 @@ class EmployeePageController extends Controller
 
     private function isAttendanceRowPresent($row): bool
     {
+        $mainGate = strtolower(trim((string) ($row->main_gate ?? '')));
+        if ($mainGate === 'leave - with pay') {
+            return true;
+        }
+        if ($mainGate === 'leave - without pay') {
+            return false;
+        }
+
         $isHolidayPresent = (bool) ($row->is_holiday_present ?? false)
             || trim((string) ($row->main_gate ?? '')) === 'Holiday - No Class';
         if ($isHolidayPresent) {

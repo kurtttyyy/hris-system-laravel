@@ -2,6 +2,20 @@
   $isHiringRoute = request()->routeIs('admin.adminApplicant')
     || request()->routeIs('admin.adminPosition')
     || request()->routeIs('admin.adminInterview');
+  $adminUser = auth()->user();
+  $nameParts = array_filter([
+    trim((string) ($adminUser->first_name ?? '')),
+    trim((string) ($adminUser->middle_name ?? '')),
+    trim((string) ($adminUser->last_name ?? '')),
+  ]);
+  $adminDisplayName = count($nameParts) ? implode(' ', $nameParts) : (string) ($adminUser->email ?? 'Admin');
+  $initialA = strtoupper(substr(trim((string) ($adminUser->first_name ?? 'A')), 0, 1));
+  $initialB = strtoupper(substr(trim((string) ($adminUser->last_name ?? '')), 0, 1));
+  $adminInitials = trim($initialA.$initialB);
+  if ($adminInitials === '') {
+    $adminInitials = 'AD';
+  }
+  $adminRoleLabel = trim((string) ($adminUser->role ?? 'Admin'));
 @endphp
 
 <style>
@@ -81,7 +95,18 @@
        {{ request()->routeIs('admin.adminPayslip')
         ? 'bg-green-600 text-white'
         : 'text-white hover:bg-green-600/30' }}">
+      <i class="fa-solid fa-file-invoice-dollar"></i>
       <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Payslip</span>
+    </a>
+
+    <!-- Resignations -->
+    <a href="{{ route('admin.adminResignations') }}"
+       class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
+       {{ request()->routeIs('admin.adminResignations')
+        ? 'bg-green-600 text-white'
+        : 'text-white hover:bg-green-600/30' }}">
+      <i class="fa-solid fa-user-minus"></i>
+      <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Resignations</span>
     </a>
     <details class="space-y-1 hiring-menu" {{ $isHiringRoute ? 'open' : '' }}>
       <summary
@@ -142,10 +167,23 @@
 
   <!-- Profile -->
   <div class="px-6 py-4 border-t border-slate-800 flex items-center gap-3 justify-center group-hover:justify-start">
-    <div class="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white font-semibold">AS</div>
+    <div class="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white font-semibold">{{ $adminInitials }}</div>
     <div class="text-sm inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">
-      <p class="font-medium">Admin Sarah</p>
-      <p class="text-slate-400">HR Manager</p>
+      <div class="flex items-center gap-2">
+        <form method="POST" action="{{ route('logout') }}" class="inline-flex">
+          @csrf
+          <button
+            type="submit"
+            class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 text-slate-200 hover:bg-slate-800"
+            title="Logout"
+            aria-label="Logout"
+          >
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </form>
+        <p class="font-medium truncate">{{ $adminDisplayName }}</p>
+      </div>
+      <p class="text-slate-400">{{ $adminRoleLabel }}</p>
     </div>
   </div>
 </aside>

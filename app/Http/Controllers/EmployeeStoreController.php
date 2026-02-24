@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Applicant;
 use App\Models\ApplicantDocument;
 use App\Models\LeaveApplication;
+use App\Models\Resignation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -178,5 +179,42 @@ class EmployeeStoreController extends Controller
             'message' => 'Leave application saved.',
             'id' => $record->id,
         ]);
+    }
+
+    public function store_resignation(Request $request)
+    {
+        $attrs = $request->validate([
+            'submitted_at' => 'required|date',
+            'effective_date' => 'required|date|after_or_equal:submitted_at',
+            'reason' => 'nullable|string|max:4000',
+        ]);
+
+        $authUser = Auth::user();
+        if (!$authUser) {
+            return redirect()->route('login_display');
+        }
+
+        $authUser->loadMissing('employee');
+
+        $employeeName = trim(implode(' ', array_filter([
+            trim((string) ($authUser->first_name ?? '')),
+            trim((string) ($authUser->middle_name ?? '')),
+            trim((string) ($authUser->last_name ?? '')),
+        ])));
+
+        Resignation::create([
+            'user_id' => $authUser->id,
+            'employee_id' => (string) ($authUser->employee?->employee_id ?? ''),
+            'employee_name' => $employeeName !== '' ? $employeeName : (string) ($authUser->email ?? 'Unknown Employee'),
+            'department' => (string) ($authUser->employee?->department ?? ''),
+            'position' => (string) ($authUser->employee?->position ?? ''),
+            'submitted_at' => $attrs['submitted_at'],
+            'effective_date' => $attrs['effective_date'],
+            'reason' => trim((string) ($attrs['reason'] ?? '')),
+            'status' => 'Pending',
+        ]);
+
+        return redirect()->route('employee.employeeResignation')
+            ->with('success', 'Resignation request submitted.');
     }
 }

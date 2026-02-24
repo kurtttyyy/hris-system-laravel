@@ -33,6 +33,7 @@ Route::controller(ApplicantController::class)->group(function () {
 Route::controller(RegisterLoginController::class)->group(function () {
     Route::post('register/store', 'register_store')->name('register.store');
     Route::post('login', 'login_store')->name('login');
+    Route::post('logout', 'logout')->name('logout');
 });
 
 Route::controller(EmployeePageController::class)->group(function () {
@@ -40,6 +41,7 @@ Route::controller(EmployeePageController::class)->group(function () {
     Route::get('employee/leave', 'display_leave')->name('employee.employeeLeave');
     Route::get('employee/profile', 'display_profile')->name('employee.employeeProfile');
     Route::get('employee/communication', 'display_communication')->name('employee.employeeCommunication');
+    Route::get('employee/resignation', 'display_resignation')->name('employee.employeeResignation');
     Route::get('employee/document', 'display_document')->name('employee.employeeDocument');
     Route::get('employee/document/preview/{id}', 'display_document_preview')->name('employee.employeeDocument.preview');
     Route::get('employee/document/view/{id}', 'view_document')->name('employee.employeeDocument.view');
@@ -51,6 +53,7 @@ Route::controller(EmployeeStoreController::class)->group(function () {
     Route::post('upload/documents', 'upload_store')->name('employee.upload_documents');
     Route::post('employee/document/{id}/remove', 'remove_document')->name('employee.remove_document');
     Route::post('employee/leave/application', 'leave_application_store')->name('employee.leaveApplication.store');
+    Route::post('employee/resignation/store', 'store_resignation')->name('employee.storeResignation');
 
 });
 
@@ -64,6 +67,7 @@ Route::controller(AdministratorPageController::class)->group(function () {
     Route::get('system/attendance/total-employee', 'display_attendance_total_employee')->name('admin.attendance.totalEmployee');
     Route::get('system/leave/management', 'display_leave')->name('admin.adminLeaveManagement');
     Route::get('system/payslip', 'display_payslip')->name('admin.adminPayslip');
+    Route::get('system/resignations', 'display_resignations')->name('admin.adminResignations');
     Route::get('system/reports', 'display_reports')->name('admin.adminReports');
     Route::get('system/compare/code', 'display_compare')->name('admin.compareCode');
 
@@ -104,6 +108,7 @@ Route::controller(AdministratorStoreController::class)->group(function () {
     Route::post('system/update/interview', 'updated_interview')->name('admin.storeUpdatedInterview');
     Route::post('system/update/employee/{id}', 'update_employee')->name('admin.updateEmployee');
     Route::post('system/leave/request/{id}/status', 'update_leave_request_status')->name('admin.updateLeaveRequestStatus');
+    Route::post('system/resignations/{id}/status', 'update_resignation_status')->name('admin.updateResignationStatus');
     Route::post('system/employee/update/biometric', 'update_bio')->name('admin.updateBio');
     Route::post('system/employee/update/profile', 'update_general_profile')->name('admin.updateGeneralProfile');
     Route::post('system/calendar/hidden-official-holidays/sync', 'sync_hidden_official_holidays')->name('admin.syncHiddenOfficialHolidays');

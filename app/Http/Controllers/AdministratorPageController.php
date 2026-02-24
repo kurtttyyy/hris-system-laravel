@@ -10,6 +10,7 @@ use App\Models\GuestLog;
 use App\Models\Interviewer;
 use App\Models\OpenPosition;
 use App\Models\LeaveApplication;
+use App\Models\Resignation;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -123,7 +124,10 @@ class AdministratorPageController extends Controller
                             || !empty($row->afternoon_in)
                             || !empty($row->afternoon_out);
                         $isHolidayPresent = (bool) ($row->is_holiday_present ?? false);
-                        return !(bool) ($row->is_absent ?? false) && ($hasAnyTimeLog || $isHolidayPresent || $isTodayHoliday);
+                        $mainGate = strtolower(trim((string) ($row->main_gate ?? '')));
+                        $isWithPayLeave = $mainGate === 'leave - with pay';
+                        return !(bool) ($row->is_absent ?? false)
+                            && ($hasAnyTimeLog || $isHolidayPresent || $isTodayHoliday || $isWithPayLeave);
                     })
                     ->count();
             }
@@ -476,10 +480,16 @@ class AdministratorPageController extends Controller
                 || !empty($row->morning_out)
                 || !empty($row->afternoon_in)
                 || !empty($row->afternoon_out);
+            $mainGate = strtolower(trim((string) ($row->main_gate ?? '')));
+            $isWithPayLeave = $mainGate === 'leave - with pay';
+            $isWithoutPayLeave = $mainGate === 'leave - without pay';
             // Business rule: if there is no scan log for a class day, mark as absent.
-            // Keep holiday auto-present rows excluded from this rule.
-            $isAbsentByRule = !$isHolidayPresent && !$hasAnyTimeLog;
+            // Keep holiday and leave-with-pay rows excluded from this rule.
+            $isAbsentByRule = !$isHolidayPresent && !$isWithPayLeave && !$hasAnyTimeLog;
             $isAbsent = (bool) ($row->is_absent ?? false) || $isAbsentByRule;
+            if ($isWithoutPayLeave) {
+                $isAbsent = true;
+            }
             $isTardyByRule = !$isAbsent && !$isWithinPresentWindow && $computedLateMinutes > 0;
             $gateLabel = $row->main_gate;
             if ($isHolidayPresent && !$isAbsent && (is_null($gateLabel) || trim((string) $gateLabel) === '')) {
@@ -1683,6 +1693,70 @@ class AdministratorPageController extends Controller
 
     public function display_payslip(){
         return view('admin.adminPayslip');
+    }
+
+    public function display_resignations(Request $request){
+        $selectedStatus = trim((string) $request->query('status', 'All'));
+        $search = trim((string) $request->query('search', ''));
+
+        $resignationsQuery = Resignation::query()
+            ->with([
+                'user:id,first_name,middle_name,last_name,email',
+                'processor:id,first_name,last_name',
+            ])
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id');
+
+        if ($selectedStatus !== '' && strcasecmp($selectedStatus, 'All') !== 0) {
+            $resignationsQuery->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", [strtolower($selectedStatus)]);
+        }
+
+        if ($search !== '') {
+            $needle = strtolower($search);
+            $resignationsQuery->where(function ($query) use ($needle) {
+                $query
+                    ->orWhereRaw("LOWER(COALESCE(employee_name, '')) LIKE ?", ['%'.$needle.'%'])
+                    ->orWhereRaw("LOWER(COALESCE(employee_id, '')) LIKE ?", ['%'.$needle.'%'])
+                    ->orWhereRaw("LOWER(COALESCE(department, '')) LIKE ?", ['%'.$needle.'%'])
+                    ->orWhereRaw("LOWER(COALESCE(position, '')) LIKE ?", ['%'.$needle.'%']);
+            });
+        }
+
+        $resignations = $resignationsQuery->get();
+
+        $pendingResignations = Resignation::query()
+            ->with([
+                'user:id,first_name,middle_name,last_name,email',
+                'processor:id,first_name,last_name',
+            ])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('id')
+            ->get();
+
+        $employees = User::query()
+            ->with('employee:user_id,employee_id,department,position')
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
+            ->orderBy('first_name')
+            ->get();
+
+        $statusCounts = [
+            'Pending' => (int) Resignation::query()->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])->count(),
+            'Approved' => (int) Resignation::query()->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])->count(),
+            'Completed' => (int) Resignation::query()->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['completed'])->count(),
+            'Rejected' => (int) Resignation::query()->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['rejected'])->count(),
+            'Cancelled' => (int) Resignation::query()->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['cancelled'])->count(),
+        ];
+
+        return view('admin.adminResignations', compact(
+            'resignations',
+            'pendingResignations',
+            'employees',
+            'statusCounts',
+            'selectedStatus',
+            'search'
+        ));
     }
 
     public function display_reports(){

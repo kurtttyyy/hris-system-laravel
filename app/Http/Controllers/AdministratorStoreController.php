@@ -13,10 +13,12 @@ use App\Models\Interviewer;
 use App\Models\License;
 use App\Models\LeaveApplication;
 use App\Models\OpenPosition;
+use App\Models\Resignation;
 use App\Models\Salary;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -1442,9 +1444,20 @@ class AdministratorStoreController extends Controller
         ]);
 
         $leaveApplication = LeaveApplication::findOrFail($id);
-        $leaveApplication->update([
-            'status' => $attrs['status'],
-        ]);
+        $previousStatus = strtolower(trim((string) ($leaveApplication->status ?? '')));
+        $newStatus = trim((string) $attrs['status']);
+
+        DB::transaction(function () use ($leaveApplication, $newStatus, $previousStatus) {
+            $leaveApplication->update([
+                'status' => $newStatus,
+            ]);
+
+            if (strcasecmp($newStatus, 'Approved') === 0) {
+                $this->syncAttendanceRecordsForApprovedLeave($leaveApplication->fresh());
+            } elseif (strcasecmp($newStatus, 'Rejected') === 0 && $previousStatus === 'approved') {
+                $this->deleteGeneratedLeaveAttendanceRecords($leaveApplication);
+            }
+        });
 
         $month = trim((string) ($attrs['month'] ?? ''));
         $query = [];
@@ -1458,6 +1471,248 @@ class AdministratorStoreController extends Controller
 
         return redirect()->route('admin.adminLeaveManagement', $query)
             ->with('success', 'Leave request status updated.');
+    }
+
+    public function store_resignation(Request $request)
+    {
+        $attrs = $request->validate([
+            'employee_user_id' => 'required|exists:users,id',
+            'submitted_at' => 'required|date',
+            'effective_date' => 'required|date|after_or_equal:submitted_at',
+            'reason' => 'nullable|string|max:4000',
+        ]);
+
+        $employeeUser = User::query()
+            ->with('employee')
+            ->findOrFail((int) $attrs['employee_user_id']);
+
+        if (strcasecmp((string) ($employeeUser->role ?? ''), 'Employee') !== 0) {
+            return redirect()->back()->with('error', 'Selected account is not an employee.');
+        }
+
+        $employeeName = trim(implode(' ', array_filter([
+            trim((string) ($employeeUser->first_name ?? '')),
+            trim((string) ($employeeUser->middle_name ?? '')),
+            trim((string) ($employeeUser->last_name ?? '')),
+        ])));
+
+        Resignation::create([
+            'user_id' => $employeeUser->id,
+            'employee_id' => (string) ($employeeUser->employee?->employee_id ?? ''),
+            'employee_name' => $employeeName !== '' ? $employeeName : (string) ($employeeUser->email ?? 'Unknown Employee'),
+            'department' => (string) ($employeeUser->employee?->department ?? ''),
+            'position' => (string) ($employeeUser->employee?->position ?? ''),
+            'submitted_at' => $attrs['submitted_at'],
+            'effective_date' => $attrs['effective_date'],
+            'reason' => trim((string) ($attrs['reason'] ?? '')),
+            'status' => 'Pending',
+        ]);
+
+        return redirect()->route('admin.adminResignations')
+            ->with('success', 'Resignation record saved.');
+    }
+
+    public function update_resignation_status($id, Request $request)
+    {
+        $attrs = $request->validate([
+            'status' => 'required|string|in:Pending,Approved,Rejected,Completed,Cancelled',
+            'admin_note' => 'nullable|string|max:4000',
+        ]);
+
+        $resignation = Resignation::findOrFail($id);
+        $status = trim((string) $attrs['status']);
+
+        $updatePayload = [
+            'status' => $status,
+            'admin_note' => trim((string) ($attrs['admin_note'] ?? '')),
+            'processed_by' => Auth::id(),
+            'processed_at' => now(),
+        ];
+
+        // On approval, store a fresh snapshot of employee identity fields
+        // in the resignation record for audit/history purposes.
+        if (strcasecmp($status, 'Approved') === 0 && !empty($resignation->user_id)) {
+            $employeeUser = User::query()
+                ->with('employee')
+                ->find($resignation->user_id);
+
+            if ($employeeUser) {
+                $employeeName = trim(implode(' ', array_filter([
+                    trim((string) ($employeeUser->first_name ?? '')),
+                    trim((string) ($employeeUser->middle_name ?? '')),
+                    trim((string) ($employeeUser->last_name ?? '')),
+                ])));
+
+                $updatePayload['employee_id'] = (string) ($employeeUser->employee?->employee_id ?? $resignation->employee_id ?? '');
+                $updatePayload['employee_name'] = $employeeName !== ''
+                    ? $employeeName
+                    : (string) ($employeeUser->email ?? $resignation->employee_name ?? 'Unknown Employee');
+                $updatePayload['department'] = (string) ($employeeUser->employee?->department ?? $resignation->department ?? '');
+                $updatePayload['position'] = (string) ($employeeUser->employee?->position ?? $resignation->position ?? '');
+            }
+        }
+
+        $resignation->update($updatePayload);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'message' => 'Resignation status updated.',
+                'id' => (int) $resignation->id,
+                'status' => $status,
+                'statusCounts' => [
+                    'Pending' => (int) Resignation::query()->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])->count(),
+                    'Approved' => (int) Resignation::query()->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])->count(),
+                    'Rejected' => (int) Resignation::query()->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['rejected'])->count(),
+                    'Cancelled' => (int) Resignation::query()->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['cancelled'])->count(),
+                ],
+            ]);
+        }
+
+        return redirect()->route('admin.adminResignations')
+            ->with('success', 'Resignation status updated.');
+    }
+
+    private function syncAttendanceRecordsForApprovedLeave(LeaveApplication $leaveApplication): void
+    {
+        $startDate = $leaveApplication->filing_date
+            ? Carbon::parse($leaveApplication->filing_date)->startOfDay()
+            : Carbon::parse($leaveApplication->created_at)->startOfDay();
+
+        $totalRequestedDays = (float) ($leaveApplication->number_of_working_days ?? 0);
+        if ($totalRequestedDays <= 0) {
+            $totalRequestedDays = max(
+                (float) ($leaveApplication->applied_total ?? 0),
+                (float) ($leaveApplication->days_with_pay ?? 0),
+                (float) ($leaveApplication->days_without_pay ?? 0)
+            );
+        }
+
+        $withPayDays = max((int) ceil((float) ($leaveApplication->days_with_pay ?? 0)), 0);
+        $withoutPayDays = max((int) ceil((float) ($leaveApplication->days_without_pay ?? 0)), 0);
+        $requestedDaysCount = max((int) ceil($totalRequestedDays), 0);
+
+        if ($withPayDays + $withoutPayDays === 0 && $requestedDaysCount > 0) {
+            $withPayDays = $requestedDaysCount;
+        }
+
+        if ($requestedDaysCount > ($withPayDays + $withoutPayDays)) {
+            $withoutPayDays += $requestedDaysCount - ($withPayDays + $withoutPayDays);
+        }
+
+        $totalDays = $withPayDays + $withoutPayDays;
+        if ($totalDays <= 0) {
+            return;
+        }
+
+        $employee = Employee::where('user_id', $leaveApplication->user_id)->first();
+        $employeeId = $this->normalizeEmployeeId(
+            $leaveApplication->employee_id ?: ($employee?->employee_id ?? '')
+        );
+        if ($employeeId === '') {
+            return;
+        }
+
+        $upload = AttendanceUpload::firstOrCreate(
+            ['file_path' => 'attendance_excels/system_leave_application_'.$leaveApplication->id.'.txt'],
+            [
+                'original_name' => 'system_leave_application_'.$leaveApplication->id.'.txt',
+                'file_size' => 0,
+                'status' => 'Processed',
+                'processed_rows' => 0,
+                'uploaded_at' => now(),
+            ]
+        );
+
+        $employeeName = trim((string) ($leaveApplication->employee_name ?? ''));
+        if ($employeeName === '') {
+            $employeeName = trim((string) optional(optional($employee)->user)->first_name);
+        }
+
+        $department = trim((string) ($leaveApplication->office_department ?? ''));
+        if ($department === '') {
+            $department = trim((string) ($employee?->department ?? ''));
+        }
+
+        $jobType = $this->normalizeEmployeeJobType($employee?->job_type ?? null);
+
+        for ($dayIndex = 0; $dayIndex < $totalDays; $dayIndex++) {
+            $attendanceDate = $startDate->copy()->addDays($dayIndex)->toDateString();
+            $isWithPay = $dayIndex < $withPayDays;
+            $gateLabel = $isWithPay ? 'Leave - With Pay' : 'Leave - Without Pay';
+            $isAbsent = !$isWithPay;
+
+            $existing = AttendanceRecord::query()
+                ->where('employee_id', $employeeId)
+                ->whereDate('attendance_date', $attendanceDate)
+                ->orderByDesc('id')
+                ->first();
+
+            if ($existing && !$this->canApplyLeaveAttendanceOverride($existing)) {
+                continue;
+            }
+
+            $payload = [
+                'attendance_upload_id' => $upload->id,
+                'employee_id' => $employeeId,
+                'employee_name' => $employeeName !== '' ? $employeeName : null,
+                'department' => $department !== '' ? $department : null,
+                'job_type' => $jobType,
+                'main_gate' => $gateLabel,
+                'attendance_date' => $attendanceDate,
+                'morning_in' => null,
+                'morning_out' => null,
+                'afternoon_in' => null,
+                'afternoon_out' => null,
+                'late_minutes' => 0,
+                'missing_time_logs' => ['morning_in', 'morning_out', 'afternoon_in', 'afternoon_out'],
+                'is_absent' => $isAbsent,
+                'is_tardy' => false,
+            ];
+
+            if ($existing) {
+                $existing->update($payload);
+            } else {
+                AttendanceRecord::create($payload);
+            }
+        }
+
+        $upload->update([
+            'status' => 'Processed',
+            'uploaded_at' => now(),
+            'processed_rows' => AttendanceRecord::query()
+                ->where('attendance_upload_id', $upload->id)
+                ->count(),
+        ]);
+    }
+
+    private function canApplyLeaveAttendanceOverride(AttendanceRecord $record): bool
+    {
+        $hasAnyTimeLog = !empty($record->morning_in)
+            || !empty($record->morning_out)
+            || !empty($record->afternoon_in)
+            || !empty($record->afternoon_out);
+        if ($hasAnyTimeLog) {
+            return false;
+        }
+
+        $mainGate = strtolower(trim((string) ($record->main_gate ?? '')));
+        return $mainGate === '' || str_starts_with($mainGate, 'leave -');
+    }
+
+    private function deleteGeneratedLeaveAttendanceRecords(LeaveApplication $leaveApplication): void
+    {
+        $upload = AttendanceUpload::query()
+            ->where('file_path', 'attendance_excels/system_leave_application_'.$leaveApplication->id.'.txt')
+            ->first();
+        if (!$upload) {
+            return;
+        }
+
+        AttendanceRecord::query()
+            ->where('attendance_upload_id', $upload->id)
+            ->delete();
+
+        $upload->delete();
     }
 
     public function update_bio(Request $request){

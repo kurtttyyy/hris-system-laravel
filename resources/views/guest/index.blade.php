@@ -201,7 +201,7 @@
                         @if (!is_null($postedDays) && $postedDays <= 3)
                             <span class="badge bg-success">New</span>
                         @elseif (!is_null($postedDays))
-                            <span class="badge bg-secondary">{{ $postedDays }} {{ $postedDays === 1 ? 'day' : 'days' }} ago</span>
+                            <span class="badge bg-secondary">{{ $postedDays }} {{ $postedDays === 1 ? 'day' : 'days' }} posted</span>
                         @endif
                     </div>
 
