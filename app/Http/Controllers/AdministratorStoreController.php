@@ -269,6 +269,8 @@ class AdministratorStoreController extends Controller
             'mime_type'    => $mimeType,
             'size'         => $size,
         ]);
+
+        Log::info('saved: ', $saved);
         if (!$saved || !$saved->id) {
             return back()->withErrors(['documents' => 'Document upload failed to save in database.']);
         }
