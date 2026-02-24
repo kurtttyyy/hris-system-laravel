@@ -226,8 +226,8 @@ class AdministratorStoreController extends Controller
     public function store_document(Request $request){
         Log::info($request);
         $attrs = $request->validate([
-            'applicant_id' => 'nullable|exists:applicants,id',
-            'user_id' => 'nullable|exists:users,id',
+            'applicant_id' => 'required|exists:applicants,id',
+            'user_id' => 'required|exists:users,id',
             'document_name' => 'required|string|max:255',
             'documents' => 'required|file|mimes:pdf,doc,docx|max:5120',
         ]);
