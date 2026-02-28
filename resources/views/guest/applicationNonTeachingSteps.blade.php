@@ -2,6 +2,47 @@
 
 @section('content')
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+    .field-error-highlight {
+        border: 1px solid rgba(220, 38, 38, 0.55) !important;
+        background: rgba(220, 38, 38, 0.08) !important;
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.16);
+        border-radius: 0.5rem;
+        animation: errorPulse 0.55s ease-in-out 2, errorShake 0.35s ease-in-out 1;
+    }
+
+    @keyframes errorPulse {
+        0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.0); }
+        50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.18); }
+        100% { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.16); }
+    }
+
+    @keyframes errorShake {
+        0%, 100% { transform: translateX(0); }
+        20% { transform: translateX(-4px); }
+        40% { transform: translateX(4px); }
+        60% { transform: translateX(-3px); }
+        80% { transform: translateX(3px); }
+    }
+
+    .year-field-transition {
+        overflow: visible;
+        max-height: 160px;
+        opacity: 1;
+        transform: translateY(0);
+        transition: max-height 0.55s ease, opacity 0.45s ease, transform 0.45s ease, margin 0.45s ease;
+    }
+
+    .year-field-transition.year-hidden {
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        transform: translateY(-6px);
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+        pointer-events: none;
+    }
+</style>
 
 
 @include('layouts.header')  {{-- UNIVERSAL HEADER --}}
@@ -119,34 +160,151 @@
     <h4 class="fw-bold mb-3">Educational Background</h4>
 
     <div class="mb-3 floating-input">
-        <select class="form-select" id="education" name="education" required>
-            <option value="" disabled selected></option>
-            <option value="High School">High School</option>
-            <option value="Associate Degree">Associate Degree</option>
-            <option value="Bachelor's Degree">Bachelor's Degree</option>
-            <option value="Master's Degree">Master's Degree</option>
-            <option value="Master's Degree">Master of Science (MSc)</option>
-            <option value="Master's Degree">Master of Arts (MA)</option>
-            <option value="Doctorate">Doctor of Philosophy (PhD)</option>
-        </select>
-        <label for="education">Highest Educational Attainment<span class="required-asterisk"> *</span></label>
-    </div>
-
-    <div class="mb-3 floating-input">
-        <select class="form-select" id="field_study" name="field_study" required>
-            <option value="" disabled selected></option>
+        <select class="form-select text-secondary" id="bachelor_degree" name="bachelor_degree" required>
+            <option value="" disabled selected style="color: #6c757d;">Select Bachelor Degree</option>
+            <option value="Nursing">Nursing</option>
+            <option value="Medicine">Medicine</option>
+            <option value="Pharmacy">Pharmacy</option>
+            <option value="Public Health">Public Health</option>
+            <option value="Physical Therapy">Physical Therapy</option>
             <option value="Computer Science">Computer Science</option>
-            <option value="Business">Business</option>
-            <option value="Engineering">Engineering</option>
-            <option value="Education">Education</option>
-            <option value="Health Sciences">Health Sciences</option>
+            <option value="Information Technology">Information Technology</option>
+            <option value="Cybersecurity">Cybersecurity</option>
+            <option value="Software Engineering">Software Engineering</option>
+            <option value="Data Science">Data Science</option>
+            <option value="Civil Engineering">Civil Engineering</option>
+            <option value="Mechanical Engineering">Mechanical Engineering</option>
+            <option value="Electrical Engineering">Electrical Engineering</option>
+            <option value="Chemical Engineering">Chemical Engineering</option>
+            <option value="Accounting">Accounting</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Finance">Finance</option>
+            <option value="Business Administration">Business Administration</option>
+            <option value="Human Resource Management">Human Resource Management</option>
+            <option value="Law">Law</option>
+            <option value="Political Science">Political Science</option>
+            <option value="Public Administration">Public Administration</option>
+            <option value="Criminology">Criminology</option>
+            <option value="Elementary Education">Elementary Education</option>
+            <option value="Secondary Education">Secondary Education</option>
+            <option value="Special Education">Special Education</option>
+            <option value="Fine Arts">Fine Arts</option>
+            <option value="Music">Music</option>
+            <option value="Literature">Literature</option>
+            <option value="History">History</option>
+            <option value="Graphic Design">Graphic Design</option>
+            <option value="Biology">Biology</option>
+            <option value="Chemistry">Chemistry</option>
+            <option value="Physics">Physics</option>
+            <option value="Mathematics">Mathematics</option>
         </select>
-        <label for="field_study">Field of Study<span class="required-asterisk"> *</span></label>
+        <label for="bachelor_degree">Bachelor Degree<span class="required-asterisk"> *</span></label>
+    </div>
+
+    <div class="mb-3 floating-input year-field-transition year-hidden" id="bachelor-school-wrapper">
+        <input type="text" class="form-select" id="bachelor_school_name" name="bachelor_school_name" placeholder=" ">
+        <label for="bachelor_school_name">Bachelor School Name</label>
+    </div>
+
+    <div class="mb-3 floating-input year-field-transition year-hidden" id="bachelor-year-wrapper">
+        <select class="form-select text-secondary" id="bachelor_year_finished" name="bachelor_year_finished">
+            <option value="" selected style="color: #6c757d;">Select Year Finished</option>
+            @for ($year = 2026; $year >= 1900; $year--)
+                <option value="{{ $year }}">{{ $year }}</option>
+            @endfor
+        </select>
+        <label for="bachelor_year_finished">Bachelor Year Finished</label>
     </div>
 
     <div class="mb-3 floating-input">
-        <input type="text" class="form-select" id="university_name" name="university_name" placeholder=" " required>
-        <label for="university_name">University Name<span class="required-asterisk"> *</span></label>
+        <select class="form-select text-secondary" id="master_degree" name="master_degree">
+            <option value="" selected style="color: #6c757d;">Select Master Degree</option>
+            <option value="MA (Master of Arts)">MA (Master of Arts)</option>
+            <option value="MSc/MS (Master of Science)">MSc/MS (Master of Science)</option>
+            <option value="MSN (Master of Science in Nursing)">MSN (Master of Science in Nursing)</option>
+            <option value="MBA (Master of Business Administration)">MBA (Master of Business Administration)</option>
+            <option value="MEd (Master of Education)">MEd (Master of Education)</option>
+            <option value="MFA (Master of Fine Arts)">MFA (Master of Fine Arts)</option>
+            <option value="LLM (Master of Laws)">LLM (Master of Laws)</option>
+            <option value="MSW (Master of Social Work)">MSW (Master of Social Work)</option>
+            <option value="MPH (Master of Public Health)">MPH (Master of Public Health)</option>
+            <option value="MEng (Master of Engineering)">MEng (Master of Engineering)</option>
+            <option value="MRes (Master of Research)">MRes (Master of Research)</option>
+            <option value="MPhil (Master of Philosophy)">MPhil (Master of Philosophy)</option>
+            <option value="MSt (Master of Studies)">MSt (Master of Studies)</option>
+            <option value="MTech (Master of Technology)">MTech (Master of Technology)</option>
+            <option value="MSIT (Master of Science in Information Technology)">MSIT (Master of Science in Information Technology)</option>
+            <option value="MCA (Master of Computer Applications)">MCA (Master of Computer Applications)</option>
+            <option value="MVSc (Master of Veterinary Science)">MVSc (Master of Veterinary Science)</option>
+            <option value="MArch (Master of Architecture)">MArch (Master of Architecture)</option>
+            <option value="MPA (Master of Public Administration)">MPA (Master of Public Administration)</option>
+        </select>
+        <label for="master_degree">Master Degree</label>
+    </div>
+
+    <div class="mb-3 floating-input year-field-transition year-hidden" id="master-school-wrapper">
+        <input type="text" class="form-select" id="master_school_name" name="master_school_name" placeholder=" ">
+        <label for="master_school_name">University Name</label>
+    </div>
+
+    <div class="mb-3 floating-input year-field-transition year-hidden" id="master-year-wrapper">
+        <select class="form-select text-secondary" id="master_year_finished" name="master_year_finished">
+            <option value="" selected style="color: #6c757d;">Select Year Finished</option>
+            @for ($year = 2026; $year >= 1900; $year--)
+                <option value="{{ $year }}">{{ $year }}</option>
+            @endfor
+        </select>
+        <label for="master_year_finished">Master Year Finished</label>
+    </div>
+
+    <div class="mb-3 floating-input">
+        <select class="form-select text-secondary" id="doctoral_degree" name="doctoral_degree">
+            <option value="" selected style="color: #6c757d;">Select Doctoral Degree</option>
+            <option value="PhD (Doctor of Philosophy)">PhD (Doctor of Philosophy)</option>
+            <option value="EdD (Doctor of Education)">EdD (Doctor of Education)</option>
+            <option value="DMA (Doctor of Musical Arts)">DMA (Doctor of Musical Arts)</option>
+            <option value="ThD (Doctor of Theology)">ThD (Doctor of Theology)</option>
+            <option value="DSc/ScD (Doctor of Science)">DSc/ScD (Doctor of Science)</option>
+            <option value="DA (Doctor of Arts)">DA (Doctor of Arts)</option>
+            <option value="DBA (Doctor of Business Administration)">DBA (Doctor of Business Administration)</option>
+            <option value="MD (Doctor of Medicine)">MD (Doctor of Medicine)</option>
+            <option value="DO (Doctor of Osteopathic Medicine)">DO (Doctor of Osteopathic Medicine)</option>
+            <option value="DDS (Doctor of Dental Surgery)">DDS (Doctor of Dental Surgery)</option>
+            <option value="DNP/DNSc (Doctor of Nursing Practice)">DNP/DNSc (Doctor of Nursing Practice)</option>
+            <option value="PharmD (Doctor of Pharmacy)">PharmD (Doctor of Pharmacy)</option>
+            <option value="DPM (Doctor of Podiatric Medicine)">DPM (Doctor of Podiatric Medicine)</option>
+            <option value="DPT (Doctor of Physical Therapy)">DPT (Doctor of Physical Therapy)</option>
+            <option value="JD (Juris Doctor (JD)">JD (Juris Doctor (JD)</option>
+            <option value="JSD/SJD (Doctor of Juridical Science)">JSD/SJD (Doctor of Juridical Science)</option>
+            <option value="JCD (Doctor of Canon Law)">JCD (Doctor of Canon Law)</option>
+            <option value="PsyD (Doctor of Psychology)">PsyD (Doctor of Psychology)</option>
+            <option value="DPA (Doctor of Public Administration)">DPA (Doctor of Public Administration)</option>
+            <option value="DDes (Doctor of Design)">DDes (Doctor of Design)</option>
+            <option value="DFA (Doctor of Fine Arts)">DFA (Doctor of Fine Arts)</option>
+            <option value="DBH (Doctor of Behavioral Health)">DBH (Doctor of Behavioral Health)</option>
+            <option value="DCJ (Doctor of Criminal Justice)">DCJ (Doctor of Criminal Justice)</option>
+            <option value="DIT (Doctor of Information Technology)">DIT (Doctor of Information Technology)</option>
+            <option value="DSW (Doctor of Social Work)">DSW (Doctor of Social Work)</option>
+            <option value="DArch (Doctor of Architecture)">DArch (Doctor of Architecture)</option>
+            <option value="DPS (Doctor of Professional Studies)">DPS (Doctor of Professional Studies)</option>
+            <option value="DSus (Doctor of Sustainability)">DSus (Doctor of Sustainability)</option>
+        </select>
+        <label for="doctoral_degree">Doctoral Degree</label>
+    </div>
+
+    <div class="mb-3 floating-input year-field-transition year-hidden" id="doctoral-school-wrapper">
+        <input type="text" class="form-select" id="doctoral_school_name" name="doctoral_school_name" placeholder=" ">
+        <label for="doctoral_school_name">University Name</label>
+    </div>
+
+    <div class="mb-3 floating-input year-field-transition year-hidden" id="doctoral-year-wrapper">
+        <select class="form-select text-secondary" id="doctoral_year_finished" name="doctoral_year_finished">
+            <option value="" selected style="color: #6c757d;">Select Year Finished</option>
+            @for ($year = 2026; $year >= 1900; $year--)
+                <option value="{{ $year }}">{{ $year }}</option>
+            @endfor
+        </select>
+        <label for="doctoral_year_finished">Doctoral Year Finished</label>
     </div>
 
     <div class="mb-3 floating-input">
@@ -154,12 +312,15 @@
         <label for="university_address">Address<span class="required-asterisk"> *</span></label>
     </div>
 
-    <div class="mb-3 floating-input">
-        <input type="text" class="form-select" id="year_complete" name="year_complete" placeholder=" " required>
-        <label for="year_complete">Year Complete<span class="required-asterisk"> *</span></label>
-    </div>
-
     <h4 class="fw-bold mb-3 mt-4">Work Experience</h4>
+
+    <div class="mb-3 form-check">
+        <input type="hidden" name="fresh_graduate" value="0">
+        <input class="form-check-input" type="checkbox" id="fresh_graduate" name="fresh_graduate" value="1">
+        <label class="form-check-label" for="fresh_graduate">
+            I am a Fresh Graduate (No work experience yet)
+        </label>
+    </div>
 
     <div class="mb-3 floating-input">
         <input type="text" class="form-select" id="work_position" name="work_position" placeholder=" " required>
@@ -388,28 +549,23 @@
             <h5 class="text-uppercase text-success">Education & Experience</h5>
 
             <p class="text-uppercase fw-semibold">
-                Highest Educational Attainment:
-                <span id="review-education" class="d-block text-uppercase text-secondary fw-semibold"></span>
+                Bachelor Degree:
+                <span id="review-bachelor-degree" class="d-block text-uppercase text-secondary fw-semibold"></span>
             </p>
 
             <p class="text-uppercase fw-semibold">
-                Field of Study:
-                <span id="review-field-study" class="d-block text-uppercase text-secondary fw-semibold"></span>
+                Master Degree:
+                <span id="review-master-degree" class="d-block text-uppercase text-secondary fw-semibold"></span>
             </p>
 
             <p class="text-uppercase fw-semibold">
-                University:
-                <span id="uni" class="d-block text-uppercase text-secondary fw-semibold"></span>
+                Doctoral Degree:
+                <span id="review-doctoral-degree" class="d-block text-uppercase text-secondary fw-semibold"></span>
             </p>
 
             <p class="text-uppercase fw-semibold">
                 Address:
                 <span id="uni_add" class="d-block text-uppercase text-secondary fw-semibold"></span>
-            </p>
-
-            <p class="text-uppercase fw-semibold">
-                Year Complete:
-                <span id="year_com" class="d-block text-uppercase text-secondary fw-semibold"></span>
             </p>
 
             <p class="text-uppercase fw-semibold">
@@ -605,11 +761,123 @@ document.addEventListener('DOMContentLoaded', () => {
     ======================= */
     const certifyCheckbox = document.getElementById('certifyCheckbox');
     const submitButton = reviewForm.querySelector('button[type="submit"]');
+    const applicationForm = document.getElementById('formPersonal');
     submitButton.disabled = true;
 
     certifyCheckbox.addEventListener('change', () => {
         submitButton.disabled = !certifyCheckbox.checked;
     });
+
+    function getErrorHighlightTarget(field) {
+        if (!field) return null;
+
+        if ((field.type || '').toLowerCase() === 'file') {
+            return field.closest('.upload-area') || field;
+        }
+        if ((field.type || '').toLowerCase() === 'checkbox') {
+            return field.closest('.review-notice1') || field.closest('.form-check') || field;
+        }
+
+        return field.closest('.floating-input')
+            || field.closest('.mb-3')
+            || field.closest('.col-md-6')
+            || field;
+    }
+
+    function clearErrorHighlight(field) {
+        const target = getErrorHighlightTarget(field);
+        if (target) target.classList.remove('field-error-highlight');
+    }
+
+    function showErrorHighlight(field) {
+        const target = getErrorHighlightTarget(field);
+        if (!target) return;
+        target.classList.remove('field-error-highlight');
+        // force reflow so animation retriggers
+        void target.offsetWidth;
+        target.classList.add('field-error-highlight');
+    }
+
+    function showStepFormForField(field) {
+        if (!field) return;
+
+        const isInPersonal = !!field.closest('#personalForm');
+        const isInExperience = !!field.closest('#experienceForm');
+        const isInDocuments = !!field.closest('#documentsForm');
+        const isInReview = !!field.closest('#reviewForm');
+
+        personalForm.classList.add('d-none');
+        experienceForm.classList.add('d-none');
+        documentsForm.classList.add('d-none');
+        reviewForm.classList.add('d-none');
+
+        if (isInPersonal) {
+            personalForm.classList.remove('d-none');
+            setStep(1);
+            return;
+        }
+        if (isInExperience) {
+            experienceForm.classList.remove('d-none');
+            setStep(2);
+            return;
+        }
+        if (isInDocuments) {
+            documentsForm.classList.remove('d-none');
+            setStep(3);
+            return;
+        }
+        if (isInReview) {
+            reviewForm.classList.remove('d-none');
+            setStep(4);
+            return;
+        }
+
+        reviewForm.classList.remove('d-none');
+        setStep(4);
+    }
+
+    if (applicationForm) {
+        applicationForm.setAttribute('novalidate', 'novalidate');
+
+        applicationForm.querySelectorAll('[required]').forEach((field) => {
+            field.addEventListener('input', () => clearErrorHighlight(field));
+            field.addEventListener('change', () => clearErrorHighlight(field));
+        });
+
+        applicationForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+
+            const requiredFields = Array.from(applicationForm.querySelectorAll('[required]'))
+                .filter((field) => !field.disabled);
+
+            const invalidFields = requiredFields.filter((field) => {
+                const type = (field.type || '').toLowerCase();
+                if (type === 'file') return !(field.files && field.files.length > 0);
+                if (type === 'checkbox') return !field.checked;
+                return !field.checkValidity();
+            });
+
+            if (!invalidFields.length) {
+                applicationForm.submit();
+                return;
+            }
+
+            invalidFields.forEach((field) => showErrorHighlight(field));
+
+            const firstInvalid = invalidFields[0];
+            showStepFormForField(firstInvalid);
+            const firstTarget = getErrorHighlightTarget(firstInvalid) || firstInvalid;
+            setTimeout(() => {
+                if (firstTarget && typeof firstTarget.scrollIntoView === 'function') {
+                    firstTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                if (firstInvalid && typeof firstInvalid.focus === 'function') {
+                    firstInvalid.focus({ preventScroll: true });
+                }
+                showErrorHighlight(firstInvalid);
+            }, 40);
+        });
+    }
 
     /* =======================
        FORM TRANSITION FUNCTION
@@ -670,14 +938,33 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('review-phone').textContent = document.getElementById('phone').value;
         document.getElementById('review-address').textContent = document.getElementById('address').value;
 
-        document.getElementById('review-education').textContent = document.getElementById('education').value;
-        document.getElementById('review-field-study').textContent = document.getElementById('field_study').value;
+        const bachelorDegree = (document.getElementById('bachelor_degree')?.value || '').trim();
+        const bachelorSchool = (document.getElementById('bachelor_school_name')?.value || '').trim();
+        const bachelorYear = (document.getElementById('bachelor_year_finished')?.value || '').trim();
+        const masterDegree = (document.getElementById('master_degree')?.value || '').trim();
+        const masterSchool = (document.getElementById('master_school_name')?.value || '').trim();
+        const masterYear = (document.getElementById('master_year_finished')?.value || '').trim();
+        const doctoralDegree = (document.getElementById('doctoral_degree')?.value || '').trim();
+        const doctoralSchool = (document.getElementById('doctoral_school_name')?.value || '').trim();
+        const doctoralYear = (document.getElementById('doctoral_year_finished')?.value || '').trim();
+
+        const formatDegreeReview = (degree, school, year) => {
+            if (!degree) return 'N/A';
+            const schoolLabel = school || 'School not provided';
+            const yearLabel = year || 'Year not provided';
+            return `${degree} - ${schoolLabel} (${yearLabel})`;
+        };
+
+        document.getElementById('review-bachelor-degree').textContent =
+            formatDegreeReview(bachelorDegree, bachelorSchool, bachelorYear);
+        document.getElementById('review-master-degree').textContent =
+            formatDegreeReview(masterDegree, masterSchool, masterYear);
+        document.getElementById('review-doctoral-degree').textContent =
+            formatDegreeReview(doctoralDegree, doctoralSchool, doctoralYear);
         document.getElementById('review-experience-years').textContent = document.getElementById('experience_years').value;
         document.getElementById('review-key-skills').textContent = document.getElementById('key_skills').value;
 
-        document.getElementById('uni').textContent = document.getElementById('university_name').value;
         document.getElementById('uni_add').textContent = document.getElementById('university_address').value;
-        document.getElementById('year_com').textContent = document.getElementById('year_complete').value;
         document.getElementById('work_po').textContent = document.getElementById('work_position').value;
         document.getElementById('work_em').textContent = document.getElementById('work_employer').value;
         document.getElementById('work_lo').textContent = document.getElementById('work_location').value;
@@ -724,6 +1011,155 @@ document.addEventListener('DOMContentLoaded', () => {
         transitionForms(reviewForm, documentsForm, 'back');
         setStep(3);
     });
+
+    const degreeSelectIds = ['bachelor_degree', 'master_degree', 'doctoral_degree'];
+    degreeSelectIds.forEach((id) => {
+        const select = document.getElementById(id);
+        if (!select) return;
+
+        const updateSelectColor = () => {
+            if (select.value) {
+                select.classList.remove('text-secondary');
+                select.classList.add('text-dark');
+            } else {
+                select.classList.remove('text-dark');
+                select.classList.add('text-secondary');
+            }
+        };
+
+        select.addEventListener('change', updateSelectColor);
+        updateSelectColor();
+    });
+
+    const bachelorDegreeSelect = document.getElementById('bachelor_degree');
+    const bachelorSchoolWrapper = document.getElementById('bachelor-school-wrapper');
+    const bachelorSchoolInput = document.getElementById('bachelor_school_name');
+    const bachelorYearWrapper = document.getElementById('bachelor-year-wrapper');
+    const bachelorYearInput = document.getElementById('bachelor_year_finished');
+    const masterDegreeSelect = document.getElementById('master_degree');
+    const masterSchoolWrapper = document.getElementById('master-school-wrapper');
+    const masterSchoolInput = document.getElementById('master_school_name');
+    const masterYearWrapper = document.getElementById('master-year-wrapper');
+    const masterYearInput = document.getElementById('master_year_finished');
+    const doctoralDegreeSelect = document.getElementById('doctoral_degree');
+    const doctoralSchoolWrapper = document.getElementById('doctoral-school-wrapper');
+    const doctoralSchoolInput = document.getElementById('doctoral_school_name');
+    const doctoralYearWrapper = document.getElementById('doctoral-year-wrapper');
+    const doctoralYearInput = document.getElementById('doctoral_year_finished');
+    const yearRevealDelayMs = 140;
+    const freshGraduateCheckbox = document.getElementById('fresh_graduate');
+    const workPositionInput = document.getElementById('work_position');
+    const workEmployerInput = document.getElementById('work_employer');
+    const workLocationInput = document.getElementById('work_location');
+    const workDurationInput = document.getElementById('work_duration');
+    const experienceYearsInput = document.getElementById('experience_years');
+
+    const toggleBachelorYearField = () => {
+        if (!bachelorDegreeSelect || !bachelorSchoolWrapper || !bachelorSchoolInput || !bachelorYearWrapper || !bachelorYearInput) return;
+
+        if (bachelorDegreeSelect.value) {
+            setTimeout(() => bachelorSchoolWrapper.classList.remove('year-hidden'), yearRevealDelayMs);
+            setTimeout(() => bachelorYearWrapper.classList.remove('year-hidden'), yearRevealDelayMs);
+            bachelorSchoolInput.setAttribute('required', 'required');
+            bachelorYearInput.setAttribute('required', 'required');
+        } else {
+            bachelorSchoolWrapper.classList.add('year-hidden');
+            bachelorSchoolInput.removeAttribute('required');
+            bachelorSchoolInput.value = '';
+            bachelorYearWrapper.classList.add('year-hidden');
+            bachelorYearInput.removeAttribute('required');
+            bachelorYearInput.value = '';
+        }
+    };
+
+    bachelorDegreeSelect?.addEventListener('change', toggleBachelorYearField);
+    toggleBachelorYearField();
+
+    const toggleMasterYearField = () => {
+        if (!masterDegreeSelect || !masterSchoolWrapper || !masterSchoolInput || !masterYearWrapper || !masterYearInput) return;
+
+        if (masterDegreeSelect.value) {
+            setTimeout(() => masterSchoolWrapper.classList.remove('year-hidden'), yearRevealDelayMs);
+            setTimeout(() => masterYearWrapper.classList.remove('year-hidden'), yearRevealDelayMs);
+            masterSchoolInput.setAttribute('required', 'required');
+            masterYearInput.setAttribute('required', 'required');
+        } else {
+            masterSchoolWrapper.classList.add('year-hidden');
+            masterSchoolInput.removeAttribute('required');
+            masterSchoolInput.value = '';
+            masterYearWrapper.classList.add('year-hidden');
+            masterYearInput.removeAttribute('required');
+            masterYearInput.value = '';
+        }
+    };
+
+    masterDegreeSelect?.addEventListener('change', toggleMasterYearField);
+    toggleMasterYearField();
+
+    const toggleDoctoralYearField = () => {
+        if (!doctoralDegreeSelect || !doctoralSchoolWrapper || !doctoralSchoolInput || !doctoralYearWrapper || !doctoralYearInput) return;
+
+        if (doctoralDegreeSelect.value) {
+            setTimeout(() => doctoralSchoolWrapper.classList.remove('year-hidden'), yearRevealDelayMs);
+            setTimeout(() => doctoralYearWrapper.classList.remove('year-hidden'), yearRevealDelayMs);
+            doctoralSchoolInput.setAttribute('required', 'required');
+            doctoralYearInput.setAttribute('required', 'required');
+        } else {
+            doctoralSchoolWrapper.classList.add('year-hidden');
+            doctoralSchoolInput.removeAttribute('required');
+            doctoralSchoolInput.value = '';
+            doctoralYearWrapper.classList.add('year-hidden');
+            doctoralYearInput.removeAttribute('required');
+            doctoralYearInput.value = '';
+        }
+    };
+
+    doctoralDegreeSelect?.addEventListener('change', toggleDoctoralYearField);
+    toggleDoctoralYearField();
+
+    const toggleFreshGraduateFields = () => {
+        if (
+            !freshGraduateCheckbox
+            || !workPositionInput
+            || !workEmployerInput
+            || !workLocationInput
+            || !workDurationInput
+            || !experienceYearsInput
+        ) {
+            return;
+        }
+
+        const isFreshGraduate = freshGraduateCheckbox.checked;
+        const workFields = [workPositionInput, workEmployerInput, workLocationInput, workDurationInput];
+
+        workFields.forEach((field) => {
+            field.disabled = isFreshGraduate;
+            if (isFreshGraduate) {
+                field.value = '';
+                clearErrorHighlight(field);
+            }
+        });
+
+        if (isFreshGraduate) {
+            const zeroToOneOption = Array.from(experienceYearsInput.options).find((option) => option.value.startsWith('0'));
+            if (zeroToOneOption) {
+                experienceYearsInput.value = zeroToOneOption.value;
+            }
+            experienceYearsInput.disabled = true;
+            experienceYearsInput.classList.remove('text-secondary');
+            experienceYearsInput.classList.add('text-dark');
+            clearErrorHighlight(experienceYearsInput);
+        } else {
+            experienceYearsInput.disabled = false;
+            if (!experienceYearsInput.value) {
+                experienceYearsInput.classList.remove('text-dark');
+                experienceYearsInput.classList.add('text-secondary');
+            }
+        }
+    };
+
+    freshGraduateCheckbox?.addEventListener('change', toggleFreshGraduateFields);
+    toggleFreshGraduateFields();
 
 });
 

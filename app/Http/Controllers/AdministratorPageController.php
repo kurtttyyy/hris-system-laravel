@@ -9,6 +9,8 @@ use App\Models\Employee;
 use App\Models\GuestLog;
 use App\Models\Interviewer;
 use App\Models\OpenPosition;
+use App\Models\PayslipRecord;
+use App\Models\PayslipUpload;
 use App\Models\LeaveApplication;
 use App\Models\Resignation;
 use App\Models\User;
@@ -229,6 +231,58 @@ class AdministratorPageController extends Controller
             'government',
             'salary',
             'license',
+            'resignations' => function ($query) {
+                $query
+                    ->select([
+                        'id',
+                        'user_id',
+                        'submitted_at',
+                        'effective_date',
+                        'status',
+                        'admin_note',
+                        'processed_at',
+                        'created_at',
+                    ])
+                    ->orderByDesc('submitted_at')
+                    ->orderByDesc('id');
+            },
+            'leaveApplications' => function ($query) {
+                $query
+                    ->select([
+                        'id',
+                        'user_id',
+                        'leave_type',
+                        'number_of_working_days',
+                        'beginning_vacation',
+                        'beginning_sick',
+                        'earned_vacation',
+                        'earned_sick',
+                        'ending_vacation',
+                        'ending_sick',
+                        'status',
+                        'filing_date',
+                        'created_at',
+                    ])
+                    ->orderByDesc('filing_date')
+                    ->orderByDesc('id');
+            },
+            'positionHistories' => function ($query) {
+                $query
+                    ->select([
+                        'id',
+                        'user_id',
+                        'old_position',
+                        'new_position',
+                        'old_classification',
+                        'new_classification',
+                        'changed_by',
+                        'changed_at',
+                        'note',
+                        'created_at',
+                    ])
+                    ->orderByDesc('changed_at')
+                    ->orderByDesc('id');
+            },
             ])->where('role','Employee')->get();
 
         Log::info($employee);
@@ -1692,7 +1746,45 @@ class AdministratorPageController extends Controller
     }
 
     public function display_payslip(){
-        return view('admin.adminPayslip');
+        $payslipFiles = PayslipUpload::query()
+            ->orderByDesc('uploaded_at')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('admin.adminPayslip', compact('payslipFiles'));
+    }
+
+    public function display_payslip_view(Request $request){
+        $uploadId = (int) $request->query('upload_id', 0);
+        $recordId = (int) $request->query('record_id', 0);
+
+        $recordsQuery = PayslipRecord::query()
+            ->with('upload:id,original_name,uploaded_at')
+            ->orderByDesc('scanned_at')
+            ->orderByDesc('id');
+
+        if ($uploadId > 0) {
+            $recordsQuery->where('payslip_upload_id', $uploadId);
+        }
+
+        // Show one container per employee (latest scanned row for that employee).
+        $records = $recordsQuery->get()
+            ->filter(function ($record) {
+                return trim((string) ($record->employee_id ?? '')) !== '';
+            })
+            ->unique(function ($record) {
+                return strtolower(trim((string) $record->employee_id));
+            })
+            ->values();
+        $selectedRecord = null;
+
+        if ($recordId > 0) {
+            $selectedRecord = $records->firstWhere('id', $recordId);
+        }
+
+
+
+        return view('admin.adminPaySlipView', compact('records', 'selectedRecord', 'uploadId'));
     }
 
     public function display_resignations(Request $request){
@@ -1796,6 +1888,7 @@ class AdministratorPageController extends Controller
             'name' => $app->first_name.' '.$app->last_name,
             'email' => $app->email,
             'title' => $app->position->title,
+            'job_type' => $app->position->job_type,
             'status' => $app->application_status,
             'location' => $app->address,
             'one' => $app->created_at->format('F d, Y'),
@@ -2151,4 +2244,5 @@ class AdministratorPageController extends Controller
     }
 
 }
+
 

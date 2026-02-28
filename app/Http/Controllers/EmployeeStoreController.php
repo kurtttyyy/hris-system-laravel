@@ -53,6 +53,12 @@ class EmployeeStoreController extends Controller
             'size'         => $size,
         ]);
 
+        $this->clearMatchingRequiredDocumentMeta((int) $applicant->id, (string) ($attrs['document_name'] ?? ''));
+        $this->clearMatchingRequiredDocumentMeta(
+            (int) $applicant->id,
+            (string) pathinfo((string) $originalName, PATHINFO_FILENAME)
+        );
+
         return back()->with('success', 'Document uploaded successfully.');
     }
 
@@ -216,5 +222,41 @@ class EmployeeStoreController extends Controller
 
         return redirect()->route('employee.employeeResignation')
             ->with('success', 'Resignation request submitted.');
+    }
+
+    private function clearMatchingRequiredDocumentMeta(int $applicantId, string $submittedDocumentName): void
+    {
+        if ($applicantId <= 0) {
+            return;
+        }
+
+        $submittedNormalized = $this->normalizeDocumentRequirementLabel($submittedDocumentName);
+        if ($submittedNormalized === '') {
+            return;
+        }
+
+        $requiredPrefix = '__REQUIRED__::';
+        $requiredMetaDocs = ApplicantDocument::query()
+            ->where('applicant_id', $applicantId)
+            ->where('type', 'like', $requiredPrefix.'%')
+            ->get();
+
+        foreach ($requiredMetaDocs as $metaDoc) {
+            $requiredLabel = trim((string) substr((string) $metaDoc->type, strlen($requiredPrefix)));
+            if ($this->normalizeDocumentRequirementLabel($requiredLabel) === $submittedNormalized) {
+                $metaDoc->delete();
+            }
+        }
+    }
+
+    private function normalizeDocumentRequirementLabel(string $value): string
+    {
+        $normalized = strtolower(trim($value));
+        if ($normalized === '') {
+            return '';
+        }
+
+        $normalized = preg_replace('/\s+/', ' ', $normalized);
+        return (string) $normalized;
     }
 }

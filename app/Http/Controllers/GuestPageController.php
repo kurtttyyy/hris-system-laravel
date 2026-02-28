@@ -30,15 +30,37 @@ class GuestPageController extends Controller
     public function display_index(){
         $applicantEmail = session('applicant_email');
         $appliedPositionIds = $this->getBlockedPositionIds($applicantEmail);
+        $newCutoff = now()->subDays(3);
 
         $open_position = OpenPosition::when($appliedPositionIds->isNotEmpty(), function ($query) use ($appliedPositionIds) {
             $query->whereNotIn('id', $appliedPositionIds);
-        })->get();
+        })
+            ->orderByRaw('CASE WHEN created_at >= ? THEN 0 ELSE 1 END', [$newCutoff->toDateTimeString()])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get();
         $openCount = $open_position->count();
         $department = $open_position->groupBy('department')->count();
         $employee = User::where('role', 'Employee')->count();
+        $ratingStats = Applicant::query()
+            ->whereNotNull('starRatings')
+            ->get(['starRatings'])
+            ->map(function ($applicant) {
+                $value = (int) $applicant->starRatings;
+                return ($value >= 1 && $value <= 5) ? $value : null;
+            })
+            ->filter();
+        $companyRating = $ratingStats->count() ? round((float) $ratingStats->avg(), 1) : null;
+        $ratingCount = $ratingStats->count();
         event(new GuestLog('Viewed'));
-        return view('guest.index', compact('open_position','openCount','department','employee'));
+        return view('guest.index', compact(
+            'open_position',
+            'openCount',
+            'department',
+            'employee',
+            'companyRating',
+            'ratingCount'
+        ));
     }
 
     public function job_open_landing(){

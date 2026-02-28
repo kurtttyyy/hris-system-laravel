@@ -64,6 +64,48 @@
             this.matchesStatus(emp.status)
           );
         },
+        effectiveAccountStatus() {
+          const accountStatus = (this.selectedEmployee?.account_status ?? '').toString().trim();
+          if (accountStatus !== '') {
+            if (accountStatus.toLowerCase() === 'inactive') {
+              return 'Inactive';
+            }
+            if (accountStatus.toLowerCase() === 'on leave') {
+              return 'On Leave';
+            }
+            if (accountStatus.toLowerCase() === 'active') {
+              return 'Active';
+            }
+          }
+
+          const hasApprovedOrCompletedResignation = (Array.isArray(this.selectedEmployee?.resignations)
+            ? this.selectedEmployee.resignations
+            : []
+          ).some((row) => {
+            const status = (row?.status ?? '').toString().trim().toLowerCase();
+            return status === 'approved' || status === 'completed';
+          });
+
+          if (hasApprovedOrCompletedResignation) {
+            return 'Inactive';
+          }
+
+          const hasApprovedLeave = (Array.isArray(this.selectedEmployee?.leave_applications)
+            ? this.selectedEmployee.leave_applications
+            : []
+          ).some((row) => {
+            const status = (row?.status ?? '').toString().trim().toLowerCase();
+            return status === 'approved';
+          });
+
+          return hasApprovedLeave ? 'On Leave' : 'Active';
+        },
+        effectiveAccountStatusClass() {
+          const status = this.effectiveAccountStatus().toLowerCase();
+          if (status === 'active') return 'bg-green-100 text-green-700';
+          if (status === 'on leave') return 'bg-orange-100/70 text-orange-700';
+          return 'bg-red-100/70 text-red-700';
+        },
         selectedEmployee: {
           applicant: { documents: [], required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {} },
           employee: {},
@@ -71,6 +113,8 @@
           government: {},
           license: {},
           salary: {},
+          leave_applications: [],
+          ui_theme: {},
         },
         async setEmployee(emp) {
           const applicantPosition = emp?.applicant?.position ?? {};
@@ -84,6 +128,12 @@
             employeeData.department = applicantPosition.department;
           }
 
+          if (!employeeData.classification) {
+            employeeData.classification = employeeData.job_type
+              || applicantPosition.job_type
+              || null;
+          }
+
           this.selectedEmployee = {
             ...emp,
             applicant: { documents: [], required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {}, ...(emp?.applicant ?? {}) },
@@ -92,6 +142,8 @@
             government: emp?.government ?? {},
             license: emp?.license ?? {},
             salary: emp?.salary ?? {},
+            leave_applications: Array.isArray(emp?.leave_applications) ? emp.leave_applications : [],
+            ui_theme: emp?.ui_theme ?? {},
           };
 
           await this.loadDocuments(emp?.id);
@@ -133,11 +185,289 @@
           applicant.missing_documents = (applicant.missing_documents ?? [])
             .filter(item => normalize(item) !== normalize(documentName));
         },
+        leaveRows() {
+          return Array.isArray(this.selectedEmployee?.leave_applications)
+            ? this.selectedEmployee.leave_applications
+            : [];
+        },
+        leaveStatusNormalized(value) {
+          return (value ?? '').toString().trim().toLowerCase();
+        },
+        isApprovedLeaveStatus(value) {
+          const status = this.leaveStatusNormalized(value);
+          return status === 'approved' || status === 'completed';
+        },
+        numberOrZero(value) {
+          const numeric = Number(value);
+          return Number.isFinite(numeric) ? numeric : 0;
+        },
+        latestLeaveBalanceRow() {
+          const rows = this.leaveRows();
+          if (!rows.length) return null;
+
+          const approvedRows = rows.filter(row => this.isApprovedLeaveStatus(row?.status));
+          const sourceRows = approvedRows.length ? approvedRows : rows;
+
+          const withSort = sourceRows
+            .map((row) => ({
+              row,
+              sortDate: this.parseDateValue(row?.filing_date || row?.created_at),
+            }))
+            .sort((a, b) => {
+              const ta = a.sortDate?.getTime() ?? 0;
+              const tb = b.sortDate?.getTime() ?? 0;
+              return tb - ta;
+            });
+
+          return withSort[0]?.row ?? null;
+        },
+        leaveVacationLimit() {
+          const row = this.latestLeaveBalanceRow();
+          if (!row) return 0;
+          return Math.max(
+            this.numberOrZero(row?.beginning_vacation) + this.numberOrZero(row?.earned_vacation),
+            0
+          );
+        },
+        leaveVacationAvailable() {
+          const row = this.latestLeaveBalanceRow();
+          if (!row) return 0;
+          return Math.max(this.numberOrZero(row?.ending_vacation), 0);
+        },
+        leaveSickLimit() {
+          const row = this.latestLeaveBalanceRow();
+          if (!row) return 0;
+          return Math.max(
+            this.numberOrZero(row?.beginning_sick) + this.numberOrZero(row?.earned_sick),
+            0
+          );
+        },
+        leaveSickAvailable() {
+          const row = this.latestLeaveBalanceRow();
+          if (!row) return 0;
+          return Math.max(this.numberOrZero(row?.ending_sick), 0);
+        },
+        leavePersonalLimit() {
+          return 3;
+        },
+        leavePersonalUsed() {
+          return this.leaveRows()
+            .filter(row => this.isApprovedLeaveStatus(row?.status))
+            .filter((row) => {
+              const type = (row?.leave_type ?? '').toString().trim().toLowerCase();
+              return type.includes('personal');
+            })
+            .reduce((sum, row) => sum + this.numberOrZero(row?.number_of_working_days), 0);
+        },
+        leavePersonalAvailable() {
+          return Math.max(this.leavePersonalLimit() - this.leavePersonalUsed(), 0);
+        },
+        leaveBalancePercent(available, limit) {
+          const safeLimit = this.numberOrZero(limit);
+          if (safeLimit <= 0) return 0;
+          const percent = (this.numberOrZero(available) / safeLimit) * 100;
+          return Math.max(0, Math.min(100, percent));
+        },
+        formatLeaveNumber(value) {
+          const normalized = Math.max(this.numberOrZero(value), 0);
+          if (Number.isInteger(normalized)) {
+            return normalized.toString();
+          }
+          return normalized.toFixed(1).replace(/\.0$/, '');
+        },
+        formatLeaveBalance(available, limit) {
+          return `${this.formatLeaveNumber(available)}/${this.formatLeaveNumber(limit)}`;
+        },
+        parseDateValue(raw) {
+          if (!raw) return null;
+          const datePart = raw.toString().split('T')[0];
+          const [year, month, day] = datePart.split('-').map(Number);
+          if (!year || !month || !day) return null;
+          const date = new Date(year, month - 1, day);
+          return Number.isNaN(date.getTime()) ? null : date;
+        },
+        formatTimelineDate(raw) {
+          const date = this.parseDateValue(raw);
+          if (!date) return '-';
+          return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+        },
+        formatServiceLength(startRaw, endRaw) {
+          const start = this.parseDateValue(startRaw);
+          const end = this.parseDateValue(endRaw);
+          if (!start || !end) return '';
+          if (end.getTime() < start.getTime()) return '';
+
+          let years = end.getFullYear() - start.getFullYear();
+          let months = end.getMonth() - start.getMonth();
+          let days = end.getDate() - start.getDate();
+
+          if (days < 0) {
+            const previousMonthDays = new Date(end.getFullYear(), end.getMonth(), 0).getDate();
+            days += previousMonthDays;
+            months -= 1;
+          }
+          if (months < 0) {
+            months += 12;
+            years -= 1;
+          }
+
+          if (years < 0) return '';
+          return `${years}.${months} years`;
+        },
+        normalizeClassificationValue(value) {
+          return (value ?? '')
+            .toString()
+            .trim()
+            .toLowerCase()
+            .replace(/[-_]/g, ' ')
+            .replace(/\s+/g, ' ');
+        },
+        isProbationaryToPermanent(oldValue, newValue) {
+          const oldNorm = this.normalizeClassificationValue(oldValue);
+          const newNorm = this.normalizeClassificationValue(newValue);
+          return oldNorm === 'probationary' && newNorm === 'permanent';
+        },
+        countPromotionEvents() {
+          const historyRows = Array.isArray(this.selectedEmployee?.position_histories)
+            ? this.selectedEmployee.position_histories
+            : [];
+
+          return historyRows.filter((row) => {
+            const oldPos = (row?.old_position ?? '').toString().trim().toLowerCase();
+            const newPos = (row?.new_position ?? '').toString().trim().toLowerCase();
+            const positionChanged = oldPos !== '' && newPos !== '' && oldPos !== newPos;
+            const classPromotion = this.isProbationaryToPermanent(
+              row?.old_classification,
+              row?.new_classification
+            );
+            return positionChanged || classPromotion;
+          }).length;
+        },
+        buildServiceTimeline() {
+          const items = [];
+          const hiredRaw = this.selectedEmployee?.applicant?.date_hired || this.selectedEmployee?.employee?.employement_date;
+          const positionTitle = this.selectedEmployee?.applicant?.position?.title || this.selectedEmployee?.employee?.position || 'Employee';
+
+          if (hiredRaw) {
+            items.push({
+              type: 'hire',
+              badge: 'Date Hired',
+              badgeClass: 'bg-green-100 text-green-700',
+              dotClass: 'bg-indigo-500',
+              title: 'Initial Employment Start',
+              dateLabel: this.formatTimelineDate(hiredRaw),
+              description: `Employee was hired as ${positionTitle}.`,
+              sortKey: hiredRaw,
+            });
+          }
+
+          const resignationRows = Array.isArray(this.selectedEmployee?.resignations)
+            ? this.selectedEmployee.resignations
+            : [];
+
+          resignationRows.forEach((row) => {
+            const status = (row?.status ?? '').toString().trim().toLowerCase();
+            const submittedAt = row?.submitted_at || row?.created_at;
+            const effectiveAt = row?.effective_date;
+            const processedAt = row?.processed_at;
+
+            if (submittedAt) {
+              items.push({
+                type: 'resignation-submitted',
+                badge: 'Resignation Filed',
+                badgeClass: 'bg-amber-100 text-amber-700',
+                dotClass: 'bg-amber-500',
+                title: 'Resignation Submission',
+                dateLabel: this.formatTimelineDate(submittedAt),
+                description: 'Employee submitted a resignation request.',
+                sortKey: submittedAt,
+              });
+            }
+
+            if (processedAt && (status === 'approved' || status === 'completed')) {
+              const serviceLength = this.formatServiceLength(hiredRaw, effectiveAt || processedAt);
+              const baseDescription = row?.admin_note || 'HR approved the resignation request.';
+              items.push({
+                type: 'resignation-approved',
+                badge: 'Resignation Approved',
+                badgeClass: 'bg-blue-100 text-blue-700',
+                dotClass: 'bg-blue-500',
+                title: 'Resignation Request Approved',
+                dateLabel: this.formatTimelineDate(processedAt),
+                description: serviceLength !== ''
+                  ? `${baseDescription} Total length of service: ${serviceLength}.`
+                  : baseDescription,
+                sortKey: processedAt,
+              });
+            }
+
+            if (processedAt && (status === 'rejected' || status === 'cancelled')) {
+              items.push({
+                type: status === 'rejected' ? 'resignation-rejected' : 'resignation-cancelled',
+                badge: status === 'rejected' ? 'Resignation Rejected' : 'Resignation Cancelled',
+                badgeClass: status === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-700',
+                dotClass: status === 'rejected' ? 'bg-rose-500' : 'bg-slate-500',
+                title: status === 'rejected' ? 'Resignation Request Rejected' : 'Resignation Request Cancelled',
+                dateLabel: this.formatTimelineDate(processedAt),
+                description: row?.admin_note || 'Status was updated by HR.',
+                sortKey: processedAt,
+              });
+            }
+          });
+
+          const positionHistoryRows = Array.isArray(this.selectedEmployee?.position_histories)
+            ? this.selectedEmployee.position_histories
+            : [];
+
+          positionHistoryRows.forEach((row) => {
+            const newPosition = (row?.new_position ?? '').toString().trim();
+            const changedAt = row?.changed_at || row?.created_at;
+            if (!changedAt) return;
+
+            const oldPosition = (row?.old_position ?? '').toString().trim();
+            const oldClassification = (row?.old_classification ?? '').toString().trim();
+            const newClassification = (row?.new_classification ?? '').toString().trim();
+            const hasPositionChange = oldPosition !== '' && newPosition !== '' && oldPosition.toLowerCase() !== newPosition.toLowerCase();
+            const hasProbationaryPromotion = this.isProbationaryToPermanent(oldClassification, newClassification);
+
+            if (hasPositionChange) {
+              items.push({
+                type: 'promotion-position',
+                badge: 'Promotion',
+                badgeClass: 'bg-emerald-100 text-emerald-700',
+                dotClass: 'bg-emerald-500',
+                title: 'Position Update',
+                dateLabel: this.formatTimelineDate(changedAt),
+                description: `Position changed from ${oldPosition} to ${newPosition}.`,
+                sortKey: changedAt,
+              });
+            }
+
+            if (hasProbationaryPromotion) {
+              items.push({
+                type: 'promotion-classification',
+                badge: 'Promotion',
+                badgeClass: 'bg-emerald-100 text-emerald-700',
+                dotClass: 'bg-emerald-500',
+                title: 'Employment Status Update',
+                dateLabel: this.formatTimelineDate(changedAt),
+                description: 'Classification changed from Probationary to Permanent.',
+                sortKey: changedAt,
+              });
+            }
+          });
+
+          return items.sort((a, b) => {
+            const ta = this.parseDateValue(a.sortKey)?.getTime() ?? 0;
+            const tb = this.parseDateValue(b.sortKey)?.getTime() ?? 0;
+            return tb - ta;
+          });
+        },
       }"
       x-init="employeeIndex = @js(
         $employee->map(fn($emp) => [
           'name' => trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '').' '.($emp->last_name ?? '')),
-          'department' => data_get($emp, 'applicant.position.department') ?? data_get($emp, 'employee.department') ?? '',
+          'department' => trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: '')),
           'status' => $emp->account_status ?? '',
         ])->values()
       )"
@@ -145,10 +475,15 @@
 
     <!-- Header -->
     @php
+      $resolveDepartment = function ($emp) {
+        return trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ''));
+      };
+
       $departmentOptions = $employee
-        ->map(fn($emp) => data_get($emp, 'applicant.position.department') ?? data_get($emp, 'employee.department'))
-        ->filter()
-        ->unique()
+        ->map(fn($emp) => $resolveDepartment($emp))
+        ->filter(fn($dept) => $dept !== '')
+        ->unique(fn($dept) => strtolower($dept))
+        ->sort()
         ->values();
     @endphp
     @include('components.adminHeader.employeeHeader', ['departmentOptions' => $departmentOptions])
@@ -203,7 +538,7 @@
         <!-- Employee Card -->
         <div
             class="bg-white rounded-xl shadow-md overflow-hidden w-72"
-            x-show="matchesDepartment(@js(data_get($emp, 'applicant.position.department') ?? data_get($emp, 'employee.department') ?? '')) &&
+            x-show="matchesDepartment(@js($resolveDepartment($emp))) &&
                     matchesSearch(@js(trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '').' '.($emp->last_name ?? ''))) ) &&
                     matchesStatus(@js($emp->account_status ?? ''))"
         >
@@ -224,7 +559,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-sitemap"></i>
-                        {{$emp->applicant->position->department ?? $emp->employee->department ?? ''}}
+                        {{ $resolveDepartment($emp) }}
                     </div>
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-calendar"></i>
@@ -236,7 +571,16 @@
 
                 <div class="flex justify-between items-center">
                     <div class="flex items-center -space-x-">
-                        <span class="px-2 py-1 text-green-700 bg-green-100 rounded-full text-xs font-medium z-10">
+                        @php
+                          $accountStatus = trim((string) ($emp->account_status ?? 'Active'));
+                          $normalizedStatus = strtolower($accountStatus);
+                          $statusBadgeClass = match ($normalizedStatus) {
+                            'active' => 'text-green-700 bg-green-100',
+                            'on leave' => 'text-orange-700 bg-orange-100/70',
+                            default => 'text-red-700 bg-red-100/70',
+                          };
+                        @endphp
+                        <span class="px-2 py-1 rounded-full text-xs font-medium z-10 {{ $statusBadgeClass }}">
                             {{ $emp->account_status ?? 'Active' }}
                         </span>
 
@@ -245,7 +589,7 @@
                         </span>-->
                     </div>
                     <button
-                        @click="openProfile = true; setEmployee(@js($emp));"
+                        @click="openProfile = true; setEmployee({ ...@js($emp), ui_theme: { header_start: @js($headerStart), header_end: @js($headerEnd) } });"
                         class="text-blue-500 text-sm font-medium hover:underline">
                         View Profile
                     </button>
@@ -277,7 +621,10 @@
     >
       <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-y-auto overflow-hidden">
 
-        <div class="bg-gradient-to-r from-purple-500 to-indigo-500 p-6 text-white relative">
+        <div
+          class="p-6 text-white relative"
+          :style="`background-image: linear-gradient(to right, ${selectedEmployee?.ui_theme?.header_start || 'rgb(168 85 247)'}, ${selectedEmployee?.ui_theme?.header_end || 'rgb(99 102 241)'})`"
+        >
           <button @click="openProfile=false" class="absolute top-4 right-4 text-2xl">&times;</button>
 
           <div class="flex items-center gap-4">
@@ -294,9 +641,11 @@
                 <span x-text="selectedEmployee?.applicant?.position?.department ?? selectedEmployee?.employee?.department ?? '-'"></span>
               </p>
             </div>
-            <span class="ml-auto bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full">
-              Active
-            </span>
+            <span
+              class="ml-auto text-xs px-3 py-1 rounded-full"
+              :class="effectiveAccountStatusClass()"
+              x-text="effectiveAccountStatus()"
+            ></span>
           </div>
         </div>
 

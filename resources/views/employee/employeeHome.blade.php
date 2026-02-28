@@ -482,10 +482,11 @@
                 } else if (dayDiff === 1) {
                     relativeLabel = 'Tomorrow';
                 }
-                const statusText = event.isEnded ? 'Ended' : 'Upcoming';
+                const isToday = dayDiff === 0;
+                const statusText = event.isEnded ? 'Ended' : (isToday ? 'Ongoing' : 'Upcoming');
                 const statusClass = event.isEnded
                     ? 'bg-slate-100 text-slate-600'
-                    : 'bg-green-100 text-green-700';
+                    : (isToday ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700');
                 const iconClassByType = {
                     employee_holiday: 'bg-rose-100 text-rose-500 border-rose-500',
                     official_holiday: 'bg-rose-100 text-rose-500 border-rose-500',

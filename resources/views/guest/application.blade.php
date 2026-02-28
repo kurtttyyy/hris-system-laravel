@@ -31,6 +31,7 @@
                         'Completed' => 'background-color: rgba(25, 135, 84, 0.2); color: #198754; border: 2px solid #198754;',
                         'Rejected' => 'background-color: rgba(220, 53, 69, 0.2); color: #dc3545; border: 2px solid #dc3545;',
                         'Under Review' => 'background-color: rgba(13, 110, 253, 0.2); color: #0d6efd; border: 2px solid #0d6efd;',
+                        'Demo Teaching' => 'background-color: rgba(13, 110, 253, 0.2); color: #0d6efd; border: 2px solid #0d6efd;',
                     ];
                     $defaultColor = 'background-color: rgba(13, 110, 253, 0.2); color: #0d6efd; border: 2px solid #0d6efd;';
                     $badgeStyle = $statusColors[$applicant->application_status] ?? $defaultColor;
@@ -45,27 +46,11 @@
             </div>
 
             {{-- Progress --}}
-            <div class="stepper" data-status="{{ $applicant->application_status }}">
-                <div class="step">
-                    <div class="circle">1</div>
-                    <div class="line"></div>
-                </div>
-                <div class="step">
-                    <div class="circle">2</div>
-                    <div class="line"></div>
-                </div>
-                <div class="step">
-                    <div class="circle">3</div>
-                    <div class="line"></div>
-                </div>
-                <div class="step">
-                    <div class="circle">4</div>
-                    <div class="line"></div>
-                </div>
-                <div class="step">
-                    <div class="circle">5</div>
-                </div>
-            </div>
+            <div
+                class="stepper"
+                data-status="{{ $applicant->application_status }}"
+                data-job-type="{{ strtolower((string) optional($applicant->position)->job_type) }}"
+            ></div>
 
             <div class="d-flex justify-content-between align-items-center">
                 <span class="text-success next-step-text"></span>
@@ -113,18 +98,40 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    const steps = [
-        'pending',
-        'Under Review',
-        'Initial Interview',
-        'Final Interview',
-        'Passing Document',
-        'Completed',
-        'Hired',
-    ];
+    const getSteps = (jobType) => {
+        const normalized = (jobType || '').toLowerCase().trim();
+        const isTeaching = normalized.includes('teaching') && !normalized.includes('non');
+
+        if (isTeaching) {
+            return [
+                'pending',
+                'Under Review',
+                'Initial Interview',
+                'Final Interview',
+                'Demo Teaching',
+                'Passing Document',
+            ];
+        }
+
+        return [
+            'pending',
+            'Under Review',
+            'Initial Interview',
+            'Final Interview',
+            'Passing Document',
+        ];
+    };
 
     document.querySelectorAll('.stepper').forEach(stepper => {
         const status = stepper.dataset.status;
+        const steps = getSteps(stepper.dataset.jobType);
+        stepper.innerHTML = steps.map((_, index) => `
+            <div class="step">
+                <div class="circle">${index + 1}</div>
+                ${index < steps.length - 1 ? '<div class="line"></div>' : ''}
+            </div>
+        `).join('');
+
         const stepElements = stepper.querySelectorAll('.step');
         const nextText = stepper
             .closest('.card-body')
@@ -152,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 // All lines red
                 if(line) line.style.backgroundColor = '#dc3545';
             } 
-            else if (status === 'Hired') {
+            else if (status === 'Hired' || status === 'Completed') {
                 step.classList.add('completed');
                 circle.innerText = '✓';
                 circle.style.backgroundColor = '#198754'; // green
@@ -179,13 +186,17 @@ document.addEventListener('DOMContentLoaded', function () {
         // Text below stepper
         if (status === 'Hired') {
             nextText.innerText = 'Hired';
+        } else if (status === 'Completed') {
+            nextText.innerText = 'Process Completed';
         } else if (status === 'Rejected') {
             nextText.innerText = 'Application Rejected';
+        } else if (currentStep === steps.length - 1) {
+            nextText.innerText = 'Next: Completed';
         } else {
             nextText.innerText =
-                currentStep < steps.length - 1
+                currentStep >= 0 && currentStep < steps.length - 1
                     ? `Next: ${steps[currentStep + 1]}`
-                    : 'Process Completed';
+                    : 'In Progress';
         }
     });
 

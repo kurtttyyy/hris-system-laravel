@@ -39,20 +39,6 @@
             </span>
         </a>
 
-        <!-- My Profile -->
-        <a href="{{ route('employee.employeeProfile') }}"
-           class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition
-                  {{ request()->routeIs('employee.employeeProfile')
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'text-gray-300 hover:bg-green-600/20 hover:text-white' }}">
-
-            <i class="fa fa-user text-lg w-6 text-center"></i>
-
-            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                My Profile
-            </span>
-        </a>
-
         <!-- Leave Requests -->
         <a href="{{ route('employee.employeeLeave') }}"
            class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition
@@ -116,7 +102,7 @@
                         ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'text-gray-300 hover:bg-green-600/20 hover:text-white' }}">
 
-            <i class="fa fa-sign-out text-lg w-6 text-center"></i>
+            <i class="fa fa-user-times text-lg w-6 text-center"></i>
 
             <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 Resignation

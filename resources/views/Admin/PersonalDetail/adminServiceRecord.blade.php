@@ -41,8 +41,8 @@
         <p class="text-xs text-gray-400">STATUS</p>
         <span
           class="inline-block px-3 py-1 rounded-full text-sm mt-1"
-          :class="(selectedEmployee?.account_status ?? '').toLowerCase() === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'"
-          x-text="selectedEmployee?.account_status ?? '-'">
+          :class="effectiveAccountStatusClass()"
+          x-text="effectiveAccountStatus()">
         </span>
       </div>
     </div>
@@ -84,7 +84,10 @@
       </div>
 
       <div class="bg-green-50 text-green-600 rounded-xl p-6 text-center">
-        <p class="text-3xl font-bold">3</p>
+        <p
+          class="text-3xl font-bold"
+          x-text="countPromotionEvents()"
+        ></p>
         <p class="text-sm">Promotions</p>
       </div>
 
@@ -94,8 +97,11 @@
       </div>
 
       <div class="bg-purple-50 text-purple-600 rounded-xl p-6 text-center">
-        <p class="text-3xl font-bold">5</p>
-        <p class="text-sm">Awards</p>
+        <p
+          class="text-2xl font-bold"
+          x-text="selectedEmployee?.employee?.classification ?? selectedEmployee?.employee?.job_type ?? selectedEmployee?.applicant?.position?.job_type ?? '-'"
+        ></p>
+        <p class="text-sm">Classification</p>
       </div>
     </div>
 
@@ -106,49 +112,29 @@
       <div class="lg:col-span-2 bg-white rounded-xl p-6 shadow">
         <h2 class="font-semibold mb-6">Service Timeline</h2>
 
-        <div class="relative border-l-2 border-indigo-200 ml-3 space-y-6">
+        <div class="relative max-h-[30rem] overflow-y-auto pr-2">
+          <span class="absolute left-3 top-2 bottom-2 w-px bg-indigo-200"></span>
 
-          <div class="relative pl-6">
-            <span class="absolute -left-[9px] top-1 w-4 h-4 bg-indigo-500 rounded-full"></span>
-            <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-              Date Hired
-            </span>
-            <div class="flex justify-between mt-2">
-              <h3 class="font-semibold">Initial Employment Start</h3>
-              <span class="text-xs text-gray-400">Mar 15, 2019</span>
-            </div>
-            <p class="text-sm text-gray-500">
-              Employee was hired as Administrative Assistant.
-            </p>
-          </div>
+          <template x-for="(timelineItem, index) in buildServiceTimeline()" :key="`${timelineItem.type}-${index}`">
+            <article class="relative pl-10 py-1 pr-1">
+              <span class="absolute left-[6px] top-6 w-4 h-4 rounded-full border-2 border-white shadow-sm" :class="timelineItem.dotClass"></span>
+              <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <span class="text-xs px-2.5 py-1 rounded-md font-medium" :class="timelineItem.badgeClass" x-text="timelineItem.badge"></span>
+                  <span class="text-xs font-medium text-slate-500" x-text="timelineItem.dateLabel"></span>
+                </div>
+                <h3 class="mt-2 text-base font-semibold text-slate-900" x-text="timelineItem.title"></h3>
+                <p class="mt-1 text-sm leading-6 text-slate-600" x-text="timelineItem.description"></p>
+              </div>
+            </article>
+          </template>
 
-          <div class="relative pl-6">
-            <span class="absolute -left-[9px] top-1 w-4 h-4 bg-rose-500 rounded-full"></span>
-            <span class="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded">
-              Date Resigned
-            </span>
-            <div class="flex justify-between mt-2">
-              <h3 class="font-semibold">Resignation Effective Date</h3>
-              <span class="text-xs text-gray-400">Aug 30, 2023</span>
-            </div>
-            <p class="text-sm text-gray-500">
-              Employee resigned from previous appointment.
-            </p>
-          </div>
-
-          <div class="relative pl-6">
-            <span class="absolute -left-[9px] top-1 w-4 h-4 bg-indigo-500 rounded-full"></span>
-            <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
-              Applied Again
-            </span>
-            <div class="flex justify-between mt-2">
-              <h3 class="font-semibold">Rehired Under New Application</h3>
-              <span class="text-xs text-gray-400">Jan 08, 2025</span>
-            </div>
-            <p class="text-sm text-gray-500">
-              Employee applied again and was rehired.
-            </p>
-          </div>
+          <p
+            x-show="buildServiceTimeline().length === 0"
+            class="text-sm text-gray-500 pl-10 py-4"
+          >
+            No service timeline data available.
+          </p>
 
         </div>
       </div>
@@ -163,32 +149,29 @@
           <div class="mb-4">
             <div class="flex justify-between text-sm mb-1">
               <span>Vacation</span>
-              <span>12/15</span>
+              <span x-text="formatLeaveBalance(leaveVacationAvailable(), leaveVacationLimit())"></span>
             </div>
             <div class="bg-gray-200 h-2 rounded-full">
-              <div class="bg-indigo-500 h-2 rounded-full w-[80%]"></div>
+              <div
+                class="bg-indigo-500 h-2 rounded-full"
+                :style="`width: ${leaveBalancePercent(leaveVacationAvailable(), leaveVacationLimit())}%`"
+              ></div>
             </div>
           </div>
 
           <div class="mb-4">
             <div class="flex justify-between text-sm mb-1">
               <span>Sick</span>
-              <span>8/10</span>
+              <span x-text="formatLeaveBalance(leaveSickAvailable(), leaveSickLimit())"></span>
             </div>
             <div class="bg-gray-200 h-2 rounded-full">
-              <div class="bg-green-500 h-2 rounded-full w-[80%]"></div>
+              <div
+                class="bg-green-500 h-2 rounded-full"
+                :style="`width: ${leaveBalancePercent(leaveSickAvailable(), leaveSickLimit())}%`"
+              ></div>
             </div>
           </div>
 
-          <div>
-            <div class="flex justify-between text-sm mb-1">
-              <span>Personal</span>
-              <span>2/3</span>
-            </div>
-            <div class="bg-gray-200 h-2 rounded-full">
-              <div class="bg-yellow-500 h-2 rounded-full w-[66%]"></div>
-            </div>
-          </div>
         </div>
 
         <!-- Quick Actions -->

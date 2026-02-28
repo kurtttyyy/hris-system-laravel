@@ -8,11 +8,14 @@ use App\Models\Applicant;
 use App\Models\ApplicantDocument;
 use App\Models\Education;
 use App\Models\Employee;
+use App\Models\EmployeePositionHistory;
 use App\Models\Government;
 use App\Models\Interviewer;
 use App\Models\License;
 use App\Models\LeaveApplication;
 use App\Models\OpenPosition;
+use App\Models\PayslipRecord;
+use App\Models\PayslipUpload;
 use App\Models\Resignation;
 use App\Models\Salary;
 use App\Models\User;
@@ -270,10 +273,15 @@ class AdministratorStoreController extends Controller
             'size'         => $size,
         ]);
 
-        Log::info('saved: ', $saved);
         if (!$saved || !$saved->id) {
             return back()->withErrors(['documents' => 'Document upload failed to save in database.']);
         }
+
+        $this->clearMatchingRequiredDocumentMeta((int) $applicant->id, (string) ($attrs['document_name'] ?? ''));
+        $this->clearMatchingRequiredDocumentMeta(
+            (int) $applicant->id,
+            (string) pathinfo((string) $originalName, PATHINFO_FILENAME)
+        );
 
         return back()->with('success', 'Document uploaded successfully.');
 
@@ -407,18 +415,111 @@ class AdministratorStoreController extends Controller
         }
     }
 
-    private function extractRowsFromExcel(string $absolutePath, string $extension): array
+    public function store_payslip_file(Request $request)
+    {
+        $request->validate([
+            'payslip_file' => 'required|file|mimes:xlsx,csv|max:10240',
+        ]);
+
+        $file = $request->file('payslip_file');
+        if (!$file || !$file->isValid()) {
+            return back()->withErrors(['payslip_file' => 'Invalid file upload.']);
+        }
+
+        $originalName = $file->getClientOriginalName();
+        $fileName = time().'_'.$originalName;
+        $filePath = $file->storeAs('payslip_uploads', $fileName, 'public');
+
+        PayslipUpload::create([
+            'original_name' => $originalName,
+            'file_path' => $filePath,
+            'file_size' => $file->getSize(),
+            'status' => 'Uploaded',
+            'processed_rows' => 0,
+            'uploaded_at' => Carbon::now('Asia/Manila'),
+        ]);
+
+        return back()->with('success', 'Payslip file uploaded successfully.');
+    }
+
+    public function scan_payslip_file($id, Request $request)
+    {
+        try {
+            $payslipFile = PayslipUpload::findOrFail($id);
+
+            $attrs = $request->validate([
+                'status' => 'nullable|string',
+            ]);
+
+            $status = trim((string) ($attrs['status'] ?? 'Scanned'));
+            if ($status === '') {
+                $status = 'Scanned';
+            }
+            $absolutePath = Storage::disk('public')->path($payslipFile->file_path);
+            $extension = pathinfo($payslipFile->file_path, PATHINFO_EXTENSION);
+            $rows = $this->extractRowsFromExcel($absolutePath, $extension, 'PMENUCL', true);
+            $fallbackPayDate = optional($payslipFile->uploaded_at)->format('Y-m-d') ?: now()->toDateString();
+            $records = $this->buildPayslipRecords($rows, (int) $payslipFile->id, $fallbackPayDate);
+            $processedRows = 0;
+
+            DB::transaction(function () use ($payslipFile, $status, $records, &$processedRows) {
+                PayslipRecord::query()
+                    ->where('payslip_upload_id', (int) $payslipFile->id)
+                    ->delete();
+
+                if (!empty($records)) {
+                    PayslipRecord::insert($records);
+                }
+
+                $processedRows = count($records);
+                $payslipFile->update([
+                    'status' => $status,
+                    'processed_rows' => $processedRows,
+                ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payslip file scanned successfully.',
+                'status' => $payslipFile->status,
+                'upload_id' => $payslipFile->id,
+                'processed_rows' => $processedRows,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error scanning payslip file: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error scanning payslip file: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function extractRowsFromExcel(
+        string $absolutePath,
+        string $extension,
+        ?string $preferredSheetName = null,
+        bool $strictPreferredSheet = false
+    ): array
     {
         $extension = strtolower($extension);
 
-        if ($extension !== 'xlsx') {
-            throw new \RuntimeException('Only .xlsx files are currently supported for attendance analysis.');
+        if ($extension === 'xlsx') {
+            return $this->extractRowsFromXlsx($absolutePath, $preferredSheetName, $strictPreferredSheet);
         }
 
-        return $this->extractRowsFromXlsx($absolutePath);
+        if ($extension === 'csv') {
+            return $this->extractRowsFromCsv($absolutePath);
+        }
+
+        throw new \RuntimeException('Only .xlsx and .csv files are supported.');
     }
 
-    private function extractRowsFromXlsx(string $absolutePath): array
+    private function extractRowsFromXlsx(
+        string $absolutePath,
+        ?string $preferredSheetName = null,
+        bool $strictPreferredSheet = false
+    ): array
     {
         if (!class_exists(\ZipArchive::class) && !class_exists(\PharData::class)) {
             throw new \RuntimeException('XLSX parsing requires ZipArchive or PharData support in PHP.');
@@ -447,7 +548,24 @@ class AdministratorStoreController extends Controller
             }
         }
 
-        $sheetXml = $this->readXlsxEntry($absolutePath, 'xl/worksheets/sheet1.xml');
+        $sheetXml = false;
+        if (!empty($preferredSheetName)) {
+            $preferredWorksheetEntry = $this->findXlsxWorksheetEntryBySheetName($absolutePath, $preferredSheetName);
+            if (!$preferredWorksheetEntry && $strictPreferredSheet) {
+                throw new \RuntimeException("Worksheet '{$preferredSheetName}' was not found in the uploaded xlsx.");
+            }
+
+            if ($preferredWorksheetEntry) {
+                $sheetXml = $this->readXlsxEntry($absolutePath, $preferredWorksheetEntry);
+                if ($sheetXml === false && $strictPreferredSheet) {
+                    throw new \RuntimeException("Worksheet '{$preferredSheetName}' could not be read from the uploaded xlsx.");
+                }
+            }
+        }
+
+        if ($sheetXml === false) {
+            $sheetXml = $this->readXlsxEntry($absolutePath, 'xl/worksheets/sheet1.xml');
+        }
         if ($sheetXml === false) {
             foreach ($this->listXlsxWorksheetEntries($absolutePath) as $worksheetEntry) {
                 $sheetXml = $this->readXlsxEntry($absolutePath, $worksheetEntry);
@@ -500,6 +618,63 @@ class AdministratorStoreController extends Controller
             return [];
         }
 
+        $mapped = $this->mapRowsUsingDetectedHeader($rows);
+        if (!empty($mapped)) {
+            return $mapped;
+        }
+
+        // Fallback for payslip-style sheets where data is stored as label/value pairs
+        // instead of a strict tabular header row.
+        return $this->extractPayslipRowsFromLabelValueGrid($rows);
+    }
+
+    private function extractRowsFromCsv(string $absolutePath): array
+    {
+        if (!is_readable($absolutePath)) {
+            return [];
+        }
+
+        $handle = fopen($absolutePath, 'r');
+        if ($handle === false) {
+            return [];
+        }
+
+        $rows = [];
+        while (($data = fgetcsv($handle)) !== false) {
+            $rowData = [];
+            foreach ($data as $index => $value) {
+                $value = trim((string) $value);
+                if ($value === '') {
+                    continue;
+                }
+
+                $column = $this->columnNameFromIndex((int) $index);
+                if ($column !== '') {
+                    $rowData[$column] = $value;
+                }
+            }
+
+            if (!empty($rowData)) {
+                $rows[] = $rowData;
+            }
+        }
+
+        fclose($handle);
+
+        if (count($rows) < 2) {
+            return [];
+        }
+
+        $mapped = $this->mapRowsUsingDetectedHeader($rows);
+        if (!empty($mapped)) {
+            return $mapped;
+        }
+
+        return $this->extractPayslipRowsFromLabelValueGrid($rows);
+    }
+
+    private function mapRowsUsingDetectedHeader(array $rows): array
+    {
         $headerIndex = $this->detectHeaderRowIndex($rows);
         if ($headerIndex === null) {
             return [];
@@ -528,6 +703,140 @@ class AdministratorStoreController extends Controller
         }
 
         return $mapped;
+    }
+
+    private function extractPayslipRowsFromLabelValueGrid(array $rows): array
+    {
+        $result = [];
+        $current = [];
+
+        foreach ($rows as $row) {
+            $values = $this->orderedRowValues($row);
+            if (count($values) < 2) {
+                continue;
+            }
+
+            // Read as (label,value) pairs across the row: A/B, C/D, E/F...
+            for ($i = 0; $i < count($values) - 1; $i += 2) {
+                $label = trim((string) ($values[$i] ?? ''));
+                $value = trim((string) ($values[$i + 1] ?? ''));
+                if ($label === '' || $value === '') {
+                    continue;
+                }
+
+                $field = $this->resolvePayslipFieldFromLabel($label);
+                if (!$field) {
+                    continue;
+                }
+
+                // New employee block detected.
+                if ($field === 'emp_id_no' && !empty($current['emp_id_no'])) {
+                    if (!empty($current['emp_id_no'])) {
+                        $result[] = $current;
+                    }
+                    $current = [];
+                }
+
+                $current[$field] = $value;
+            }
+        }
+
+        if (!empty($current['emp_id_no'])) {
+            $result[] = $current;
+        }
+
+        return $result;
+    }
+
+    private function orderedRowValues(array $row): array
+    {
+        if (empty($row)) {
+            return [];
+        }
+
+        $items = [];
+        foreach ($row as $column => $value) {
+            $items[] = [
+                'column' => (string) $column,
+                'index' => $this->columnToIndex((string) $column),
+                'value' => (string) $value,
+            ];
+        }
+
+        usort($items, fn ($a, $b) => $a['index'] <=> $b['index']);
+        return array_map(fn ($item) => $item['value'], $items);
+    }
+
+    private function columnToIndex(string $column): int
+    {
+        $column = strtoupper(trim($column));
+        if ($column === '' || !preg_match('/^[A-Z]+$/', $column)) {
+            return PHP_INT_MAX;
+        }
+
+        $index = 0;
+        for ($i = 0; $i < strlen($column); $i++) {
+            $index = $index * 26 + (ord($column[$i]) - 64);
+        }
+
+        return $index;
+    }
+
+    private function resolvePayslipFieldFromLabel(string $label): ?string
+    {
+        $normalized = $this->normalizeHeader($label);
+
+        $map = [
+            'pay_date' => 'pay_date',
+            'pay_period' => 'pay_date',
+            'period' => 'pay_date',
+            'date_covered' => 'pay_date',
+            'emp_id_no' => 'emp_id_no',
+            'employee_id_no' => 'emp_id_no',
+            'employee_id' => 'emp_id_no',
+            'emp_id' => 'emp_id_no',
+            'empid' => 'emp_id_no',
+            'id_no' => 'emp_id_no',
+            'idno' => 'emp_id_no',
+            'acct' => 'acct_no',
+            'acct_no' => 'acct_no',
+            'account_no' => 'acct_no',
+            'account_number' => 'acct_no',
+            'emp_name' => 'employee_name',
+            'employee_name' => 'employee_name',
+            'name' => 'employee_name',
+            'full_name' => 'employee_name',
+            'total_salary' => 'total_salary',
+            'gross_pay' => 'total_salary',
+            'gross_salary' => 'total_salary',
+            'total_deduction' => 'total_deduction',
+            'total_deductions' => 'total_deduction',
+            'net_pay' => 'net_pay',
+            'take_home_pay' => 'net_pay',
+        ];
+
+        if (isset($map[$normalized])) {
+            return $map[$normalized];
+        }
+
+        // Handle labels like "Acct #".
+        if (str_starts_with($normalized, 'acct')) {
+            return 'acct_no';
+        }
+
+        return null;
+    }
+
+    private function columnNameFromIndex(int $index): string
+    {
+        $index = max(0, $index);
+        $name = '';
+        do {
+            $name = chr(($index % 26) + 65).$name;
+            $index = intdiv($index, 26) - 1;
+        } while ($index >= 0);
+
+        return $name;
     }
 
     private function buildAttendanceRecords(array $rows, int $uploadId, ?string $fallbackAttendanceDate = null): array  // Accepts rows with either separate morning/afternoon columns or raw punch logs; returns normalized attendance record data ready for database insertion.
@@ -972,6 +1281,74 @@ class AdministratorStoreController extends Controller
         return $entries;
     }
 
+    private function findXlsxWorksheetEntryBySheetName(string $absolutePath, string $sheetName): ?string
+    {
+        $sheetName = trim($sheetName);
+        if ($sheetName === '') {
+            return null;
+        }
+
+        $workbookXml = $this->readXlsxEntry($absolutePath, 'xl/workbook.xml');
+        if ($workbookXml === false) {
+            return null;
+        }
+
+        $workbook = simplexml_load_string($workbookXml);
+        if (!$workbook) {
+            return null;
+        }
+
+        $relsXml = $this->readXlsxEntry($absolutePath, 'xl/_rels/workbook.xml.rels');
+        if ($relsXml === false) {
+            return null;
+        }
+
+        $rels = simplexml_load_string($relsXml);
+        if (!$rels) {
+            return null;
+        }
+
+        $relationshipTargets = [];
+        $relationships = $rels->xpath("//*[local-name()='Relationship']") ?: [];
+        foreach ($relationships as $relationship) {
+            $id = trim((string) ($relationship['Id'] ?? ''));
+            $target = trim((string) ($relationship['Target'] ?? ''));
+            if ($id !== '' && $target !== '') {
+                $relationshipTargets[$id] = $target;
+            }
+        }
+
+        if (empty($relationshipTargets)) {
+            return null;
+        }
+
+        $targetSheetName = strtolower($sheetName);
+        $sheets = $workbook->xpath("//*[local-name()='sheet']") ?: [];
+        foreach ($sheets as $sheet) {
+            $currentSheetName = trim((string) ($sheet['name'] ?? ''));
+            if ($currentSheetName === '' || strtolower($currentSheetName) !== $targetSheetName) {
+                continue;
+            }
+
+            $relAttributes = $sheet->attributes('http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+            $relationId = trim((string) ($relAttributes['id'] ?? ''));
+            if ($relationId === '' || !isset($relationshipTargets[$relationId])) {
+                continue;
+            }
+
+            $target = str_replace('\\', '/', ltrim((string) $relationshipTargets[$relationId], '/'));
+            if (!str_starts_with($target, 'xl/')) {
+                $target = 'xl/'.ltrim($target, '/');
+            }
+
+            if (str_starts_with($target, 'xl/worksheets/') && str_ends_with($target, '.xml')) {
+                return $target;
+            }
+        }
+
+        return null;
+    }
+
     private function detectHeaderRowIndex(array $rows): ?int
     {
         $sample = array_slice($rows, 0, 25);
@@ -981,14 +1358,50 @@ class AdministratorStoreController extends Controller
                 $headers[] = $this->normalizeHeader((string) $value);
             }
 
-            $hasEmployeeId = $this->hasAnyKey($headers, ['employee_id', 'employeeid', 'id_no', 'idno', 'emp_id', 'empid']);
+            $hasEmployeeId = $this->hasAnyKey($headers, ['employee_id', 'employee_id_no', 'employeeid', 'id_no', 'idno', 'emp_id', 'empid', 'emp_id_no']);
             $hasAmPmColumns = $this->hasAnyKey($headers, ['am_time', 'am_in', 'morning_in', 'am'])
                 && $this->hasAnyKey($headers, ['pm_time', 'pm_in', 'afternoon_in', 'pm']);
             $hasRawPunchColumns = $this->hasAnyKey($headers, ['date', 'attendance_date'])
                 && $this->hasAnyKey($headers, ['time'])
                 && $this->hasAnyKey($headers, ['type']);
+            $hasPayslipColumns = $this->hasAnyKey($headers, [
+                'pay_date',
+                'pay_period',
+                'period',
+                'date_covered',
+                'employee_name',
+                'emp_name',
+                'no',
+                'no_',
+                'basic_salary',
+                'basic_salar',
+                'living_allowance',
+                'extra_load',
+                'other_income',
+                'absences_date',
+                'absences_amount',
+                'withholding_tax',
+                'salary_loan_ale',
+                'salary_vale',
+                'pag_ibig_loan',
+                'pag_ibig_share',
+                'pag_ibig_premium',
+                'sss_peraa_loan',
+                'sss_peraa_share',
+                'sss_loan',
+                'sss_premium',
+                'philhealth_share',
+                'philhealth_premium',
+                'others',
+                'other_deduction',
+                'amount_due',
+                'account_credited',
+                'total_salary',
+                'total_deduction',
+                'net_pay',
+            ]);
 
-            if ($hasEmployeeId && ($hasAmPmColumns || $hasRawPunchColumns)) {
+            if ($hasEmployeeId && ($hasAmPmColumns || $hasRawPunchColumns || $hasPayslipColumns)) {
                 return $index;
             }
         }
@@ -1106,12 +1519,159 @@ class AdministratorStoreController extends Controller
         return null;
     }
 
+    private function buildPayslipRecords(array $rows, int $uploadId, ?string $fallbackPayDate = null): array
+    {
+        $employees = Employee::query()
+            ->select(['user_id', 'employee_id'])
+            ->whereNotNull('employee_id')
+            ->get();
+
+        $employeesByExactId = [];
+        foreach ($employees as $employee) {
+            $employeeId = $this->normalizeEmployeeId($employee->employee_id);
+            if ($employeeId === '') {
+                continue;
+            }
+
+            $employeesByExactId[$employeeId] = $employee;
+        }
+
+        $records = [];
+        $now = now();
+        $detectedSheetPayDate = $this->detectPayslipDateFromRows($rows);
+
+        foreach ($rows as $row) {
+            $employeeIdRaw = $this->pickValue($row, [
+                'emp_id_no',
+                'employee_id_no',
+                'employee_id',
+                'employee_no',
+                'employee_number',
+                'emp_id',
+                'empid',
+                'id_no',
+                'idno',
+            ]);
+            $employeeId = $this->normalizeEmployeeId($employeeIdRaw);
+            if ($employeeId === '') {
+                continue;
+            }
+
+            $employee = $employeesByExactId[$employeeId] ?? null;
+            if (!$employee) {
+                // Strict match only: insert only if Excel Employee ID equals employees.employee_id.
+                continue;
+            }
+
+            $matchedEmployeeId = $this->normalizeEmployeeId((string) $employee->employee_id);
+            if ($matchedEmployeeId === '') {
+                continue;
+            }
+
+            $employeeName = $this->pickValue($row, ['employee_name', 'emp_name', 'name', 'full_name']);
+            $payDateText = $this->pickValue($row, ['pay_date', 'pay_period', 'period', 'date_covered', 'date']);
+            $rowPayDate = $this->normalizeDate($this->pickValue($row, ['pay_date', 'date_covered', 'pay_period', 'period', 'date']));
+            $payDate = $rowPayDate ?: $detectedSheetPayDate ?: $fallbackPayDate;
+            $rowNoRaw = $this->pickValue($row, ['no', 'no_']);
+            $rowNo = is_numeric((string) $rowNoRaw) ? (int) $rowNoRaw : null;
+            $basicSalary = $this->normalizeMoneyValue($this->pickValue($row, ['basic_salary', 'basic_salar']));
+            $livingAllowance = $this->normalizeMoneyValue($this->pickValue($row, ['living_allowance']));
+            $extraLoad = $this->normalizeMoneyValue($this->pickValue($row, ['extra_load']));
+            $otherIncome = $this->normalizeMoneyValue($this->pickValue($row, ['other_income']));
+            $absencesDate = $this->pickValue($row, ['absences_date', 'absence_date']);
+            $absencesAmount = $this->normalizeMoneyValue($this->pickValue($row, ['absences_amount', 'absence_amount']));
+            $withholdingTax = $this->normalizeMoneyValue($this->pickValue($row, ['withholding_tax']));
+            $salaryVale = $this->normalizeMoneyValue($this->pickValue($row, ['salary_vale', 'salary_loan_ale']));
+            $pagIbigLoan = $this->normalizeMoneyValue($this->pickValue($row, ['pag_ibig_loan', 'pagibig_loan']));
+            $pagIbigPremium = $this->normalizeMoneyValue($this->pickValue($row, ['pag_ibig_premium', 'pagibig_premium', 'pag_ibig_share']));
+            $sssLoan = $this->normalizeMoneyValue($this->pickValue($row, ['sss_loan', 'sss_peraa_loan']));
+            $sssPremium = $this->normalizeMoneyValue($this->pickValue($row, ['sss_premium', 'sss_peraa_share']));
+            $peraaLoan = $this->normalizeMoneyValue($this->pickValue($row, ['peraa_loan']));
+            $peraaPremium = $this->normalizeMoneyValue($this->pickValue($row, ['peraa_premium']));
+            $philhealthPremium = $this->normalizeMoneyValue($this->pickValue($row, ['philhealth_premium', 'philhealth_share']));
+            $otherDeduction = $this->normalizeMoneyValue($this->pickValue($row, ['other_deduction', 'others']));
+            $amountDue = $this->normalizeMoneyValue($this->pickValue($row, ['amount_due']));
+            $accountCredited = $this->pickValue($row, ['account_credited', 'acct_credited', 'account_credit', 'acct_no', 'account_no', 'account_number']);
+            $totalSalary = $this->normalizeMoneyValue($this->pickValue($row, ['total_salary', 'gross_pay', 'gross_salary']));
+            $totalDeduction = $this->normalizeMoneyValue($this->pickValue($row, ['total_deduction', 'deductions_total']));
+            $netPay = $this->normalizeMoneyValue($this->pickValue($row, ['net_pay', 'net_salary', 'take_home_pay'])) ?? $amountDue;
+
+            $records[] = [
+                'payslip_upload_id' => $uploadId,
+                'user_id' => $employee->user_id ? (int) $employee->user_id : null,
+                'employee_id' => $matchedEmployeeId,
+                'employee_name' => $employeeName ? trim((string) $employeeName) : null,
+                'row_no' => $rowNo,
+                'basic_salary' => $basicSalary,
+                'living_allowance' => $livingAllowance,
+                'extra_load' => $extraLoad,
+                'other_income' => $otherIncome,
+                'absences_date' => $absencesDate ? trim((string) $absencesDate) : null,
+                'absences_amount' => $absencesAmount,
+                'withholding_tax' => $withholdingTax,
+                'salary_vale' => $salaryVale,
+                'pag_ibig_loan' => $pagIbigLoan,
+                'pag_ibig_premium' => $pagIbigPremium,
+                'sss_loan' => $sssLoan,
+                'sss_premium' => $sssPremium,
+                'peraa_loan' => $peraaLoan,
+                'peraa_premium' => $peraaPremium,
+                'philhealth_premium' => $philhealthPremium,
+                'other_deduction' => $otherDeduction,
+                'amount_due' => $amountDue,
+                'account_credited' => $accountCredited ? trim((string) $accountCredited) : null,
+                'pay_date_text' => $payDateText ? trim((string) $payDateText) : null,
+                'pay_date' => $payDate,
+                'total_salary' => $totalSalary,
+                'total_deduction' => $totalDeduction,
+                'net_pay' => $netPay,
+                'payload' => json_encode($row),
+                'scanned_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        return $records;
+    }
+
+    private function detectPayslipDateFromRows(array $rows): ?string
+    {
+        foreach ($rows as $row) {
+            $candidate = $this->pickValue($row, ['pay_date', 'date_covered', 'pay_period', 'period', 'date']);
+            $normalized = $this->normalizeDate($candidate);
+            if ($normalized) {
+                return $normalized;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeMoneyValue(?string $value): ?float
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $text = trim((string) $value);
+        if ($text === '' || $text === '-') {
+            return null;
+        }
+
+        $normalized = preg_replace('/[^0-9.\-]/', '', $text);
+        if ($normalized === '' || $normalized === '-' || $normalized === '.') {
+            return null;
+        }
+
+        return is_numeric($normalized) ? (float) $normalized : null;
+    }
+
     private function normalizeHeader(string $value): string
     {
         $normalized = strtolower(trim($value));
-        $normalized = str_replace(['(', ')', '.', '-', '/'], ' ', $normalized);
-        $normalized = preg_replace('/\s+/', '_', $normalized);
-        $normalized = trim($normalized, '_ ');
+        $normalized = preg_replace('/[^a-z0-9]+/', '_', $normalized);
+        $normalized = trim((string) $normalized, '_ ');
 
         return $normalized;
     }
@@ -1361,6 +1921,7 @@ class AdministratorStoreController extends Controller
             'birthday' => 'nullable|date',
             'position' => 'nullable|string|max:255',
             'department' => 'nullable|string|max:255',
+            'classification' => 'nullable|string|max:255',
             'job_type' => 'nullable|string|max:50',
             'barangay' => 'nullable|string|max:255',
             'municipality' => 'nullable|string|max:255',
@@ -1376,6 +1937,9 @@ class AdministratorStoreController extends Controller
         ]);
 
         $user = User::findOrFail($attrs['user_id']);
+        $existingEmployee = Employee::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $oldPosition = trim((string) ($existingEmployee?->position ?? ''));
+        $oldClassification = trim((string) ($existingEmployee?->classification ?? ''));
 
         $userPayload = [
             'first_name' => $attrs['first'],
@@ -1405,6 +1969,7 @@ class AdministratorStoreController extends Controller
             'birthday' => $attrs['birthday'] ?? null,
             'position' => $attrs['position'] ?? null,
             'department' => $attrs['department'] ?? null,
+            'classification' => $attrs['classification'] ?? ($existingEmployee?->classification ?? null),
             'address' => count($addressParts) ? implode(', ', $addressParts) : null,
             'emergency_contact_name' => $attrs['emergency_contact_name'] ?? null,
             'emergency_contact_relationship' => $attrs['emergency_contact_relationship'] ?? null,
@@ -1421,6 +1986,15 @@ class AdministratorStoreController extends Controller
         Employee::updateOrCreate(
             ['user_id' => $attrs['user_id']],
             $employeePayload
+        );
+
+        $this->recordCareerProgressionIfChanged(
+            (int) $attrs['user_id'],
+            $oldPosition,
+            trim((string) ($employeePayload['position'] ?? '')),
+            $oldClassification,
+            trim((string) ($employeePayload['classification'] ?? '')),
+            'Updated from general profile'
         );
 
         Government::updateOrCreate(
@@ -1458,6 +2032,13 @@ class AdministratorStoreController extends Controller
                 $this->syncAttendanceRecordsForApprovedLeave($leaveApplication->fresh());
             } elseif (strcasecmp($newStatus, 'Rejected') === 0 && $previousStatus === 'approved') {
                 $this->deleteGeneratedLeaveAttendanceRecords($leaveApplication);
+            }
+
+            if (!empty($leaveApplication->user_id)) {
+                $resolvedAccountStatus = $this->resolveAccountStatusByRecords((int) $leaveApplication->user_id);
+                User::query()
+                    ->where('id', (int) $leaveApplication->user_id)
+                    ->update(['account_status' => $resolvedAccountStatus]);
             }
         });
 
@@ -1531,30 +2112,56 @@ class AdministratorStoreController extends Controller
             'processed_at' => now(),
         ];
 
-        // On approval, store a fresh snapshot of employee identity fields
-        // in the resignation record for audit/history purposes.
-        if (strcasecmp($status, 'Approved') === 0 && !empty($resignation->user_id)) {
+        $employeeUser = null;
+        if (!empty($resignation->user_id)) {
             $employeeUser = User::query()
                 ->with('employee')
                 ->find($resignation->user_id);
+        } elseif (!empty($resignation->employee_id)) {
+            $mappedUserId = Employee::query()
+                ->where('employee_id', trim((string) $resignation->employee_id))
+                ->value('user_id');
 
-            if ($employeeUser) {
-                $employeeName = trim(implode(' ', array_filter([
-                    trim((string) ($employeeUser->first_name ?? '')),
-                    trim((string) ($employeeUser->middle_name ?? '')),
-                    trim((string) ($employeeUser->last_name ?? '')),
-                ])));
+            if (!empty($mappedUserId)) {
+                $employeeUser = User::query()
+                    ->with('employee')
+                    ->find((int) $mappedUserId);
 
-                $updatePayload['employee_id'] = (string) ($employeeUser->employee?->employee_id ?? $resignation->employee_id ?? '');
-                $updatePayload['employee_name'] = $employeeName !== ''
-                    ? $employeeName
-                    : (string) ($employeeUser->email ?? $resignation->employee_name ?? 'Unknown Employee');
-                $updatePayload['department'] = (string) ($employeeUser->employee?->department ?? $resignation->department ?? '');
-                $updatePayload['position'] = (string) ($employeeUser->employee?->position ?? $resignation->position ?? '');
+                if ($employeeUser) {
+                    $updatePayload['user_id'] = (int) $employeeUser->id;
+                }
             }
         }
 
+        // On approval, store a fresh snapshot of employee identity fields
+        // in the resignation record for audit/history purposes.
+        if (strcasecmp($status, 'Approved') === 0 && $employeeUser) {
+            $employeeUser->update([
+                'account_status' => 'Inactive',
+            ]);
+
+            $employeeName = trim(implode(' ', array_filter([
+                trim((string) ($employeeUser->first_name ?? '')),
+                trim((string) ($employeeUser->middle_name ?? '')),
+                trim((string) ($employeeUser->last_name ?? '')),
+            ])));
+
+            $updatePayload['employee_id'] = (string) ($employeeUser->employee?->employee_id ?? $resignation->employee_id ?? '');
+            $updatePayload['employee_name'] = $employeeName !== ''
+                ? $employeeName
+                : (string) ($employeeUser->email ?? $resignation->employee_name ?? 'Unknown Employee');
+            $updatePayload['department'] = (string) ($employeeUser->employee?->department ?? $resignation->department ?? '');
+            $updatePayload['position'] = (string) ($employeeUser->employee?->position ?? $resignation->position ?? '');
+        }
+
         $resignation->update($updatePayload);
+
+        // Keep employee account status dynamic based on resignation/leave outcomes.
+        if ($employeeUser) {
+            $employeeUser->update([
+                'account_status' => $this->resolveAccountStatusByRecords((int) $employeeUser->id),
+            ]);
+        }
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
@@ -1687,6 +2294,33 @@ class AdministratorStoreController extends Controller
         ]);
     }
 
+    private function resolveAccountStatusByRecords(int $userId): string
+    {
+        if ($userId <= 0) {
+            return 'Active';
+        }
+
+        $hasApprovedOrCompletedResignation = Resignation::query()
+            ->where('user_id', $userId)
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) IN (?, ?)", ['approved', 'completed'])
+            ->exists();
+
+        if ($hasApprovedOrCompletedResignation) {
+            return 'Inactive';
+        }
+
+        $hasApprovedLeave = LeaveApplication::query()
+            ->where('user_id', $userId)
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
+            ->exists();
+
+        if ($hasApprovedLeave) {
+            return 'On Leave';
+        }
+
+        return 'Active';
+    }
+
     private function canApplyLeaveAttendanceOverride(AttendanceRecord $record): bool
     {
         $hasAnyTimeLog = !empty($record->morning_in)
@@ -1768,6 +2402,9 @@ class AdministratorStoreController extends Controller
         ]);
 
         $user = User::findOrFail($attrs['user_id']);
+        $existingEmployee = Employee::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $oldPosition = trim((string) ($existingEmployee?->position ?? ''));
+        $oldClassification = trim((string) ($existingEmployee?->classification ?? ''));
 
         $user->update([
             //'' => $attrs[''],
@@ -1802,6 +2439,15 @@ class AdministratorStoreController extends Controller
                 'emergency_contact_relationship' => $attrs['emergency_contact_relationship'] ?? null,
                 'emergency_contact_number' => $attrs['emergency_contact_number'] ?? null,
             ]
+        );
+
+        $this->recordCareerProgressionIfChanged(
+            (int) $attrs['user_id'],
+            $oldPosition,
+            trim((string) ($attrs['position'] ?? '')),
+            $oldClassification,
+            trim((string) ($attrs['classification'] ?? '')),
+            'Updated from profile edit'
         );
 
         Government::updateOrCreate(
@@ -1887,6 +2533,50 @@ class AdministratorStoreController extends Controller
         return 'Non-Teaching';
     }
 
+    private function recordCareerProgressionIfChanged(
+        int $userId,
+        string $oldPosition,
+        string $newPosition,
+        string $oldClassification = '',
+        string $newClassification = '',
+        string $note = ''
+    ): void {
+        if ($userId <= 0) {
+            return;
+        }
+
+        $oldNormalized = strtolower(trim($oldPosition));
+        $newNormalized = strtolower(trim($newPosition));
+        $oldClassNormalized = strtolower(trim($oldClassification));
+        $newClassNormalized = strtolower(trim($newClassification));
+
+        $positionChanged = $newNormalized !== '' && $oldNormalized !== $newNormalized;
+        $classificationChanged = $newClassNormalized !== '' && $oldClassNormalized !== $newClassNormalized;
+
+        if (!$positionChanged && !$classificationChanged) {
+            return;
+        }
+
+        $finalNewPosition = trim($newPosition);
+        if ($finalNewPosition === '') {
+            $finalNewPosition = trim($oldPosition);
+        }
+        if ($finalNewPosition === '') {
+            $finalNewPosition = 'Position Unchanged';
+        }
+
+        EmployeePositionHistory::create([
+            'user_id' => $userId,
+            'old_position' => trim($oldPosition) !== '' ? trim($oldPosition) : null,
+            'new_position' => $finalNewPosition,
+            'old_classification' => trim($oldClassification) !== '' ? trim($oldClassification) : null,
+            'new_classification' => trim($newClassification) !== '' ? trim($newClassification) : null,
+            'changed_by' => Auth::id(),
+            'changed_at' => now(),
+            'note' => trim($note) !== '' ? trim($note) : null,
+        ]);
+    }
+
     private function normalizeEmployeeId($value): string
     {
         $normalized = trim((string) $value);
@@ -1894,12 +2584,68 @@ class AdministratorStoreController extends Controller
             return '';
         }
 
+        // Excel text-formatted IDs may include a leading apostrophe.
+        $normalized = ltrim($normalized, "'");
+
         // Excel often exports numeric IDs as "123.0"; map these back to the base ID.
         if (preg_match('/^(\d+)\.0+$/', $normalized, $matches)) {
             return $matches[1];
         }
 
         return $normalized;
+    }
+
+    private function normalizeEmployeeIdForMatch(string $value): string
+    {
+        $normalized = strtoupper(trim($value));
+        $normalized = ltrim($normalized, "'");
+        $normalized = preg_replace('/[^A-Z0-9]/', '', $normalized);
+        if (!is_string($normalized) || $normalized === '') {
+            return '';
+        }
+
+        if (preg_match('/^\d+$/', $normalized)) {
+            $normalized = ltrim($normalized, '0');
+            return $normalized !== '' ? $normalized : '0';
+        }
+
+        return $normalized;
+    }
+
+    private function clearMatchingRequiredDocumentMeta(int $applicantId, string $submittedDocumentName): void
+    {
+        if ($applicantId <= 0) {
+            return;
+        }
+
+        $submittedNormalized = $this->normalizeDocumentRequirementLabel($submittedDocumentName);
+        if ($submittedNormalized === '') {
+            return;
+        }
+
+        $requiredPrefix = '__REQUIRED__::';
+        $requiredMetaDocs = ApplicantDocument::query()
+            ->where('applicant_id', $applicantId)
+            ->where('type', 'like', $requiredPrefix.'%')
+            ->get();
+
+        foreach ($requiredMetaDocs as $metaDoc) {
+            $requiredLabel = trim((string) substr((string) $metaDoc->type, strlen($requiredPrefix)));
+            if ($this->normalizeDocumentRequirementLabel($requiredLabel) === $submittedNormalized) {
+                $metaDoc->delete();
+            }
+        }
+    }
+
+    private function normalizeDocumentRequirementLabel(string $value): string
+    {
+        $normalized = strtolower(trim($value));
+        if ($normalized === '') {
+            return '';
+        }
+
+        $normalized = preg_replace('/\s+/', ' ', $normalized);
+        return (string) $normalized;
     }
 
 

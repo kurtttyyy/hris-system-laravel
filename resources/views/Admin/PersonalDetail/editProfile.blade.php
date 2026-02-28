@@ -53,6 +53,14 @@
                 <input name="position" class="border rounded-md px-3 py-2" x-model="selectedEmployee.employee.position">
                 <input name="department" class="border rounded-md px-3 py-2" x-model="selectedEmployee.employee.department">
                 <input name="employee_id" class="border rounded-md px-3 py-2" x-model="selectedEmployee.employee.employee_id">
+                <select name="classification" class="border rounded-md px-3 py-2" x-model="selectedEmployee.employee.classification">
+                  <option value="">Classification</option>
+                  <option value="Probationary">Probationary</option>
+                  <option value="Permanent">Permanent</option>
+                  <option value="Contractual">Contractual</option>
+                  <option value="Part-Time">Part-Time</option>
+                  <option value="Full-Time">Full-Time</option>
+                </select>
               </div>
             </section>
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Applicant;
 use App\Models\ApplicantDocument;
 use App\Models\AttendanceRecord;
+use App\Models\PayslipRecord;
 use App\Models\Resignation;
 use App\Models\User;
 use App\Models\LeaveApplication;
@@ -290,17 +291,135 @@ class EmployeePageController extends Controller
         $attendanceRatePercent = (float) ($attendanceMetrics['attendanceRatePercent'] ?? 0);
         $leaveMetrics = $this->buildEmployeeLeaveMetrics($user, now()->format('Y-m'));
         $leaveDaysUsed = (float) ($leaveMetrics['totalDaysUsedCard'] ?? 0);
+        $today = now()->startOfDay();
+        $isOnLeaveToday = LeaveApplication::query()
+            ->where('user_id', $user?->id)
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
+            ->get()
+            ->contains(function ($application) use ($today) {
+                try {
+                    $baseDate = $application->filing_date
+                        ? Carbon::parse($application->filing_date)->startOfDay()
+                        : Carbon::parse($application->created_at)->startOfDay();
+                    $days = (float) ($application->number_of_working_days ?? 0);
+                    if ($days <= 0) {
+                        $days = max(
+                            (float) ($application->days_with_pay ?? 0),
+                            (float) ($application->applied_total ?? 0)
+                        );
+                    }
+                    $rangeDays = max((int) ceil($days), 1);
+                    $endDate = $baseDate->copy()->addDays($rangeDays - 1);
+
+                    return $today->betweenIncluded($baseDate, $endDate);
+                } catch (\Throwable $e) {
+                    return false;
+                }
+            });
+        $employmentStatus = $isOnLeaveToday ? 'On Leave' : 'Active';
+        $employmentStatusClass = $isOnLeaveToday ? 'text-amber-600' : 'text-emerald-600';
 
         return view('employee.employeeProfile', compact(
             'emp',
             'serviceDurationText',
             'attendanceRatePercent',
-            'leaveDaysUsed'
+            'leaveDaysUsed',
+            'employmentStatus',
+            'employmentStatusClass'
         ));
     }
 
     public function display_payslip(){
-        return view('employee.employeePayslip');
+        $user = Auth::user();
+        $employeeId = trim((string) ($user?->employee?->employee_id ?? ''));
+        $recordId = (int) request()->query('record_id', 0);
+
+        $recentPayslips = PayslipRecord::query()
+            ->where(function ($query) use ($user, $employeeId) {
+                $query->where('user_id', (int) ($user?->id ?? 0));
+                if ($employeeId !== '') {
+                    $query->orWhere('employee_id', $employeeId);
+                }
+            })
+            ->orderByDesc('pay_date')
+            ->orderByDesc('scanned_at')
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get();
+
+        $latestPayslip = $recentPayslips->first();
+        $selectedPayslip = null;
+        if ($recordId > 0) {
+            $selectedPayslip = $recentPayslips->firstWhere('id', $recordId);
+        }
+        if (!$selectedPayslip) {
+            $selectedPayslip = $latestPayslip;
+        }
+
+        $grossSalary = null;
+        $deductions = null;
+        $netSalary = null;
+        $others = null;
+
+        if ($latestPayslip) {
+            $salaryFields = ['basic_salary', 'living_allowance', 'extra_load', 'other_income'];
+            $deductionFields = [
+                'absences_amount',
+                'withholding_tax',
+                'salary_vale',
+                'pag_ibig_loan',
+                'pag_ibig_premium',
+                'sss_loan',
+                'sss_premium',
+                'peraa_loan',
+                'peraa_premium',
+                'philhealth_premium',
+                'other_deduction',
+            ];
+
+            $grossSalary = 0.0;
+            $hasSalary = false;
+            foreach ($salaryFields as $field) {
+                $value = $latestPayslip->{$field};
+                if ($value !== null && $value !== '') {
+                    $grossSalary += (float) $value;
+                    $hasSalary = true;
+                }
+            }
+            if (!$hasSalary) {
+                $grossSalary = null;
+            }
+
+            $deductions = 0.0;
+            $hasDeduction = false;
+            foreach ($deductionFields as $field) {
+                $value = $latestPayslip->{$field};
+                if ($value !== null && $value !== '') {
+                    $deductions += (float) $value;
+                    $hasDeduction = true;
+                }
+            }
+            if (!$hasDeduction) {
+                $deductions = null;
+            }
+
+            $netSalary = $latestPayslip->net_pay;
+            if (($netSalary === null || $netSalary === '') && $grossSalary !== null && $deductions !== null) {
+                $netSalary = $grossSalary - $deductions;
+            }
+
+            $others = $latestPayslip->other_income;
+        }
+
+        return view('employee.employeePayslip', compact(
+            'recentPayslips',
+            'latestPayslip',
+            'selectedPayslip',
+            'grossSalary',
+            'deductions',
+            'netSalary',
+            'others'
+        ));
     }
 
     public function display_document(){

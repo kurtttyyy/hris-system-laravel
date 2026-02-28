@@ -31,7 +31,7 @@
 
   <!-- Download Icon -->
   <div class="relative group">
-    <button onclick="downloadProfilePDF()"
+    <button onclick="downloadProfileDOCX()"
       class="p-2 bg-blue-600 text-white rounded hover:bg-blue-700">
       <!-- Download Icon -->
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
@@ -60,9 +60,11 @@
 
   <!-- HEADER -->
   <div class="text-center mb-6 leading-tight">
-    <p class="font-semibold uppercase">Northeastern College</p>
-    <p>Santiago City, Philippines</p>
-    <p>Telephone No.: (078) 305-3226</p>
+    <img
+      src="{{ asset('images/logo.png') }}"
+      alt="Northeastern College Logo"
+      class="mx-auto mb-2 h-24 w-auto object-contain"
+    >
 
     <p class="mt-4 font-semibold uppercase">Office of the Human Resource</p>
     <p class="font-semibold uppercase">Employees Profile Form</p>
@@ -90,61 +92,34 @@
 
     <!-- LEFT BOX -->
     <div class="border border-gray-500">
-      <div class="row">
-        <span class="label">Last Name:</span>
-        <span class="value" x-text="selectedEmployee?.last_name ?? '-'"></span>
+      <div class="row row-split">
+        <span class="label split-label">ID Number:</span>
+        <span class="value split-value" x-text="selectedEmployee?.employee?.employee_id ?? '-'"></span>
       </div>
-      <div class="row">
-        <span class="label">First Name:</span>
-        <span class="value" x-text="selectedEmployee?.first_name ?? '-'"></span>
+      <div class="row row-split">
+        <span class="label split-label">Last Name:</span>
+        <span class="value split-value" x-text="selectedEmployee?.last_name ?? '-'"></span>
       </div>
-      <div class="row">
-        <span class="label">Middle Name:</span>
-        <span class="value" x-text="selectedEmployee?.middle_name ?? '-'"></span>
+      <div class="row row-split">
+        <span class="label split-label">First Name:</span>
+        <span class="value split-value" x-text="selectedEmployee?.first_name ?? '-'"></span>
       </div>
-      <div class="row">
-        <span class="label">ID Number:</span>
-        <span class="value" x-text="selectedEmployee?.employee?.employee_id ?? '-'"></span>
+      <div class="row row-split">
+        <span class="label split-label">Middle Name:</span>
+        <span class="value split-value" x-text="selectedEmployee?.middle_name ?? '-'"></span>
       </div>
-      <div class="row">
-        <span class="label">Account No.:</span>
-        <span class="value" x-text="selectedEmployee?.employee?.account_number ?? '-'"></span>
+      <div class="row row-split">
+        <span class="label split-label">Account No.:</span>
+        <span class="value split-value" x-text="selectedEmployee?.employee?.account_number ?? '-'"></span>
       </div>
     </div>
 
     <!-- RIGHT BOX -->
     <div class="border border-gray-500">
-      <div class="row">
-        <span class="label">Sex:</span>
-        <span class="value" x-text="selectedEmployee?.employee?.sex ?? '-'"></span>
-      </div>
-      <div class="row">
-        <span class="label">Civil Status:</span>
-        <span class="value" x-text="selectedEmployee?.employee?.civil_status ?? '-'"></span>
-      </div>
-      <div class="row">
-        <span class="label">Contact No.:</span>
-        <span class="value" x-text="selectedEmployee?.employee?.contact_number ?? '-'"></span>
-      </div>
-      <div class="row">
-        <span class="label">Date of Birth:</span>
-        <span class="value" x-text="selectedEmployee?.employee?.formatted_birthday ?? '-'"></span>
-      </div>
-      <div class="row">
-        <span class="label">Address:</span>
-        <span class="value" x-text="selectedEmployee?.employee?.address ?? '-'"></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- EMPLOYMENT SECTION -->
-  <div class="grid grid-cols-2 gap-4 mt-4">
-
-    <div class="border border-gray-500">
-      <div class="row">
-        <span class="label">Employment Date:</span>
+      <div class="row row-split">
+        <span class="label split-label">Employment Date:</span>
         <span
-          class="value"
+          class="value split-value"
           x-text="(() => {
             const raw = selectedEmployee?.employee?.employement_date;
             if (!raw) return '-';
@@ -155,13 +130,13 @@
           })()"
         ></span>
       </div>
-      <div class="row">
-        <span class="label">Position:</span>
-        <span class="value" x-text="selectedEmployee?.employee?.position ?? '-'"></span>
+      <div class="row row-split">
+        <span class="label split-label">Position:</span>
+        <span class="value split-value" x-text="selectedEmployee?.employee?.position ?? '-'"></span>
       </div>
-      <div class="row">
-        <span class="label">Department:</span>
-        <span class="value" x-text="selectedEmployee?.employee?.department ?? '-'"></span>
+      <div class="row row-split">
+        <span class="label split-label">Department:</span>
+        <span class="value split-value" x-text="selectedEmployee?.employee?.department ?? '-'"></span>
       </div>
       <div class="row">
         <span class="label">Classification:</span>
@@ -181,8 +156,87 @@
         </span>
       </div>
     </div>
+  </div>
+
+    <!-- EMPLOYMENT SECTION -->
+    <div class="grid grid-cols-2 gap-4 mt-4 items-start">
 
     <div class="border border-gray-500">
+      <div class="row row-split">
+        <span class="label split-label">Sex:</span>
+        <span class="value split-value" x-text="selectedEmployee?.employee?.sex ?? '-'"></span>
+      </div>
+      <div class="row row-split">
+        <span class="label split-label">Civil Status:</span>
+        <span class="value split-value" x-text="selectedEmployee?.employee?.civil_status ?? '-'"></span>
+      </div>
+      <div class="row row-split">
+        <span class="label split-label">Contact No.:</span>
+        <span class="value split-value" x-text="selectedEmployee?.employee?.contact_number ?? '-'"></span>
+      </div>
+      <div class="row row-split">
+        <span class="label split-label">Date of Birth:</span>
+        <span class="value split-value" x-text="selectedEmployee?.employee?.formatted_birthday ?? '-'"></span>
+      </div>
+      <div class="row row-split row-merge-first-col">
+        <span class="label split-label">Address:</span>
+        <span class="value split-value" x-text="selectedEmployee?.employee?.address ?? '-'"></span>
+      </div>
+    </div>
+
+    <div class="border border-gray-500 employment-left-box">
+      <div class="row row-split">
+        <span class="label split-label">Basic Salary:</span>
+        <span class="value split-value" x-text="selectedEmployee?.salary?.salary ?? '-'"></span>
+      </div>
+      <div class="row row-split">
+        <span class="label split-label">Rate per Hour:</span>
+        <span class="value split-value" x-text="selectedEmployee?.salary?.rate_per_hour ?? '-'"></span>
+      </div>
+      <div class="row row-split">
+        <span class="label split-label">COLA:</span>
+        <span class="value split-value" x-text="selectedEmployee?.salary?.cola ?? '-'"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDUCATION + GOVERNMENT -->
+  <div class="grid grid-cols-2 gap-4 mt-4 items-start">
+
+    <div class="border border-gray-500 employment-right-box">
+      <div class="row row-split">
+        <span class="label split-label edu-label">Bachelor's Degree:</span>
+        <span class="value split-value edu-value">
+          <span class="block edu-title" x-text="selectedEmployee?.education?.bachelor ?? '-'"></span>
+          <span
+            class="block text-[11px] text-gray-700 edu-meta"
+            x-text="`${selectedEmployee?.applicant?.bachelor_school_name ?? 'School N/A'}, ${selectedEmployee?.applicant?.bachelor_year_finished ?? 'Year N/A'}`"
+          ></span>
+        </span>
+      </div>
+      <div class="row row-split">
+        <span class="label split-label edu-label">Master's Degree:</span>
+        <span class="value split-value edu-value">
+          <span class="block edu-title" x-text="selectedEmployee?.education?.master ?? '-'"></span>
+          <span
+            class="block text-[11px] text-gray-700 edu-meta"
+            x-text="`${selectedEmployee?.applicant?.master_school_name ?? 'School N/A'}, ${selectedEmployee?.applicant?.master_year_finished ?? 'Year N/A'}`"
+          ></span>
+        </span>
+      </div>
+      <div class="row row-split">
+        <span class="label split-label edu-label">Doctorate Degree:</span>
+        <span class="value split-value edu-value">
+          <span class="block edu-title" x-text="selectedEmployee?.education?.doctorate ?? '-'"></span>
+          <span
+            class="block text-[11px] text-gray-700 edu-meta"
+            x-text="`${selectedEmployee?.applicant?.doctoral_school_name ?? 'School N/A'}, ${selectedEmployee?.applicant?.doctoral_year_finished ?? 'Year N/A'}`"
+          ></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="border border-gray-500 government-box">
       <div class="row">
         <span class="label">SSS:</span>
         <span class="value" x-text="selectedEmployee?.government?.SSS ?? '-'"></span>
@@ -206,57 +260,23 @@
     </div>
   </div>
 
-  <!-- LICENSE + EDUCATION -->
-  <div class="grid grid-cols-2 gap-4 mt-4">
-
-    <div class="border border-gray-500">
-      <div class="row">
-        <span class="label">License:</span>
-        <span class="value" x-text="selectedEmployee?.license?.license ?? '-'"></span>
-      </div>
-      <div class="row">
-        <span class="label">Registration No.:</span>
-        <span class="value" x-text="selectedEmployee?.license?.registration_number ?? '-'"></span>
-      </div>
-      <div class="row">
-        <span class="label">Registration Date:</span>
-        <span class="value" x-text="selectedEmployee?.license?.registration_date ?? '-'"></span>
-      </div>
-      <div class="row">
-        <span class="label">Valid Until:</span>
-        <span class="value" x-text="selectedEmployee?.license?.valid_until ?? '-'"></span>
-      </div>
-    </div>
-
-    <div class="border border-gray-500">
-      <div class="row">
-        <span class="label">Bachelor’s Degree:</span>
-        <span class="value" x-text="selectedEmployee?.education?.bachelor ?? '-'"></span>
-      </div>
-      <div class="row">
-        <span class="label">Master’s Degree:</span>
-        <span class="value" x-text="selectedEmployee?.education?.master ?? '-'"></span>
-      </div>
-      <div class="row">
-        <span class="label">Doctorate Degree:</span>
-        <span class="value" x-text="selectedEmployee?.education?.doctorate ?? '-'"></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- SALARY -->
+  <!-- LICENSE -->
   <div class="border border-gray-500 mt-4" style="width:356px;">
-    <div class="row">
-      <span class="label">Basic Salary:</span>
-      <span class="value" x-text="selectedEmployee?.salary?.salary ?? '-'"></span>
+    <div class="row row-split">
+      <span class="label split-label">License:</span>
+      <span class="value split-value" x-text="selectedEmployee?.license?.license ?? '-'"></span>
     </div>
-    <div class="row">
-      <span class="label">Rate per Hour:</span>
-      <span class="value" x-text="selectedEmployee?.salary?.rate_per_hour ?? '-'"></span>
+    <div class="row row-split">
+      <span class="label split-label">Registration No.:</span>
+      <span class="value split-value" x-text="selectedEmployee?.license?.registration_number ?? '-'"></span>
     </div>
-    <div class="row">
-      <span class="label">COLA:</span>
-      <span class="value" x-text="selectedEmployee?.salary?.cola ?? '-'"></span>
+    <div class="row row-split">
+      <span class="label split-label">Registration Date:</span>
+      <span class="value split-value" x-text="selectedEmployee?.license?.registration_date ?? '-'"></span>
+    </div>
+    <div class="row row-split">
+      <span class="label split-label">Valid Until:</span>
+      <span class="value split-value" x-text="selectedEmployee?.license?.valid_until ?? '-'"></span>
     </div>
   </div>
 
@@ -449,6 +469,64 @@
     border-bottom: none;
   }
 
+  .row.row-split {
+    display: grid;
+    grid-template-columns: 38% 62%;
+    padding: 0;
+    height: auto;
+  }
+
+  .row.row-split .split-label,
+  .row.row-split .split-value {
+    display: block;
+    padding: 6px 8px;
+    margin-left: 0;
+  }
+
+  .row.row-split .split-label {
+    border-right: 1px solid #6b7280;
+    font-weight: 500;
+  }
+
+  .row.row-split .split-label.edu-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .edu-value {
+    padding: 0 !important;
+  }
+
+  .edu-value .edu-title,
+  .edu-value .edu-meta {
+    display: block;
+    padding: 6px 8px;
+  }
+
+  .edu-value .edu-meta {
+    border-top: 1px solid #6b7280;
+  }
+
+  .row.row-split.row-merge-first-col {
+    grid-template-rows: auto auto;
+  }
+
+  .row.row-split.row-merge-first-col .split-label {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    display: flex;
+    align-items: center;
+  }
+
+  .row.row-split.row-merge-first-col .split-value {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   /* PRINT ONLY THE FORM */
   @media print {
     body * {
@@ -479,21 +557,301 @@
   }
 </style>
 
-<!-- HTML2PDF Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
 <script>
-function downloadProfilePDF() {
-  const element = document.getElementById('profile-form');
-  const opt = {
-    margin: 10,
-    filename: 'Employee_Profile_' + new Date().getTime() + '.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2 },
-    jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+const profileLogoUrl = @json(asset('images/logo.png'));
+
+async function downloadProfileDOCX() {
+  const docxLib = window.docx;
+  if (!docxLib || typeof window.saveAs !== 'function') {
+    alert('Word export library failed to load. Please refresh and try again.');
+    return;
+  }
+
+  const {
+    Document,
+    Packer,
+    Paragraph,
+    Table,
+    TableRow,
+    TableCell,
+    WidthType,
+    TextRun,
+    AlignmentType,
+    BorderStyle,
+    ImageRun,
+    HeightRule,
+  } = docxLib;
+
+  const normalize = (text) => (text || '')
+    .toLowerCase()
+    .replace(/[’']/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+  const rows = Array.from(document.querySelectorAll('#profile-form .row'));
+  const rowMap = {};
+  rows.forEach((row) => {
+    const labelEl = row.querySelector('.label');
+    const valueEl = row.querySelector('.value');
+    if (!labelEl || !valueEl) return;
+    const key = normalize((labelEl.textContent || '').replace(/:\s*$/, ''));
+    const value = ((valueEl.innerText || valueEl.textContent || '').replace(/\s+/g, ' ').trim()) || '-';
+    rowMap[key] = { value, row };
+  });
+
+  const getValue = (label) => rowMap[normalize(label)]?.value || '-';
+  const getRow = (label) => rowMap[normalize(label)]?.row || null;
+
+  const classificationRow = getRow('Classification');
+  let classificationValue = getValue('Classification');
+  if (classificationRow) {
+    const checkboxes = Array.from(classificationRow.querySelectorAll('input[type="checkbox"]'));
+    if (checkboxes.length >= 3) {
+      classificationValue = `${checkboxes[0].checked ? '☑' : '☐'} Full-time   ${checkboxes[1].checked ? '☑' : '☐'} Part-time   ${checkboxes[2].checked ? '☑' : '☐'} NT`;
+    }
+  }
+
+  const border = {
+    top: { style: BorderStyle.SINGLE, size: 4, color: '7A869A' },
+    bottom: { style: BorderStyle.SINGLE, size: 4, color: '7A869A' },
+    left: { style: BorderStyle.SINGLE, size: 4, color: '7A869A' },
+    right: { style: BorderStyle.SINGLE, size: 4, color: '7A869A' },
   };
-  html2pdf().set(opt).from(element).save();
+
+  const lineTable = (entries) => new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: entries.map(({ label, value }) => new TableRow({
+      height: { value: 320, rule: HeightRule.ATLEAST },
+      children: [
+        new TableCell({
+          borders: border,
+          margins: { top: 100, bottom: 100, left: 120, right: 120 },
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({ text: `${label}: `, bold: true, font: 'Aptos Display' }),
+                new TextRun({ text: value || '-', font: 'Aptos Display' }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    })),
+  });
+
+  const twoColumnSection = (leftEntries, rightEntries) => new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 49, type: WidthType.PERCENTAGE },
+            borders: { top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } },
+            children: [lineTable(leftEntries)],
+          }),
+          new TableCell({
+            width: { size: 2, type: WidthType.PERCENTAGE },
+            borders: { top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } },
+            children: [new Paragraph('')],
+          }),
+          new TableCell({
+            width: { size: 49, type: WidthType.PERCENTAGE },
+            borders: { top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } },
+            children: [lineTable(rightEntries)],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  let logoParagraph = new Paragraph('');
+  try {
+    const logoResponse = await fetch(profileLogoUrl);
+    const logoBuffer = await logoResponse.arrayBuffer();
+    logoParagraph = new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 60, line: 220 },
+      children: [
+        new ImageRun({
+          data: new Uint8Array(logoBuffer),
+          transformation: { width: 350, height: 65 },
+        }),
+      ],
+    });
+  } catch (e) {
+    logoParagraph = new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 0, after: 60, line: 220 },
+      children: [new TextRun({ text: 'NORTHEASTERN COLLEGE', bold: true, font: 'Aptos Display' })],
+    });
+  }
+
+  const topLeft = [
+    { label: 'Last Name', value: getValue('Last Name') },
+    { label: 'First Name', value: getValue('First Name') },
+    { label: 'Middle Name', value: getValue('Middle Name') },
+    { label: 'ID Number', value: getValue('ID Number') },
+    { label: 'Account No.', value: getValue('Account No.') },
+  ];
+
+  const topRight = [
+    { label: 'Sex', value: getValue('Sex') },
+    { label: 'Civil Status', value: getValue('Civil Status') },
+    { label: 'Contact No.', value: getValue('Contact No.') },
+    { label: 'Date of Birth', value: getValue('Date of Birth') },
+    { label: 'Address', value: getValue('Address') },
+  ];
+
+  const employmentLeft = [
+    { label: 'Employment Date', value: getValue('Employment Date') },
+    { label: 'Position', value: getValue('Position') },
+    { label: 'Department', value: getValue('Department') },
+    { label: 'Classification', value: classificationValue },
+  ];
+
+  const employmentRight = [
+    { label: 'Basic Salary', value: getValue('Basic Salary') },
+    { label: 'Rate per Hour', value: getValue('Rate per Hour') },
+    { label: 'COLA', value: getValue('COLA') },
+  ];
+
+  const licenseLeft = [
+    { label: "Bachelor's Degree", value: getValue('Bachelors Degree') },
+    { label: "Master's Degree", value: getValue('Masters Degree') },
+    { label: 'Doctorate Degree', value: getValue('Doctorate Degree') },
+  ];
+
+  const educationRight = [
+    { label: 'SSS', value: getValue('SSS') },
+    { label: 'TIN', value: getValue('TIN') },
+    { label: 'PhilHealth', value: getValue('PhilHealth') },
+    { label: 'Pag-IBIG MID', value: getValue('Pag-IBIG MID') },
+    { label: 'Pag-IBIG RTN', value: getValue('Pag-IBIG RTN') },
+  ];
+
+  const educationRows = [
+    { label: 'License', value: getValue('License') },
+    { label: 'Registration No.', value: getValue('Registration No.') },
+    { label: 'Registration Date', value: getValue('Registration Date') },
+    { label: 'Valid Until', value: getValue('Valid Until') },
+  ];
+
+  const employeeDetails = [
+    { label: 'Full Name', value: getValue('Full Name') },
+    { label: 'ID Number', value: getValue('ID Number') },
+    { label: 'Department', value: getValue('Department') },
+    { label: 'Person to Contact in Emergency', value: getValue('Person to Contact in Emergency') },
+    { label: 'Address', value: getValue('Address') },
+    { label: 'Cellphone Number', value: getValue('Cellphone Number') },
+  ];
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: {
+              top: 360,
+              right: 720,
+              bottom: 720,
+              left: 720,
+            },
+          },
+        },
+        children: [
+          logoParagraph,
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 0, after: 30, line: 220 },
+            children: [new TextRun({ text: 'Office of the Human Resource', font: 'Aptos Display' })],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 0, after: 120, line: 220 },
+            children: [new TextRun({ text: 'EMPLOYEES PROFILE FORM', bold: true, font: 'Aptos Display' })],
+          }),
+          twoColumnSection(topLeft, topRight),
+          new Paragraph(''),
+          twoColumnSection(employmentLeft, employmentRight),
+          new Paragraph(''),
+          twoColumnSection(licenseLeft, educationRight),
+          new Paragraph(''),
+          new Table({
+            width: { size: 49, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    borders: { top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } },
+                    children: [lineTable(educationRows)],
+                  }),
+                ],
+              }),
+            ],
+          }),
+          new Paragraph({
+            border: { bottom: { style: BorderStyle.DASHED, size: 4, color: '7A869A' } },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: 'Employee Details', bold: true, font: 'Aptos Display' })],
+          }),
+          lineTable(employeeDetails),
+          new Paragraph(''),
+          new Paragraph({
+            children: [new TextRun({ text: 'NC HR Form No. 16a - Employees Profile Rev. 01', size: 16, color: '5B6778', font: 'Aptos Display' })],
+          }),
+        ],
+      },
+    ],
+  });
+
+  Packer.toBlob(doc)
+    .then((blob) => {
+      const filename = `Employee_Profile_${Date.now()}.docx`;
+      window.saveAs(blob, filename);
+    })
+    .catch(() => {
+      alert('Failed to export DOCX. Please try again.');
+    });
 }
+</script>
+
+<script>
+function syncGovernmentBoxOffset() {
+  const profile = document.getElementById('profile-form');
+  if (!profile) return;
+
+  const leftBox = profile.querySelector('.employment-left-box');
+  const rightBox = profile.querySelector('.employment-right-box');
+  const governmentBox = profile.querySelector('.government-box');
+
+  if (!leftBox || !rightBox || !governmentBox) return;
+
+  const gap = leftBox.offsetHeight - rightBox.offsetHeight;
+  const extraLiftPx = 90;
+  governmentBox.style.marginTop = gap > 0 ? `-${gap + extraLiftPx}px` : `-${extraLiftPx}px`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  syncGovernmentBoxOffset();
+  window.addEventListener('resize', syncGovernmentBoxOffset);
+
+  const profile = document.getElementById('profile-form');
+  if (!profile || typeof MutationObserver === 'undefined') return;
+
+  const observer = new MutationObserver(() => {
+    syncGovernmentBoxOffset();
+  });
+
+  observer.observe(profile, {
+    subtree: true,
+    childList: true,
+    characterData: true,
+  });
+});
 </script>
 
 

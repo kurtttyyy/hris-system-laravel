@@ -65,8 +65,8 @@
                             <p class="text-sm text-gray-500">Leave Days</p>
                         </div>
                         <div class="bg-gray-50 p-4 rounded-lg">
-                            <p class="text-xl font-bold">A+</p>
-                            <p class="text-sm text-gray-500">Performance</p>
+                            <p class="text-xl font-bold {{ $employmentStatusClass ?? 'text-emerald-600' }}">{{ $employmentStatus ?? 'Active' }}</p>
+                            <p class="text-sm text-gray-500">Status</p>
                         </div>
                     </div>
                 </div>

@@ -18,21 +18,27 @@ class ApplicantController extends Controller
             'email' => 'required|string',
             'phone' => 'required|string',
             'address' => 'required|string',
-            'education' => 'required|string',
-            'field_study' => 'required|string',
+            'bachelor_degree' => 'required|string',
+            'bachelor_school_name' => 'required|string',
+            'bachelor_year_finished' => 'required|string',
+            'master_degree' => 'nullable|string',
+            'master_school_name' => 'required_with:master_degree|nullable|string',
+            'master_year_finished' => 'required_with:master_degree|nullable|string',
+            'doctoral_degree' => 'nullable|string',
+            'doctoral_school_name' => 'required_with:doctoral_degree|nullable|string',
+            'doctoral_year_finished' => 'required_with:doctoral_degree|nullable|string',
             'position' => 'required|exists:open_positions,id',
+            'fresh_graduate' => 'nullable|boolean',
             'experience_years' => 'required|string',
             'key_skills' => 'required|string',
             'documents' => 'required|array',
             'documents.*.file' => 'required|file|mimes:pdf,doc,docx|max:5120',
             'documents.*.type' => 'required',
-            'university_name' => 'required',
             'university_address' => 'required',
-            'year_complete' => 'required',
-            'work_position' => 'required',
-            'work_employer' => 'required',
-            'work_location' => 'required',
-            'work_duration' => 'required',
+            'work_position' => 'required_unless:fresh_graduate,1|nullable|string',
+            'work_employer' => 'required_unless:fresh_graduate,1|nullable|string',
+            'work_location' => 'required_unless:fresh_graduate,1|nullable|string',
+            'work_duration' => 'required_unless:fresh_graduate,1|nullable|string',
             'experience_years' => 'required',
         ]);
 
@@ -53,20 +59,27 @@ class ApplicantController extends Controller
             'email' => $attrs['email'],
             'phone' => $attrs['phone'],
             'address' => $attrs['address'],
-            'education_attainment' => $attrs['education'],
-            'field_study' => $attrs['field_study'],
+            'field_study' => $attrs['bachelor_degree'],
+            'bachelor_degree' => $attrs['bachelor_degree'],
+            'bachelor_school_name' => $attrs['bachelor_school_name'],
+            'bachelor_year_finished' => $attrs['bachelor_year_finished'],
+            'master_degree' => $attrs['master_degree'] ?? null,
+            'master_school_name' => $attrs['master_school_name'] ?? null,
+            'master_year_finished' => $attrs['master_year_finished'] ?? null,
+            'doctoral_degree' => $attrs['doctoral_degree'] ?? null,
+            'doctoral_school_name' => $attrs['doctoral_school_name'] ?? null,
+            'doctoral_year_finished' => $attrs['doctoral_year_finished'] ?? null,
             'experience_years' => $attrs['experience_years'],
             'skills_n_expertise' => $attrs['key_skills'],
             'open_position_id' => $attrs['position'],
             'application_status' => 'pending',
-            'university_name' => $attrs['university_name'],
+            'fresh_graduate' => (bool) ($attrs['fresh_graduate'] ?? false),
             'university_address' => $attrs['university_address'],
-            'year_complete' => $attrs['year_complete'],
-            'work_position' => $attrs['work_position'],
-            'work_employer' => $attrs['work_employer'],
-            'work_location' => $attrs['work_location'],
-            'work_duration' => $attrs['work_duration'],
-            'experience_years' => $attrs['experience_years'],
+            'work_position' => !empty($attrs['fresh_graduate']) ? null : ($attrs['work_position'] ?? null),
+            'work_employer' => !empty($attrs['fresh_graduate']) ? null : ($attrs['work_employer'] ?? null),
+            'work_location' => !empty($attrs['fresh_graduate']) ? null : ($attrs['work_location'] ?? null),
+            'work_duration' => !empty($attrs['fresh_graduate']) ? null : ($attrs['work_duration'] ?? null),
+            'experience_years' => !empty($attrs['fresh_graduate']) ? '0-1' : $attrs['experience_years'],
         ]);
 
 
@@ -97,7 +110,39 @@ class ApplicantController extends Controller
             }
         });
 
-        return redirect()->route('guest.index')->with('success', 'Submitted successfully');
+        return redirect()->route('guest.index')
+            ->with('success', 'Submitted successfully')
+            ->with('show_rating_modal', true);
+    }
+
+    public function store_rating(Request $request)
+    {
+        $attrs = $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+        ]);
+
+        $applicantEmail = session('applicant_email');
+        if (!$applicantEmail) {
+            return redirect()->route('guest.index')
+                ->with('popup_error', 'Unable to save rating. Please submit an application first.');
+        }
+
+        $applicant = Applicant::query()
+            ->whereRaw('LOWER(email) = ?', [Str::lower($applicantEmail)])
+            ->latest('id')
+            ->first();
+
+        if (!$applicant) {
+            return redirect()->route('guest.index')
+                ->with('popup_error', 'Unable to save rating. Applicant record was not found.');
+        }
+
+        $applicant->update([
+            'starRatings' => (string) $attrs['rating'],
+        ]);
+
+        return redirect()->route('guest.index')
+            ->with('success', 'Thank you for rating the system.');
     }
 
     public function display_application(Request $request){

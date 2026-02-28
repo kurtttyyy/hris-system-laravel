@@ -65,6 +65,104 @@
 </div>
 @endif
 
+@if(session('show_rating_modal') || session('success') === 'Submitted successfully')
+<style>
+    .rating-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    .rating-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        padding: 0.6rem 0.8rem;
+        cursor: pointer;
+        background: #fff;
+    }
+    .rating-option:hover {
+        background: #f9fafb;
+        border-color: #86efac;
+    }
+    .btn-check:checked + .rating-option {
+        border-color: #16a34a;
+        background: #f0fdf4;
+    }
+    .rating-stars {
+        color: #eab308;
+        letter-spacing: 1px;
+        font-size: 1rem;
+        line-height: 1;
+    }
+    .rating-label {
+        font-size: 0.9rem;
+        color: #374151;
+        font-weight: 600;
+    }
+</style>
+<div class="modal fade" id="applicationRatingModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rate Your Application Experience</h5>
+            </div>
+            <form method="POST" action="{{ route('applicant.rating.store') }}">
+                @csrf
+                <div class="modal-body">
+                    <p class="mb-3">Thank you for submitting your application. Please rate the system.</p>
+                    <div class="rating-grid">
+                        <input type="radio" class="btn-check" name="rating" id="rate5" value="5" required>
+                        <label class="rating-option" for="rate5">
+                            <span class="rating-label">Excellent</span>
+                            <span class="rating-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+                        </label>
+
+                        <input type="radio" class="btn-check" name="rating" id="rate4" value="4" required>
+                        <label class="rating-option" for="rate4">
+                            <span class="rating-label">Very Good</span>
+                            <span class="rating-stars">&#9733;&#9733;&#9733;&#9733;</span>
+                        </label>
+
+                        <input type="radio" class="btn-check" name="rating" id="rate3" value="3" required>
+                        <label class="rating-option" for="rate3">
+                            <span class="rating-label">Good</span>
+                            <span class="rating-stars">&#9733;&#9733;&#9733;</span>
+                        </label>
+
+                        <input type="radio" class="btn-check" name="rating" id="rate2" value="2" required>
+                        <label class="rating-option" for="rate2">
+                            <span class="rating-label">Fair</span>
+                            <span class="rating-stars">&#9733;&#9733;</span>
+                        </label>
+
+                        <input type="radio" class="btn-check" name="rating" id="rate1" value="1" required>
+                        <label class="rating-option" for="rate1">
+                            <span class="rating-label">Poor</span>
+                            <span class="rating-stars">&#9733;</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Submit Rating</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+<style>
+    #jobList .hover-card:hover {
+        border-color: #22c55e !important;
+        box-shadow:
+            0 28px 60px rgba(34, 197, 94, 0.45),
+            0 0 0 6px rgba(34, 197, 94, 0.30),
+            0 0 34px rgba(34, 197, 94, 0.42) !important;
+    }
+</style>
+
 <main>
 <section class="hero text-white py-5 position-relative overflow-hidden">
 
@@ -170,7 +268,7 @@
                 <div class="col-6 col-md-3">
                     <div class="stat-card bg-white rounded p-3 animated-card delay-5">
                         <div class="stat-number fw-bold display-6">
-                            4.8<span class="star">★</span>
+                            {{ is_null($companyRating ?? null) ? '0.0' : number_format((float) $companyRating, 1) }}<span class="star">★</span>
                         </div>
                         <div class="stat-label small text-muted">Company Rating</div>
                     </div>
@@ -190,18 +288,19 @@
                 data-location="{{ Str::lower($position->location) }}"
                 data-description="{{ Str::lower($position->job_description) }}"
             >
-                <div class="card p-3 rounded shadow-sm mb-4 animated-card delay-5 hover-card border-1">
+                <div class="card p-3 rounded shadow-lg mb-4 animated-card delay-5 hover-card border-1">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <h5 class="fw-bold mb-1">{{ $position->title }}</h5>
                         @php
                             $postedDays = $position->created_at
-                                ? now()->diffInDays($position->created_at)
+                                ? now()->diffInDays($position->created_at, true)
                                 : null;
+                            $postedDaysWhole = is_null($postedDays) ? null : (int) floor($postedDays);
                         @endphp
-                        @if (!is_null($postedDays) && $postedDays <= 3)
+                        @if (!is_null($postedDaysWhole) && $postedDaysWhole <= 3)
                             <span class="badge bg-success">New</span>
-                        @elseif (!is_null($postedDays))
-                            <span class="badge bg-secondary">{{ $postedDays }} {{ $postedDays === 1 ? 'day' : 'days' }} posted</span>
+                        @elseif (!is_null($postedDaysWhole))
+                            <span class="badge bg-secondary">{{ $postedDaysWhole }} {{ $postedDaysWhole === 1 ? 'day' : 'days' }} ago</span>
                         @endif
                     </div>
 
@@ -320,6 +419,17 @@
         if (!modalEl) return;
         const popup = new bootstrap.Modal(modalEl);
         popup.show();
+    });
+</script>
+@endif
+
+@if(session('show_rating_modal') || session('success') === 'Submitted successfully')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ratingModalEl = document.getElementById('applicationRatingModal');
+        if (!ratingModalEl) return;
+        const ratingPopup = new bootstrap.Modal(ratingModalEl);
+        ratingPopup.show();
     });
 </script>
 @endif

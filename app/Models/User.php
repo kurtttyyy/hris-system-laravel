@@ -96,4 +96,19 @@ class User extends Authenticatable
     public function salary(){
         return $this->hasOne(Salary::class, 'user_id', 'id');
     }
+
+    public function resignations()
+    {
+        return $this->hasMany(Resignation::class, 'user_id', 'id');
+    }
+
+    public function positionHistories()
+    {
+        return $this->hasMany(EmployeePositionHistory::class, 'user_id', 'id');
+    }
+
+    public function leaveApplications()
+    {
+        return $this->hasMany(LeaveApplication::class, 'user_id', 'id');
+    }
 }

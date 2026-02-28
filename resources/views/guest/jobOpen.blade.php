@@ -2,6 +2,15 @@
 
 @section('content')
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+    .job-open-item.hover-card:hover {
+        border-color: #22c55e !important;
+        box-shadow:
+            0 28px 60px rgba(34, 197, 94, 0.45),
+            0 0 0 6px rgba(34, 197, 94, 0.30),
+            0 0 34px rgba(34, 197, 94, 0.42) !important;
+    }
+</style>
 
 @include('layouts.header')
 
@@ -23,7 +32,7 @@
         </div>
     </form>
 
-<div class="job-open-item card shadow-sm mb-4 hover-card"
+<div class="job-open-item card shadow-lg mb-4 hover-card"
     data-title="{{ Str::lower($job->title) }}"
     data-department="{{ Str::lower($job->department) }}"
     data-location="{{ Str::lower($job->location) }}"
@@ -69,14 +78,14 @@
             <a href="javascript:void(0)"
                class="fw-semibold text-success text-decoration-none view-details"
                data-job-id="{{ $job->id }}">
-                View Details →
+                View Details
             </a>
         </div>
     </div>
 </div>
 
 @foreach ($other as $others)
-    <div class="job-open-item card shadow-sm mb-4 hover-card"
+    <div class="job-open-item card shadow-lg mb-4 hover-card"
         data-title="{{ Str::lower($others->title) }}"
         data-department="{{ Str::lower($others->department) }}"
         data-location="{{ Str::lower($others->location) }}"
@@ -122,7 +131,7 @@
                 <a href="javascript:void(0)"
                    class="fw-semibold text-success text-decoration-none view-details"
                    data-job-id="{{ $others->id }}">
-                    View Details →
+                    View Details
                 </a>
             </div>
         </div>
@@ -146,64 +155,67 @@
         <h3 id="sidebarTitle"></h3>
         <h6 class="text-secondary" id="sidebarCollege"></h6>
 
-        <p class="mb-1">
-            <i class="bi bi-clock-fill me-1"></i>
-            <span id="sidebarType"></span>
-        </p>
+        <div class="sidebar-meta-row">
+            <span class="job-chip">
+                <i class="bi bi-clock-fill"></i>
+                <span id="sidebarType"></span>
+            </span>
+            <span class="job-chip">
+                <i class="bi bi-geo-alt-fill"></i>
+                <span id="sidebarLocationText"></span>
+            </span>
+        </div>
 
-        <p>
-            <i class="bi bi-geo-alt-fill me-1"></i>
-            <span id="sidebarLocationText"></span>
-        </p>
-
-        <p>
-            <i class="bi bi-geo-alt-fill me-1"></i>
-            <span id="sidebarStartText"></span>
-        </p>
-
-        <p>
-            <i class="bi bi-geo-alt-fill me-1"></i>
-            <span id="sidebarExpireText"></span>
-        </p>
+        <div class="sidebar-date-row">
+            <span class="job-chip-outline">
+                <strong>Date Posted:</strong>
+                <span id="sidebarStartText"></span>
+            </span>
+            <span class="job-chip-outline">
+                <strong>Date Expired:</strong>
+                <span id="sidebarExpireText"></span>
+            </span>
+        </div>
     </div>
 
     <div class="sidebar-body">
-        <!-- SKILL REQUIREMENTS BOX -->
-        <div class="card mb-4">
-            <div class="card-body">
-
-            <h6 class=" mb-2">Skill Requirements:</h6>
-
+        <div class="job-detail-card mb-4">
+            <h6 class="mb-2 section-title-inline">Skill Requirements</h6>
             <div
                 id="sidebarSkills"
                 class="d-flex flex-wrap gap-2 justify-content-center mt-2">
             </div>
-
-            </div>
         </div>
 
-        <h6 class="section-title">Job Description</h6>
-        <ul id="sidebarDescription" class="list-unstyled ps-0"></ul>
+        <div class="job-detail-card mb-4">
+            <h6 class="section-title">Job Description</h6>
+            <ul id="sidebarDescription" class="list-unstyled ps-0"></ul>
 
-        <h6 class="section-title">Responsibilities</h6>
-        <ul id="sidebarResponsibilities" class="list-unstyled ps-0"></ul>
+            <h6 class="section-title">Responsibilities</h6>
+            <ul id="sidebarResponsibilities" class="list-unstyled ps-0"></ul>
 
-        <h6 class="section-title">Qualifications</h6>
-        <ul id="sidebarQualifications" class="list-unstyled ps-0"></ul>
+            <h6 class="section-title">Qualifications</h6>
+            <ul id="sidebarQualifications" class="list-unstyled ps-0"></ul>
 
-        <h6 class="section-title">Benefits</h6>
-        <ul id="sidebarBenefits" class="list-unstyled ps-0"></ul>
+            <h6 class="section-title">Benefits</h6>
+            <ul id="sidebarBenefits" class="list-unstyled ps-0"></ul>
+        </div>
 
-        <div class="text-center mt-3 hover-card">
+        <div class="text-center mt-3">
             <a href="#" id="applyJobBtn" class="btn btn-success w-100">
                 Apply Now
             </a>
+            <p class="apply-subtext">Takes less than 3 minutes</p>
         </div>
 
         <hr>
 
         <h6 class="section-title">Related Jobs Open</h6>
         <div id="otherJobs"></div>
+        <div id="relatedJobsEmpty" class="related-empty d-none">
+            No related openings right now.
+            <a href="{{ route('guest.index') }}">Browse all jobs</a>
+        </div>
     </div>
 </div>
 
@@ -290,16 +302,25 @@
         });
     }
 
-    function populateOtherJobs(currentJob) {
+function populateOtherJobs(currentJob) {
     const container = document.getElementById('otherJobs');
+    const emptyState = document.getElementById('relatedJobsEmpty');
     container.innerHTML = '';
 
-    allJobs
+    const relatedJobs = allJobs
         .filter(j =>
             j.id !== currentJob.id &&
             j.department === currentJob.department
-        )
-        .forEach(job => {
+        );
+
+    if (!relatedJobs.length) {
+        if (emptyState) emptyState.classList.remove('d-none');
+        return;
+    }
+
+    if (emptyState) emptyState.classList.add('d-none');
+
+    relatedJobs.forEach(job => {
             const div = document.createElement('div');
             div.className =
                 'border rounded p-2 mb-2 d-flex justify-content-between align-items-center cursor-pointer';

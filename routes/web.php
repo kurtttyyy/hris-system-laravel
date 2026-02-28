@@ -27,6 +27,7 @@ Route::controller(GuestPageController::class)->group(function () {
 
 Route::controller(ApplicantController::class)->group(function () {
     Route::post('applicant/store', 'applicant_stores')->name('applicant.store');
+    Route::post('applicant/rating', 'store_rating')->name('applicant.rating.store');
     Route::post('/application', 'display_application')->name('guest.application');
 });
 
@@ -67,6 +68,7 @@ Route::controller(AdministratorPageController::class)->group(function () {
     Route::get('system/attendance/total-employee', 'display_attendance_total_employee')->name('admin.attendance.totalEmployee');
     Route::get('system/leave/management', 'display_leave')->name('admin.adminLeaveManagement');
     Route::get('system/payslip', 'display_payslip')->name('admin.adminPayslip');
+    Route::get('system/payslip/view', 'display_payslip_view')->name('admin.adminPaySlipView');
     Route::get('system/resignations', 'display_resignations')->name('admin.adminResignations');
     Route::get('system/reports', 'display_reports')->name('admin.adminReports');
     Route::get('system/compare/code', 'display_compare')->name('admin.compareCode');
@@ -100,6 +102,7 @@ Route::controller(AdministratorStoreController::class)->group(function () {
     Route::post('system/store/interview', 'store_interview')->name('admin.storeNewInterview');
     Route::post('system/employee/document', 'store_document')->name('admin.addDocument');
     Route::post('system/attendance/upload', 'store_attendance_excel')->name('admin.uploadAttendanceExcel');
+    Route::post('system/payslip/upload', 'store_payslip_file')->name('admin.uploadPayslipFile');
     Route::post('system/employee/document/requirements', 'store_required_documents')->name('admin.saveRequiredDocuments');
 
     //UPDATE
@@ -114,6 +117,7 @@ Route::controller(AdministratorStoreController::class)->group(function () {
     Route::post('system/calendar/hidden-official-holidays/sync', 'sync_hidden_official_holidays')->name('admin.syncHiddenOfficialHolidays');
     Route::post('admin/attendance/update-status/{id}', 'update_attendance_status')->name('admin.updateAttendanceStatus');
     Route::post('admin/attendance/delete/{id}', 'delete_attendance_file')->name('admin.deleteAttendanceFile');
+    Route::post('admin/payslip/update-status/{id}', 'scan_payslip_file')->name('admin.scanPayslipFile');
 
 
     //DELETE

@@ -36,7 +36,7 @@
                            opacity-0 invisible group-hover:opacity-100
                            group-hover:visible transition-all duration-200 z-50">
 
-                    <a href="#"
+                    <a href="{{ route('employee.employeeProfile') }}"
                        class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-100">
                         <i class="fa fa-user"></i>
                         My Profile
@@ -48,11 +48,16 @@
                         Settings
                     </a>
 
-                    <a href="#"
-                       class="flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50">
-                        <i class="fa fa-sign-out"></i>
-                        Logout
-                    </a>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button
+                            type="submit"
+                            class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50"
+                        >
+                            <i class="fa fa-sign-out"></i>
+                            Logout
+                        </button>
+                    </form>
                 </div>
             </div>
 

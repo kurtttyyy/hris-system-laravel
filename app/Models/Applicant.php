@@ -16,19 +16,26 @@ class Applicant extends Model
         'email',
         'phone',
         'address',
-        'education_attainment',
+        'bachelor_degree',
+        'bachelor_school_name',
+        'bachelor_year_finished',
+        'master_degree',
+        'master_school_name',
+        'master_year_finished',
+        'doctoral_degree',
+        'doctoral_school_name',
+        'doctoral_year_finished',
         'field_study',
         'skills_n_expertise',
         'open_position_id',
         'application_status',
         'user_id',
-        'university_name',
         'university_address',
-        'year_complete',
         'work_position',
         'work_employer',
         'work_location',
         'work_duration',
+        'fresh_graduate',
         'starRatings',
         'experience_years',
     ];
@@ -48,6 +55,7 @@ class Applicant extends Model
 
     protected $casts = [
         'date_hired' => 'date',
+        'fresh_graduate' => 'boolean',
         'starRatings' => 'integer',
     ];
 

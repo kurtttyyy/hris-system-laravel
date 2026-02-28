@@ -58,9 +58,7 @@
 <form id="leave-application-form" method="POST" action="{{ route('employee.leaveApplication.store') }}" class="space-y-6">
     @csrf
 
-    <div id="leave-application-print-area" class="space-y-5 rounded-lg border-2 border-black bg-white p-6 text-sm text-black">
-        <h4 class="text-center text-base font-bold tracking-wide uppercase">Leave Application Form</h4>
-
+    <div id="leave-application-print-area" class="space-y-5  border border-black bg-white p-6 text-sm text-black">
         <div class="print-row-two grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
                 <label class="mb-1 block font-medium">Office / Department</label>
@@ -298,7 +296,20 @@
     </div>
 </form>
 
+<section id="leave-application-instructions" class="-mt-4 bg-white p-4 text-xs leading-relaxed" style="margin-top: -60px;">
+    <p class="font-bold uppercase">Instructions:</p>
+    <ol class="mt-1 list-decimal space-y-1 pl-5">
+        <li style="margin-bottom: -7px">Application for vacation or sick leave for one full day or more shall be made on this form and to be accomplished at least in a duplicate.</li>
+        <li style="margin-bottom: -7px">Application for vacation leave shall be filed five (5) days in advance before going on such leave.</li>
+        <li style="margin-bottom: -7px">Application for sick leave filed in advance or exceeding five (5) days shall be accompanied by a medical certificate.</li>
+        <li style="margin-bottom: -7px">An employee who is absent without approved leave shall not be entitled salary corresponding to the period of absence.</li>
+        <li style="margin-bottom: -7px">Application for leave of absence for thirty (30) calendar days or more shall be accompanied by clearance from money and property accountabilities.</li>
+    </ol>
+    <p class="mt-4">NC HR Form No. 14 -Leave Application Form Rev. 01</p>
+</section>
+
 <script>
+    const leaveApplicationLogoUrl = @json(asset('images/logo.png'));
     const leaveBalanceState = {
         availableVacation: {{ json_encode((float) $availableVacationDays) }},
         availableSick: {{ json_encode((float) $availableSickDays) }},
@@ -521,17 +532,22 @@
             return false;
         }
 
-        const payload = new FormData(form);
-        const response = await fetch(form.action, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-            },
-            body: payload,
-        });
+        try {
+            const payload = new FormData(form);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                body: payload,
+            });
 
-        return response.ok;
+            return response.ok;
+        } catch (error) {
+            console.error('Error saving leave application', error);
+            return false;
+        }
     }
 
     async function downloadLeaveApplicationForm() {
@@ -542,11 +558,11 @@
         updateLeaveSummaryTable();
         const isSaved = await saveLeaveApplicationRecord();
         if (!isSaved) {
-            console.error('Failed to save leave application');
-            return;
+            console.warn('Leave application was not saved, continuing with download.');
         }
 
         const printArea = document.getElementById('leave-application-print-area');
+        const instructionsArea = document.getElementById('leave-application-instructions');
         if (!printArea) {
             return;
         }
@@ -571,15 +587,34 @@
                 ${styles}
                 <style>
                     body { margin: 0; padding: 0; background: #fff; }
+                    .print-form-header {
+                        text-align: center;
+                        padding-top: 8px;
+                    }
+                    .print-form-header img {
+                        height: 96px;
+                        width: auto;
+                        margin: 0 auto 6px;
+                    }
                     #leave-application-print-area {
                         margin-left: 2px !important;
                         margin-right: 2px !important;
                         padding-left: 10px !important;
                         padding-right: 10px !important;
                     }
+                    #leave-application-instructions {
+                        margin-top: 8px !important;
+                    }
                 </style>
             </head>
-            <body>${buildLeaveApplicationPrintMarkup(printArea)}</body>
+            <body>
+                <div class="print-form-header">
+                    <img src="${leaveApplicationLogoUrl}" alt="Logo">
+                    <h3>LEAVE APPLICATION FORM</h3>
+                </div>
+                ${buildLeaveApplicationPrintMarkup(printArea)}
+                ${instructionsArea ? instructionsArea.outerHTML : ''}
+            </body>
             </html>
         `);
         printWindow.document.close();
@@ -592,3 +627,4 @@
         };
     }
 </script>
+

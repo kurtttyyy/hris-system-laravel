@@ -189,14 +189,20 @@
 
 <div class="w-full md:flex-1 min-w-0 p-8 space-y-6 bg-white rounded-2xl border border-gray-200 overflow-x-auto text-base">
     @if ($activeEmployeeForm === 'official')
-        <h3 class="text-xl font-bold text-gray-900 mb-4">Apply for Business</h3>
+        <div class="mb-4 text-center">
+            <img src="{{ asset('images/logo.png') }}" alt="Logo" class="mx-auto mb-2 h-28 w-auto">
+            <h3 class="text-xl font-bold text-gray-900">OFFICE OF THE HUMAN RESOURCE</h3>
+            <h3 class="text-xl font-bold text-gray-900">APPLICATION FOR OFFICIAL BUSINESS / OFFICIAL TIME</h3>
+        </div>
         @include('requestForm.applicationOBF')
     @else
-        <h3 class="text-xl font-bold text-gray-900 mb-4">Apply for Leave</h3>
+        <div class="mb-4 text-center">
+            <img src="{{ asset('images/logo.png') }}" alt="Logo" class="mx-auto mb-2 h-28 w-auto">
+            <h3 class="text-xl font-bold text-gray-900">LEAVE APPLICATION FORM</h3>
+        </div>
         @include('requestForm.leaveApplicationForm')
     @endif
 </div>
-
 
 </div>
 
@@ -225,4 +231,6 @@
 
 </body>
 </html>
+
+
 

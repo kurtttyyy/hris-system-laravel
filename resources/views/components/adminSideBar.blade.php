@@ -170,21 +170,20 @@
     <div class="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white font-semibold">{{ $adminInitials }}</div>
     <div class="text-sm inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">
       <div class="flex items-center gap-2">
+        <p class="font-medium truncate">{{ $adminDisplayName }}</p>
         <form method="POST" action="{{ route('logout') }}" class="inline-flex">
           @csrf
           <button
             type="submit"
-            class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 text-slate-200 hover:bg-slate-800"
+            class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 text-slate-200 hover:border-red-500 hover:bg-red-600 hover:text-white"
             title="Logout"
             aria-label="Logout"
           >
             <i class="fa-solid fa-right-from-bracket"></i>
           </button>
         </form>
-        <p class="font-medium truncate">{{ $adminDisplayName }}</p>
       </div>
       <p class="text-slate-400">{{ $adminRoleLabel }}</p>
     </div>
   </div>
 </aside>
-

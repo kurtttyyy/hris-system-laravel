@@ -67,6 +67,18 @@ class RegisterLoginController extends Controller
             'password' => 'required|string',
         ]);
 
+        $user = User::query()
+            ->where('email', $attrs['email'])
+            ->first();
+
+        if ($user && strtolower(trim((string) ($user->account_status ?? ''))) === 'inactive') {
+            return back()
+                ->withErrors([
+                    'email' => 'Your account is inactive. Please contact HR.',
+                ])
+                ->withInput();
+        }
+
         if (Auth::attempt([
             'email'    => $attrs['email'],
             'password' => $attrs['password'],

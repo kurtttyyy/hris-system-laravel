@@ -59,7 +59,7 @@
             @csrf
 
             <!-- APPLICATION FORM FOR OFFICIAL BUSINESS AND OFFICIAL TIME -->
-            <div id="application-obf-print-area" class="border-2 border-black p-6 rounded-lg space-y-4 ">
+            <div id="application-obf-print-area" class="border border-black p-6  space-y-4 ">
 
                 <h4 class="text-center font-semibold text-gray-800 mb-6 tracking-wide uppercase">
                     APPLICATION FORM FOR OFFICIAL BUSINESS AND OFFICIAL TIME
@@ -116,7 +116,6 @@
                             <div>
                                 <label class="text-sm font-medium">Type of Leave</label>
                                 <div class="space-y-1 text-sm">
-                                    <label><input id="obf-type-business" type="checkbox" class="mr-2">Official Business</label><br>
                                     <label><input id="obf-type-time" type="checkbox" class="mr-2">Official Time</label><br>
                                     <label class="block">
                                         <input id="obf-type-others" type="checkbox" class="mr-2">
@@ -180,6 +179,7 @@
 
                     </div>
                 </div>
+                
 
 
 
@@ -304,22 +304,28 @@
             <input type="hidden" name="ending_total" id="obf-ending-total-hidden" value="{{ (float) ($obfAvailableVacationDays + $obfAvailableSickDays) }}">
             <input type="hidden" name="days_with_pay" id="obf-days-with-pay-hidden" value="0">
             <input type="hidden" name="days_without_pay" id="obf-days-without-pay-hidden" value="0">
+        </div>
+                
 
-            <!-- Download Button -->
-            <div class="flex justify-end">
-                <button
-                    id="application-obf-download-button"
-                    type="button"
-                    onclick="downloadApplicationOBFForm()"
-                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                    Download Form
-                </button>
-            </div>
-            
         </form>
+            <p class="mt-4">NC HR Form No. 13 - Application for Official Business and Official Time Rev. 01</p>
+
+
+        <div class="mt-6 flex justify-end">
+            <button
+                id="application-obf-download-button"
+                type="button"
+                onclick="downloadApplicationOBFForm()"
+                class="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700"
+            >
+                Download Form
+            </button>
+        </div>
+
+
 
         <script>
+            const applicationOBFLogoUrl = @json(asset('images/logo.png'));
             const obfLeaveBalanceState = {
                 beginningVacation: {{ json_encode((float) ($beginningVacationBalance ?? 0)) }},
                 beginningSick: {{ json_encode((float) ($beginningSickBalance ?? 0)) }},
@@ -368,14 +374,9 @@
 
             function deriveOBFLeaveTypeValue() {
                 const types = [];
-                const businessCheckbox = document.getElementById('obf-type-business');
                 const timeCheckbox = document.getElementById('obf-type-time');
                 const othersCheckbox = document.getElementById('obf-type-others');
                 const otherTypeInput = document.getElementById('obf-other-type');
-
-                if (businessCheckbox?.checked) {
-                    types.push('Official Business');
-                }
                 if (timeCheckbox?.checked) {
                     types.push('Official Time');
                 }
@@ -499,17 +500,22 @@
                 }
                 updateOBFPayDays();
 
-                const payload = new FormData(form);
-                const response = await fetch(form.action, {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                    },
-                    body: payload,
-                });
+                try {
+                    const payload = new FormData(form);
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                        },
+                        body: payload,
+                    });
 
-                return response.ok;
+                    return response.ok;
+                } catch (error) {
+                    console.error('Error saving OBF application', error);
+                    return false;
+                }
             }
 
             document.getElementById('obf-working-days')?.addEventListener('input', () => {
@@ -523,11 +529,11 @@
             async function downloadApplicationOBFForm() {
                 const isSaved = await saveApplicationOBFRecord();
                 if (!isSaved) {
-                    console.error('Failed to save OBF application');
-                    return;
+                    console.warn('OBF application was not saved, continuing with download.');
                 }
 
                 const printArea = document.getElementById('application-obf-print-area');
+                const instructionsArea = document.getElementById('application-obf-instructions');
                 if (!printArea) {
                     return;
                 }
@@ -556,6 +562,15 @@
                                 padding: 0;
                                 background: #fff;
                             }
+                            .print-form-header {
+                                text-align: center;
+                                padding-top: 8px;
+                            }
+                            .print-form-header img {
+                                height: 96px;
+                                width: auto;
+                                margin: 0 auto 6px;
+                            }
                             #obf-print-fit-wrapper {
                                 width: 100%;
                             }
@@ -570,9 +585,20 @@
                                 font-size: 1.1rem !important;
                                 line-height: 1.4 !important;
                             }
+                            #application-obf-instructions {
+                                margin-top: 8px !important;
+                            }
                         </style>
                     </head>
-                    <body><div id="obf-print-fit-wrapper">${buildApplicationOBFPrintMarkup(printArea)}</div></body>
+                    <body>
+                        <div class="print-form-header">
+                            <img src="${applicationOBFLogoUrl}" alt="Logo">
+                            <h3>OFFICE OF THE HUMAN RESOURCE</h3>
+                            <h3>APPLICATION FOR OFFICIAL BUSINESS / OFFICIAL TIME</h3>
+                        </div>
+                        <div id="obf-print-fit-wrapper">${buildApplicationOBFPrintMarkup(printArea)}</div>
+                        ${instructionsArea ? instructionsArea.outerHTML : ''}
+                    </body>
                     </html>
                 `);
                 printWindow.document.close();
@@ -592,3 +618,7 @@
                 };
             }
         </script>
+
+
+
+
