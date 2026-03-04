@@ -28,7 +28,19 @@ class AdministratorPageController extends Controller
     private array $holidayDateCheckCache = [];
 
     public function display_home(){
-        $employee = User::query()
+        $employee = User::with([
+                        'applicant.documents' => function ($query) {
+                            $query->select([
+                                'id',
+                                'applicant_id',
+                                'filename',
+                                'filepath',
+                                'type',
+                                'mime_type',
+                                'created_at',
+                            ])->orderByDesc('created_at');
+                        },
+                    ])
                         ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
                         ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
                         ->latest()
@@ -36,23 +48,49 @@ class AdministratorPageController extends Controller
         $accept = User::with([
             'employee',
             'applicant',
+            'applicant.documents' => function ($query) {
+                $query->select([
+                    'id',
+                    'applicant_id',
+                    'filename',
+                    'filepath',
+                    'type',
+                    'mime_type',
+                    'created_at',
+                ])->orderByDesc('created_at');
+            },
             'applicant.position:id,department',
         ])->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
                         ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
                         ->latest()
                         ->get();
         
-        // Get department overview
-        $departments = User::with('employee')
+        // Get department overview (prefer users.department as source of truth)
+        $resolveDepartmentName = function (User $user): string {
+            $userDepartment = trim((string) ($user->department ?? ''));
+            if ($userDepartment !== '') {
+                return $userDepartment;
+            }
+
+            $employeeDepartment = trim((string) (optional($user->employee)->department ?? ''));
+            if ($employeeDepartment !== '') {
+                return $employeeDepartment;
+            }
+
+            $applicantDepartment = trim((string) (optional(optional($user->applicant)->position)->department ?? ''));
+            return $applicantDepartment !== '' ? $applicantDepartment : 'Unassigned';
+        };
+
+        $departments = User::with(['employee', 'applicant.position:id,department'])
                         ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
                         ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
                         ->get()
-                        ->groupBy(function($user) {
-                            return $user->employee->department ?? 'Unassigned';
+                        ->groupBy(function ($user) use ($resolveDepartmentName) {
+                            return $resolveDepartmentName($user);
                         })
-                        ->map(function($group) {
+                        ->map(function ($group) use ($resolveDepartmentName) {
                             return [
-                                'name' => $group->first()->employee->department ?? 'Unassigned',
+                                'name' => $resolveDepartmentName($group->first()),
                                 'count' => $group->count()
                             ];
                         })
@@ -224,6 +262,17 @@ class AdministratorPageController extends Controller
                 ->where('type', 'not like', '__REQUIRED__::%')
                 ->where('type', '!=', '__NOTICE__')
                 ->orderByDesc('created_at');
+            },
+            'applicant.degrees' => function ($query) {
+                $query->select([
+                    'id',
+                    'applicant_id',
+                    'degree_level',
+                    'degree_name',
+                    'school_name',
+                    'year_finished',
+                    'sort_order',
+                ])->orderBy('degree_level')->orderBy('sort_order');
             },
             'applicant.position:id,title,department,employment,collage_name,work_mode,job_description,responsibilities,requirements,experience_level,location,skills,benifits,job_type,one,two,passionate',
             'employee',

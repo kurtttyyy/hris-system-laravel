@@ -23,6 +23,8 @@ class User extends Authenticatable
         'middle_name',
         'role',
         'job_role',
+        'position',
+        'department',
         'status',
         'account_status',
         'email',

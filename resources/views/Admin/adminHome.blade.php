@@ -113,17 +113,38 @@
             </thead>
             <tbody class="divide-y">
               @forelse($accept as $acc)
+              @php
+                $profilePhotoDocument = optional($acc->applicant)->documents
+                  ?->first(function ($doc) {
+                    return strtoupper(trim((string) ($doc->type ?? ''))) === 'PROFILE_PHOTO' && !empty($doc->filepath);
+                  });
+                if (!$profilePhotoDocument) {
+                  $profilePhotoDocument = optional($acc->applicant)->documents
+                    ?->first(function ($doc) {
+                      $mime = strtolower(trim((string) ($doc->mime_type ?? '')));
+                      $filename = strtolower(trim((string) ($doc->filename ?? '')));
+                      return !empty($doc->filepath) && (str_starts_with($mime, 'image/') || preg_match('/\.(png|jpe?g|gif|webp)$/i', $filename));
+                    });
+                }
+                $profilePhotoUrl = $profilePhotoDocument?->filepath ? asset('storage/'.$profilePhotoDocument->filepath) : null;
+              @endphp
               <tr>
                 <td class="py-3">
                   <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 bg-blue-500 rounded-full text-white flex items-center justify-center">{{ $acc->initials }}</div>
+                    <div class="w-9 h-9 bg-blue-500 rounded-full text-white flex items-center justify-center overflow-hidden">
+                      @if($profilePhotoUrl)
+                        <img src="{{ $profilePhotoUrl }}" alt="Employee Photo" class="w-full h-full object-cover cursor-zoom-in zoomable-profile-photo" />
+                      @else
+                        {{ $acc->initials }}
+                      @endif
+                    </div>
                     <div>
                       <p class="font-medium">{{ trim($acc->first_name.' '.$acc->middle_name.' '.$acc->last_name) }}</p>
                       <p class="text-xs text-slate-500">{{ $acc->email }}</p>
                     </div>
                   </div>
                 </td>
-                <td>{{ data_get($acc, 'employee.department') ?? data_get($acc, 'applicant.position.department') ?? 'Unassigned' }}</td>
+                <td>{{ $acc->department ?? data_get($acc, 'employee.department') ?? data_get($acc, 'applicant.position.department') ?? 'Unassigned' }}</td>
                     <td><span class="text-xs bg-emerald-100 text-emerald-600 px-2 py-1 rounded">Active</span></td>
                     <td>{{ $acc->created_at_formatted ?? '-' }}</td>
               </tr>
@@ -151,10 +172,31 @@
   </thead>
   <tbody class="divide-y">
     @forelse($employee as $e)
+    @php
+      $profilePhotoDocument = optional($e->applicant)->documents
+        ?->first(function ($doc) {
+          return strtoupper(trim((string) ($doc->type ?? ''))) === 'PROFILE_PHOTO' && !empty($doc->filepath);
+        });
+      if (!$profilePhotoDocument) {
+        $profilePhotoDocument = optional($e->applicant)->documents
+          ?->first(function ($doc) {
+            $mime = strtolower(trim((string) ($doc->mime_type ?? '')));
+            $filename = strtolower(trim((string) ($doc->filename ?? '')));
+            return !empty($doc->filepath) && (str_starts_with($mime, 'image/') || preg_match('/\.(png|jpe?g|gif|webp)$/i', $filename));
+          });
+      }
+      $profilePhotoUrl = $profilePhotoDocument?->filepath ? asset('storage/'.$profilePhotoDocument->filepath) : null;
+    @endphp
     <tr>
       <td class="py-3">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 bg-blue-500 rounded-full text-white flex items-center justify-center">{{ $e->initials }}</div>
+          <div class="w-9 h-9 bg-blue-500 rounded-full text-white flex items-center justify-center overflow-hidden">
+            @if($profilePhotoUrl)
+              <img src="{{ $profilePhotoUrl }}" alt="Employee Photo" class="w-full h-full object-cover cursor-zoom-in zoomable-profile-photo" />
+            @else
+              {{ $e->initials }}
+            @endif
+          </div>
           <div>
             <p class="font-medium">{{ trim($e->first_name.' '.$e->middle_name.' '.$e->last_name) }}</p>
             <p class="text-xs text-slate-500">{{ $e->email }}</p>
@@ -302,6 +344,10 @@
   </main>
 </div>
 
+<div id="photo-lightbox" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/80 p-6">
+  <img id="photo-lightbox-img" src="" alt="Zoomed employee photo" class="max-w-full max-h-full rounded-lg shadow-2xl object-contain" />
+</div>
+
 </body>
 
 <script>
@@ -317,6 +363,35 @@
       main.classList.add('ml-16');
     });
   }
+
+  const lightbox = document.getElementById('photo-lightbox');
+  const lightboxImg = document.getElementById('photo-lightbox-img');
+  const zoomablePhotos = document.querySelectorAll('.zoomable-profile-photo');
+
+  const closeLightbox = () => {
+    if (!lightbox || !lightboxImg) return;
+    lightbox.classList.add('hidden');
+    lightbox.classList.remove('flex');
+    lightboxImg.src = '';
+  };
+
+  zoomablePhotos.forEach((photo) => {
+    photo.addEventListener('click', () => {
+      const src = photo.getAttribute('src') || '';
+      if (!src) return;
+      lightboxImg.src = src;
+      lightbox.classList.remove('hidden');
+      lightbox.classList.add('flex');
+    });
+  });
+
+  lightbox?.addEventListener('click', (event) => {
+    if (event.target === lightbox) closeLightbox();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeLightbox();
+  });
 </script>
 
 <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>

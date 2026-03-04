@@ -53,6 +53,18 @@ class Applicant extends Model
         return $this->hasMany(ApplicantDocument::class, 'applicant_id', 'id');
     }
 
+    public function degrees()
+    {
+        return $this->hasMany(ApplicantDegree::class, 'applicant_id', 'id');
+    }
+
+    public function bachelorDegrees()
+    {
+        return $this->hasMany(ApplicantDegree::class, 'applicant_id', 'id')
+            ->where('degree_level', 'bachelor')
+            ->orderBy('sort_order');
+    }
+
     protected $casts = [
         'date_hired' => 'date',
         'fresh_graduate' => 'boolean',

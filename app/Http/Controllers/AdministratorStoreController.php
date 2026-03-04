@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AttendanceUpload;
 use App\Models\AttendanceRecord;
 use App\Models\Applicant;
+use App\Models\ApplicantDegree;
 use App\Models\ApplicantDocument;
 use App\Models\Education;
 use App\Models\Employee;
@@ -1938,8 +1939,20 @@ class AdministratorStoreController extends Controller
 
         $user = User::findOrFail($attrs['user_id']);
         $existingEmployee = Employee::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $existingGovernment = Government::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $existingLicense = License::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $existingEducation = Education::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $existingSalary = Salary::query()->where('user_id', (int) $attrs['user_id'])->first();
         $oldPosition = trim((string) ($existingEmployee?->position ?? ''));
         $oldClassification = trim((string) ($existingEmployee?->classification ?? ''));
+        $hasAllRequired = function (array $payload, array $requiredKeys): bool {
+            foreach ($requiredKeys as $key) {
+                if (!filled($payload[$key] ?? null)) {
+                    return false;
+                }
+            }
+            return true;
+        };
 
         $userPayload = [
             'first_name' => $attrs['first'],
@@ -2356,150 +2369,324 @@ class AdministratorStoreController extends Controller
         $attrs = $request->validate([
             //User Model
             'user_id' => 'required|exists:users,id',
-            'first' => 'required',
-            'middle' => 'required',
-            'last' => 'required',
+            'first' => 'required|string|max:255',
+            'middle' => 'nullable|string|max:255',
+            'last' => 'required|string|max:255',
 
             //Employee Model
-            'employee_id' => 'required',
-            'account_number' => 'required',
-            'gender' => 'required',
-            'civil_status' => 'required',
-            'contact_number' => 'required',
-            'birthday' => 'required|date',
-            'address' => 'required',
-            'employment_date' => 'required|date',
-            'position' => 'required',
-            'department' => 'required',
-            'classification' => 'required',
+            'employee_id' => 'nullable|string|max:255',
+            'account_number' => 'nullable|string|max:255',
+            'gender' => 'nullable|string|max:50',
+            'civil_status' => 'nullable|string|max:255',
+            'contact_number' => 'nullable|string|max:255',
+            'birthday' => 'nullable|date',
+            'address' => 'nullable|string|max:255',
+            'employment_date' => 'nullable|date',
+            'position' => 'nullable|string|max:255',
+            'department' => 'nullable|string|max:255',
+            'classification' => 'nullable|string|max:255',
             'job_type' => 'nullable|string|max:50',
             'emergency_contact_name' => 'nullable|string|max:255',
             'emergency_contact_relationship' => 'nullable|string|max:255',
             'emergency_contact_number' => 'nullable|string|max:255',
 
             //Government Model
-            'SSS' => 'required',
-            'TIN' => 'required',
-            'PhilHealth' => 'required',
-            'MID' => 'required',
-            'RTN' => 'required',
+            'SSS' => 'nullable|string|max:255',
+            'TIN' => 'nullable|string|max:255',
+            'PhilHealth' => 'nullable|string|max:255',
+            'MID' => 'nullable|string|max:255',
+            'RTN' => 'nullable|string|max:255',
 
             //License Model
-            'license' => 'required',
-            'registration_number' => 'required',
-            'registration_date' => 'required',
-            'valid_until' => 'required',
+            'license' => 'nullable|string|max:255',
+            'registration_number' => 'nullable|string|max:255',
+            'registration_date' => 'nullable|date',
+            'valid_until' => 'nullable|date',
 
             //Education Model
-            'bachelor' => 'required',
-            'master' => 'required',
-            'doctorate' => 'required',
+            'bachelor' => 'nullable|string|max:255',
+            'master' => 'nullable|string|max:255',
+            'doctorate' => 'nullable|string|max:255',
+            'bachelor_school_name' => 'nullable|string|max:255',
+            'bachelor_year_finished' => 'nullable|string|max:50',
+            'master_school_name' => 'nullable|string|max:255',
+            'master_year_finished' => 'nullable|string|max:50',
+            'doctoral_school_name' => 'nullable|string|max:255',
+            'doctoral_year_finished' => 'nullable|string|max:50',
+            'degree_inputs' => 'nullable|array',
+            'degree_inputs.bachelor' => 'nullable|array',
+            'degree_inputs.bachelor.*.degree_name' => 'nullable|string|max:255',
+            'degree_inputs.bachelor.*.school_name' => 'nullable|string|max:255',
+            'degree_inputs.bachelor.*.year_finished' => 'nullable|string|max:50',
+            'degree_inputs.master' => 'nullable|array',
+            'degree_inputs.master.*.degree_name' => 'nullable|string|max:255',
+            'degree_inputs.master.*.school_name' => 'nullable|string|max:255',
+            'degree_inputs.master.*.year_finished' => 'nullable|string|max:50',
+            'degree_inputs.doctorate' => 'nullable|array',
+            'degree_inputs.doctorate.*.degree_name' => 'nullable|string|max:255',
+            'degree_inputs.doctorate.*.school_name' => 'nullable|string|max:255',
+            'degree_inputs.doctorate.*.year_finished' => 'nullable|string|max:50',
 
             //Salary Model
-            'salary' => 'required',
-            'rate_per_hour' => 'required',
-            'cola' => 'required',
+            'salary' => 'nullable|string|max:255',
+            'rate_per_hour' => 'nullable|string|max:255',
+            'cola' => 'nullable|string|max:255',
+            'profile_picture' => 'nullable|file|mimes:jpg,jpeg,png,webp,gif|max:5120',
+            'remove_profile_picture' => 'nullable|boolean',
         ]);
 
         $user = User::findOrFail($attrs['user_id']);
         $existingEmployee = Employee::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $existingGovernment = Government::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $existingLicense = License::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $existingEducation = Education::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $existingSalary = Salary::query()->where('user_id', (int) $attrs['user_id'])->first();
         $oldPosition = trim((string) ($existingEmployee?->position ?? ''));
         $oldClassification = trim((string) ($existingEmployee?->classification ?? ''));
+        $hasAllRequired = function (array $payload, array $requiredKeys): bool {
+            foreach ($requiredKeys as $key) {
+                if (!filled($payload[$key] ?? null)) {
+                    return false;
+                }
+            }
+            return true;
+        };
 
         $user->update([
             //'' => $attrs[''],
             'first_name' => $attrs['first'],
-            'middle_name' => $attrs['middle'],
+            'middle_name' => $attrs['middle'] ?? null,
             'last_name' => $attrs['last'],
         ]);
 
-        Employee::updateOrCreate(
-            // 1️⃣ Condition to find the record
-            ['user_id' => $attrs['user_id']],
+        $employeePayload = [
+            'user_id' => $attrs['user_id'],
+            'employee_id' => $attrs['employee_id'] ?? ($existingEmployee?->employee_id ?? null),
+            'employement_date' => $attrs['employment_date'] ?? ($existingEmployee?->employement_date ?? null),
+            'birthday' => $attrs['birthday'] ?? ($existingEmployee?->birthday ?? null),
+            'account_number' => $attrs['account_number'] ?? ($existingEmployee?->account_number ?? null),
+            'sex' => $attrs['gender'] ?? ($existingEmployee?->sex ?? null),
+            'civil_status' => $attrs['civil_status'] ?? ($existingEmployee?->civil_status ?? null),
+            'contact_number' => $attrs['contact_number'] ?? ($existingEmployee?->contact_number ?? null),
+            'address' => $attrs['address'] ?? ($existingEmployee?->address ?? null),
+            'department' => $attrs['department'] ?? ($existingEmployee?->department ?? null),
+            'position' => $attrs['position'] ?? ($existingEmployee?->position ?? null),
+            'classification' => $attrs['classification'] ?? ($existingEmployee?->classification ?? null),
+            ...(Schema::hasColumn('employees', 'job_type')
+                ? ['job_type' => $this->resolveJobTypeFromOpenPositionForUser($attrs['user_id'])
+                    ?? $this->normalizeEmployeeJobType(($attrs['job_type'] ?? null) ?: ($attrs['classification'] ?? ($existingEmployee?->classification ?? null)))
+                    ?? ($existingEmployee?->job_type ?? null)]
+                : []),
+            'emergency_contact_name' => $attrs['emergency_contact_name'] ?? ($existingEmployee?->emergency_contact_name ?? null),
+            'emergency_contact_relationship' => $attrs['emergency_contact_relationship'] ?? ($existingEmployee?->emergency_contact_relationship ?? null),
+            'emergency_contact_number' => $attrs['emergency_contact_number'] ?? ($existingEmployee?->emergency_contact_number ?? null),
+        ];
 
-            // 2️⃣ Values to create or update
-            [
-                'user_id' => $attrs['user_id'],
-                'employee_id' => $attrs['employee_id'],
-                'employement_date' => $attrs['employment_date'],
-                'birthday' => $attrs['birthday'],
-                'account_number' => $attrs['account_number'],
-                'sex' => $attrs['gender'],
-                'civil_status' => $attrs['civil_status'],
-                'contact_number' => $attrs['contact_number'],
-                'address' => $attrs['address'],
-                'department' => $attrs['department'],
-                'position' => $attrs['position'],
-                'classification' => $attrs['classification'],
-                ...(Schema::hasColumn('employees', 'job_type')
-                    ? ['job_type' => $this->resolveJobTypeFromOpenPositionForUser($attrs['user_id'])
-                        ?? $this->normalizeEmployeeJobType($attrs['job_type'] ?? $attrs['classification'])]
-                    : []),
-                'emergency_contact_name' => $attrs['emergency_contact_name'] ?? null,
-                'emergency_contact_relationship' => $attrs['emergency_contact_relationship'] ?? null,
-                'emergency_contact_number' => $attrs['emergency_contact_number'] ?? null,
-            ]
-        );
+        if ($existingEmployee || $hasAllRequired($employeePayload, [
+            'employee_id',
+            'employement_date',
+            'birthday',
+            'account_number',
+            'sex',
+            'civil_status',
+            'contact_number',
+            'address',
+            'department',
+            'position',
+            'classification',
+        ])) {
+            Employee::updateOrCreate(
+                ['user_id' => $attrs['user_id']],
+                $employeePayload
+            );
+        }
 
         $this->recordCareerProgressionIfChanged(
             (int) $attrs['user_id'],
             $oldPosition,
-            trim((string) ($attrs['position'] ?? '')),
+            trim((string) ($employeePayload['position'] ?? ($existingEmployee?->position ?? ''))),
             $oldClassification,
-            trim((string) ($attrs['classification'] ?? '')),
+            trim((string) ($employeePayload['classification'] ?? ($existingEmployee?->classification ?? ''))),
             'Updated from profile edit'
         );
 
-        Government::updateOrCreate(
-            // 1️⃣ Condition to find the record
-            ['user_id' => $attrs['user_id']],
+        $governmentPayload = [
+            'SSS' => $attrs['SSS'] ?? ($existingGovernment?->SSS ?? null),
+            'TIN' => $attrs['TIN'] ?? ($existingGovernment?->TIN ?? null),
+            'PhilHealth' => $attrs['PhilHealth'] ?? ($existingGovernment?->PhilHealth ?? null),
+            'RTN' => $attrs['RTN'] ?? ($existingGovernment?->RTN ?? null),
+            'MID' => $attrs['MID'] ?? ($existingGovernment?->MID ?? null),
+        ];
+        if ($existingGovernment || $hasAllRequired($governmentPayload, ['SSS', 'TIN', 'PhilHealth', 'RTN', 'MID'])) {
+            Government::updateOrCreate(
+                ['user_id' => $attrs['user_id']],
+                $governmentPayload
+            );
+        }
 
-            // 2️⃣ Values to create or update
-            [
-                'SSS' => $attrs['SSS'],
-                'TIN' => $attrs['TIN'],
-                'PhilHealth' => $attrs['PhilHealth'],
-                'RTN' => $attrs['RTN'],
-                'MID' => $attrs['MID'],
-            ]
-        );
+        $licensePayload = [
+            'license' => $attrs['license'] ?? ($existingLicense?->license ?? null),
+            'registration_number' => $attrs['registration_number'] ?? ($existingLicense?->registration_number ?? null),
+            'registration_date' => $attrs['registration_date'] ?? ($existingLicense?->registration_date ?? null),
+            'valid_until' => $attrs['valid_until'] ?? ($existingLicense?->valid_until ?? null),
+        ];
+        if ($existingLicense || $hasAllRequired($licensePayload, ['license', 'registration_number', 'registration_date', 'valid_until'])) {
+            License::updateOrCreate(
+                ['user_id' => $attrs['user_id']],
+                $licensePayload
+            );
+        }
 
-        License::updateOrCreate(
-            // 1️⃣ Condition to find the record
-            ['user_id' => $attrs['user_id']],
+        $educationPayload = [
+            'bachelor' => $attrs['bachelor'] ?? ($existingEducation?->bachelor ?? null),
+            'master' => $attrs['master'] ?? ($existingEducation?->master ?? null),
+            'doctorate' => $attrs['doctorate'] ?? ($existingEducation?->doctorate ?? null),
+        ];
+        if ($existingEducation || $hasAllRequired($educationPayload, ['bachelor', 'master', 'doctorate'])) {
+            Education::updateOrCreate(
+                ['user_id' => $attrs['user_id']],
+                $educationPayload
+            );
+        }
 
-            // 2️⃣ Values to create or update
-            [
-                'license' => $attrs['license'],
-                'registration_number' => $attrs['registration_number'],
-                'registration_date' => $attrs['registration_date'],
-                'valid_until' => $attrs['valid_until'],
-            ]
-        );
+        $applicant = Applicant::query()
+            ->where('user_id', (int) $attrs['user_id'])
+            ->orderByDesc('id')
+            ->first();
 
-        Education::updateOrCreate(
-            // 1️⃣ Condition to find the record
-            ['user_id' => $attrs['user_id']],
+        if ($applicant) {
+            $applicant->update([
+                'bachelor_degree' => $attrs['bachelor'] ?? null,
+                'bachelor_school_name' => $attrs['bachelor_school_name'] ?? null,
+                'bachelor_year_finished' => $attrs['bachelor_year_finished'] ?? null,
+                'master_degree' => $attrs['master'] ?? null,
+                'master_school_name' => $attrs['master_school_name'] ?? null,
+                'master_year_finished' => $attrs['master_year_finished'] ?? null,
+                'doctoral_degree' => $attrs['doctorate'] ?? null,
+                'doctoral_school_name' => $attrs['doctoral_school_name'] ?? null,
+                'doctoral_year_finished' => $attrs['doctoral_year_finished'] ?? null,
+            ]);
 
-            // 2️⃣ Values to create or update
-            [
-                'bachelor' => $attrs['bachelor'],
-                'master' => $attrs['master'],
-                'doctorate' => $attrs['doctorate'],
-            ]
-        );
+            $degreeInputs = $attrs['degree_inputs'] ?? [];
+            $normalizeRows = function (string $level, ?array $fallback = null) use ($degreeInputs) {
+                $rows = collect($degreeInputs[$level] ?? [])
+                    ->map(function ($row) use ($level) {
+                        return [
+                            'degree_level' => $level,
+                            'degree_name' => trim((string) ($row['degree_name'] ?? '')),
+                            'school_name' => trim((string) ($row['school_name'] ?? '')),
+                            'year_finished' => trim((string) ($row['year_finished'] ?? '')),
+                        ];
+                    })
+                    ->filter(function ($row) {
+                        return $row['degree_name'] !== '' || $row['school_name'] !== '' || $row['year_finished'] !== '';
+                    })
+                    ->values();
 
-        Salary::updateOrCreate(
-            // 1️⃣ Condition to find the record
-            ['user_id' => $attrs['user_id']],
+                if ($rows->isNotEmpty()) {
+                    return $rows;
+                }
 
-            // 2️⃣ Values to create or update
-            [
-                'salary' => $attrs['salary'],
-                'rate_per_hour' => $attrs['rate_per_hour'],
-                'cola' => $attrs['cola'],
-            ]
-        );
+                $fallbackDegree = trim((string) ($fallback['degree_name'] ?? ''));
+                $fallbackSchool = trim((string) ($fallback['school_name'] ?? ''));
+                $fallbackYear = trim((string) ($fallback['year_finished'] ?? ''));
+                if ($fallbackDegree === '' && $fallbackSchool === '' && $fallbackYear === '') {
+                    return collect();
+                }
+
+                return collect([[
+                    'degree_level' => $level,
+                    'degree_name' => $fallbackDegree,
+                    'school_name' => $fallbackSchool,
+                    'year_finished' => $fallbackYear,
+                ]]);
+            };
+
+            $allDegreeRows = collect()
+                ->concat($normalizeRows('bachelor', [
+                    'degree_name' => $attrs['bachelor'] ?? null,
+                    'school_name' => $attrs['bachelor_school_name'] ?? null,
+                    'year_finished' => $attrs['bachelor_year_finished'] ?? null,
+                ]))
+                ->concat($normalizeRows('master', [
+                    'degree_name' => $attrs['master'] ?? null,
+                    'school_name' => $attrs['master_school_name'] ?? null,
+                    'year_finished' => $attrs['master_year_finished'] ?? null,
+                ]))
+                ->concat($normalizeRows('doctorate', [
+                    'degree_name' => $attrs['doctorate'] ?? null,
+                    'school_name' => $attrs['doctoral_school_name'] ?? null,
+                    'year_finished' => $attrs['doctoral_year_finished'] ?? null,
+                ]))
+                ->values();
+
+            ApplicantDegree::query()
+                ->where('applicant_id', (int) $applicant->id)
+                ->delete();
+
+            $allDegreeRows
+                ->groupBy('degree_level')
+                ->each(function ($rows, $level) use ($applicant) {
+                    foreach ($rows->values() as $index => $row) {
+                        ApplicantDegree::create([
+                            'applicant_id' => (int) $applicant->id,
+                            'degree_level' => (string) $level,
+                            'degree_name' => $row['degree_name'],
+                            'school_name' => $row['school_name'] !== '' ? $row['school_name'] : null,
+                            'year_finished' => $row['year_finished'] !== '' ? $row['year_finished'] : null,
+                            'sort_order' => $index,
+                        ]);
+                    }
+                });
+        }
+
+        $removeProfilePicture = (bool) ($attrs['remove_profile_picture'] ?? false);
+        if ($applicant && ($removeProfilePicture || $request->hasFile('profile_picture'))) {
+                $existingProfilePhotos = ApplicantDocument::query()
+                    ->where('applicant_id', $applicant->id)
+                    ->where('type', 'PROFILE_PHOTO')
+                    ->get();
+
+                foreach ($existingProfilePhotos as $existingProfilePhoto) {
+                    $relativePath = ltrim((string) ($existingProfilePhoto->filepath ?? ''), '/');
+                    if ($relativePath !== '' && Storage::disk('public')->exists($relativePath)) {
+                        Storage::disk('public')->delete($relativePath);
+                    }
+                    $existingProfilePhoto->delete();
+                }
+
+                if ($request->hasFile('profile_picture')) {
+                    $file = $request->file('profile_picture');
+                    if ($file && $file->isValid()) {
+                        $originalName = $file->getClientOriginalName();
+                        $mimeType = $file->getMimeType();
+                        $size = $file->getSize();
+                        $fileName = time().'_'.$originalName;
+                        $filePath = $file->storeAs('uploads', $fileName, 'public');
+
+                        ApplicantDocument::create([
+                            'applicant_id' => $applicant->id,
+                            'type' => 'PROFILE_PHOTO',
+                            'filename' => $originalName,
+                            'filepath' => $filePath,
+                            'mime_type' => $mimeType,
+                            'size' => $size,
+                        ]);
+                    }
+                }
+        }
+
+        $salaryPayload = [
+            'salary' => $attrs['salary'] ?? ($existingSalary?->salary ?? null),
+            'rate_per_hour' => $attrs['rate_per_hour'] ?? ($existingSalary?->rate_per_hour ?? null),
+            'cola' => $attrs['cola'] ?? ($existingSalary?->cola ?? null),
+        ];
+        if ($existingSalary || $hasAllRequired($salaryPayload, ['salary', 'rate_per_hour', 'cola'])) {
+            Salary::updateOrCreate(
+                ['user_id' => $attrs['user_id']],
+                $salaryPayload
+            );
+        }
 
         return redirect()->back()->with('success', 'Save Successfully');
     }

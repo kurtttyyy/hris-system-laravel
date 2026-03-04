@@ -40,6 +40,8 @@
         department:'All',
         statusFilter:'All',
         search:'',
+        openImageZoom: false,
+        zoomImageUrl: '',
         employeeIndex: [],
         normalize(value) {
           return (value ?? '').toString().trim().toLowerCase();
@@ -63,6 +65,129 @@
             this.matchesSearch(emp.name) &&
             this.matchesStatus(emp.status)
           );
+        },
+        degreeRows(level) {
+          const rows = Array.isArray(this.selectedEmployee?.applicant?.degrees)
+            ? this.selectedEmployee.applicant.degrees
+            : [];
+          const target = this.normalize(level);
+          return rows.filter((row) => this.normalize(row?.degree_level) === target);
+        },
+        hasDegreeRows(level) {
+          return this.degreeRows(level).length > 0;
+        },
+        degreeEditRows: {
+          bachelor: [],
+          master: [],
+          doctorate: [],
+        },
+        initDegreeEditRows() {
+          const sourceRows = Array.isArray(this.selectedEmployee?.applicant?.degrees)
+            ? this.selectedEmployee.applicant.degrees
+            : [];
+          const normalizeRows = (level, fallback) => {
+            const rows = sourceRows
+              .filter((row) => this.normalize(row?.degree_level) === level)
+              .map((row) => ({
+                id: row?.id ?? null,
+                degree_level: level,
+                degree_name: (row?.degree_name ?? '').toString(),
+                school_name: (row?.school_name ?? '').toString(),
+                year_finished: (row?.year_finished ?? '').toString(),
+              }));
+
+            if (rows.length) {
+              return rows;
+            }
+
+            return [{
+              id: null,
+              degree_level: level,
+              degree_name: (fallback?.degree_name ?? '').toString(),
+              school_name: (fallback?.school_name ?? '').toString(),
+              year_finished: (fallback?.year_finished ?? '').toString(),
+            }];
+          };
+
+          this.degreeEditRows = {
+            bachelor: normalizeRows('bachelor', {
+              degree_name: this.selectedEmployee?.education?.bachelor ?? '',
+              school_name: this.selectedEmployee?.applicant?.bachelor_school_name ?? '',
+              year_finished: this.selectedEmployee?.applicant?.bachelor_year_finished ?? '',
+            }),
+            master: normalizeRows('master', {
+              degree_name: this.selectedEmployee?.education?.master ?? '',
+              school_name: this.selectedEmployee?.applicant?.master_school_name ?? '',
+              year_finished: this.selectedEmployee?.applicant?.master_year_finished ?? '',
+            }),
+            doctorate: normalizeRows('doctorate', {
+              degree_name: this.selectedEmployee?.education?.doctorate ?? '',
+              school_name: this.selectedEmployee?.applicant?.doctoral_school_name ?? '',
+              year_finished: this.selectedEmployee?.applicant?.doctoral_year_finished ?? '',
+            }),
+          };
+        },
+        addDegreeRow(level) {
+          const nextLevel = this.normalize(level);
+          if (!['bachelor', 'master', 'doctorate'].includes(nextLevel)) return;
+          const rows = Array.isArray(this.degreeEditRows[nextLevel]) ? this.degreeEditRows[nextLevel] : [];
+          rows.push({
+            id: null,
+            degree_level: nextLevel,
+            degree_name: '',
+            school_name: '',
+            year_finished: '',
+          });
+          this.degreeEditRows[nextLevel] = rows;
+        },
+        removeDegreeRow(level, index) {
+          const nextLevel = this.normalize(level);
+          if (!['bachelor', 'master', 'doctorate'].includes(nextLevel)) return;
+          const rows = Array.isArray(this.degreeEditRows[nextLevel]) ? this.degreeEditRows[nextLevel] : [];
+          if (rows.length <= 1) return;
+          rows.splice(index, 1);
+          this.degreeEditRows[nextLevel] = rows;
+        },
+        formatGraduateDegreeTitle(value) {
+          let output = (value ?? '').toString().trim();
+          // Remove trailing acronym-like abbreviations such as (MSN), (DNP/DNSc), etc.
+          while (/\s*\(([A-Za-z0-9\/.&\-\s]{2,30})\)\s*$/.test(output)) {
+            output = output.replace(/\s*\(([A-Za-z0-9\/.&\-\s]{2,30})\)\s*$/, '').trim();
+          }
+          return output || '-';
+        },
+        profilePhotoPath(emp = this.selectedEmployee) {
+          const documents = Array.isArray(emp?.applicant?.documents) ? emp.applicant.documents : [];
+          const profilePhotoDoc = documents.find((doc) => ((doc?.type ?? '').toString().trim().toUpperCase() === 'PROFILE_PHOTO') && doc?.filepath);
+          const fallbackImageDoc = documents.find((doc) => {
+            const mime = (doc?.mime_type ?? '').toString().toLowerCase();
+            const filename = (doc?.filename ?? '').toString().toLowerCase();
+            const isImageByMime = mime.startsWith('image/');
+            const isImageByName = /\.(png|jpe?g|gif|webp)$/i.test(filename);
+            return (isImageByMime || isImageByName) && doc?.filepath;
+          });
+          return (profilePhotoDoc ?? fallbackImageDoc)?.filepath ?? '';
+        },
+        profilePhotoUrl(emp = this.selectedEmployee) {
+          const path = (this.profilePhotoPath(emp) ?? '').toString().trim();
+          if (!path) return '';
+          if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:') || path.startsWith('/')) {
+            return path;
+          }
+          return `/storage/${path}`;
+        },
+        hasProfilePhoto(emp = this.selectedEmployee) {
+          return this.profilePhotoPath(emp) !== '';
+        },
+        openImagePreview(url) {
+          const nextUrl = (url ?? '').toString().trim();
+          if (!nextUrl || nextUrl.startsWith('data:image/svg+xml')) return;
+          this.zoomImageUrl = nextUrl;
+          this.openImageZoom = true;
+        },
+        closeImagePreview() {
+          this.openImageZoom = false;
+          this.zoomImageUrl = '';
         },
         effectiveAccountStatus() {
           const accountStatus = (this.selectedEmployee?.account_status ?? '').toString().trim();
@@ -119,13 +244,26 @@
         async setEmployee(emp) {
           const applicantPosition = emp?.applicant?.position ?? {};
           const employeeData = { ...(emp?.employee ?? {}) };
+          const applicantData = { ...(emp?.applicant ?? {}) };
+          const educationData = { ...(emp?.education ?? {}) };
+          const degreeDataRows = Array.isArray(applicantData?.degrees) ? applicantData.degrees : [];
+          const findDegreeRow = (level) => degreeDataRows.find((row) => this.normalize(row?.degree_level) === level);
+          const bachelorDegreeRow = findDegreeRow('bachelor');
+          const masterDegreeRow = findDegreeRow('master');
+          const doctorateDegreeRow = findDegreeRow('doctorate');
 
           if (!employeeData.position && applicantPosition.title) {
             employeeData.position = applicantPosition.title;
           }
+          if (!employeeData.position && emp?.position) {
+            employeeData.position = emp.position;
+          }
 
           if (!employeeData.department && applicantPosition.department) {
             employeeData.department = applicantPosition.department;
+          }
+          if (!employeeData.department && emp?.department) {
+            employeeData.department = emp.department;
           }
 
           if (!employeeData.classification) {
@@ -134,17 +272,48 @@
               || null;
           }
 
+          if (!educationData.bachelor && bachelorDegreeRow?.degree_name) {
+            educationData.bachelor = bachelorDegreeRow.degree_name;
+          }
+          if (!educationData.master && masterDegreeRow?.degree_name) {
+            educationData.master = masterDegreeRow.degree_name;
+          }
+          if (!educationData.doctorate && doctorateDegreeRow?.degree_name) {
+            educationData.doctorate = doctorateDegreeRow.degree_name;
+          }
+
+          if (!applicantData.bachelor_school_name && bachelorDegreeRow?.school_name) {
+            applicantData.bachelor_school_name = bachelorDegreeRow.school_name;
+          }
+          if (!applicantData.bachelor_year_finished && bachelorDegreeRow?.year_finished) {
+            applicantData.bachelor_year_finished = bachelorDegreeRow.year_finished;
+          }
+          if (!applicantData.master_school_name && masterDegreeRow?.school_name) {
+            applicantData.master_school_name = masterDegreeRow.school_name;
+          }
+          if (!applicantData.master_year_finished && masterDegreeRow?.year_finished) {
+            applicantData.master_year_finished = masterDegreeRow.year_finished;
+          }
+          if (!applicantData.doctoral_school_name && doctorateDegreeRow?.school_name) {
+            applicantData.doctoral_school_name = doctorateDegreeRow.school_name;
+          }
+          if (!applicantData.doctoral_year_finished && doctorateDegreeRow?.year_finished) {
+            applicantData.doctoral_year_finished = doctorateDegreeRow.year_finished;
+          }
+
           this.selectedEmployee = {
             ...emp,
-            applicant: { documents: [], required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {}, ...(emp?.applicant ?? {}) },
+            applicant: { documents: [], required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {}, ...applicantData },
             employee: employeeData,
-            education: emp?.education ?? {},
+            education: educationData,
             government: emp?.government ?? {},
             license: emp?.license ?? {},
             salary: emp?.salary ?? {},
             leave_applications: Array.isArray(emp?.leave_applications) ? emp.leave_applications : [],
             ui_theme: emp?.ui_theme ?? {},
           };
+
+          this.initDegreeEditRows();
 
           await this.loadDocuments(emp?.id);
         },
@@ -346,7 +515,7 @@
         buildServiceTimeline() {
           const items = [];
           const hiredRaw = this.selectedEmployee?.applicant?.date_hired || this.selectedEmployee?.employee?.employement_date;
-          const positionTitle = this.selectedEmployee?.applicant?.position?.title || this.selectedEmployee?.employee?.position || 'Employee';
+          const positionTitle = this.selectedEmployee?.job_role || this.selectedEmployee?.applicant?.position?.title || this.selectedEmployee?.employee?.position || 'Employee';
 
           if (hiredRaw) {
             items.push({
@@ -467,7 +636,7 @@
       x-init="employeeIndex = @js(
         $employee->map(fn($emp) => [
           'name' => trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '').' '.($emp->last_name ?? '')),
-          'department' => trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: '')),
+          'department' => trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? ''))),
           'status' => $emp->account_status ?? '',
         ])->values()
       )"
@@ -476,7 +645,7 @@
     <!-- Header -->
     @php
       $resolveDepartment = function ($emp) {
-        return trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ''));
+        return trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? '')));
       };
 
       $departmentOptions = $employee
@@ -534,6 +703,19 @@
           $headerEnd = "hsl({$headerEndHue}, 78%, 46%)";
           $avatarHue = ($hue + 18) % 360;
           $avatarColor = "hsl({$avatarHue}, 72%, 40%)";
+          $profilePhotoDocument = optional($emp->applicant)->documents
+            ?->first(function ($doc) {
+              return strtoupper(trim((string) ($doc->type ?? ''))) === 'PROFILE_PHOTO' && !empty($doc->filepath);
+            });
+          if (!$profilePhotoDocument) {
+            $profilePhotoDocument = optional($emp->applicant)->documents
+              ?->first(function ($doc) {
+                $mime = strtolower(trim((string) ($doc->mime_type ?? '')));
+                $filename = strtolower(trim((string) ($doc->filename ?? '')));
+                return (!empty($doc->filepath)) && (str_starts_with($mime, 'image/') || preg_match('/\.(png|jpe?g|gif|webp)$/i', $filename));
+              });
+          }
+          $profilePhotoUrl = $profilePhotoDocument?->filepath ? asset('storage/'.$profilePhotoDocument->filepath) : null;
         @endphp
         <!-- Employee Card -->
         <div
@@ -543,14 +725,23 @@
                     matchesStatus(@js($emp->account_status ?? ''))"
         >
             <div class="h-24 flex justify-center items-center" style="background-image: linear-gradient(to right, {{ $headerStart }}, {{ $headerEnd }});">
-                <div class="w-16 h-16 rounded-full text-white flex items-center justify-center text-lg font-bold border-4 border-white mt-24" style="background-color: {{ $avatarColor }};">
-                    {{$emp->initials}}
+                <div class="w-16 h-16 rounded-full text-white flex items-center justify-center text-lg font-bold border-4 border-white mt-24 overflow-hidden" style="background-color: {{ $avatarColor }};">
+                    @if($profilePhotoUrl)
+                        <img
+                          src="{{ $profilePhotoUrl }}"
+                          alt="Employee Photo"
+                          class="w-full h-full object-cover cursor-zoom-in"
+                          @click.stop="openImagePreview('{{ $profilePhotoUrl }}')"
+                        />
+                    @else
+                        {{$emp->initials}}
+                    @endif
                 </div>
             </div>
 
             <div class="p-4 mt-7">
                 <h3 class="font-bold text-gray-800 text-lg text-center">{{$emp->first_name ?? ''}} {{$emp->last_name ?? ''}}</h3>
-                <p class="text-gray-500 text-sm text-center">{{$emp->applicant->position->title ?? $emp->employee->position ?? ''}}</p>
+                <p class="text-gray-500 text-sm text-center">{{ trim((string) ($emp->job_role ?? '')) !== '' ? $emp->job_role : ($emp->applicant->position->title ?? $emp->employee->position ?? $emp->position ?? '') }}</p>
 
                 <div class="mt-4 space-y-1 text-gray-500 text-sm">
                     <div class="flex items-center gap-2">
@@ -628,17 +819,26 @@
           <button @click="openProfile=false" class="absolute top-4 right-4 text-2xl">&times;</button>
 
           <div class="flex items-center gap-4">
-            <div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center font-bold"
-            x-text="selectedEmployee?.initials"
-            >
+            <div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center font-bold overflow-hidden">
+              <template x-if="hasProfilePhoto()">
+                <img
+                  :src="profilePhotoUrl()"
+                  alt="Employee Photo"
+                  class="w-full h-full object-cover cursor-zoom-in"
+                  @click.stop="openImagePreview(profilePhotoUrl())"
+                >
+              </template>
+              <template x-if="!hasProfilePhoto()">
+                <span x-text="selectedEmployee?.initials"></span>
+              </template>
             </div>
             <div>
               <h2 class="text-xl font-semibold"
               x-text="selectedEmployee?.applicant?.first_name + ' ' + selectedEmployee?.applicant?.last_name"
               ></h2>
               <p class="text-sm">
-                <span x-text="selectedEmployee?.applicant?.position?.title ?? selectedEmployee?.employee?.position ?? '-'"></span><br>
-                <span x-text="selectedEmployee?.applicant?.position?.department ?? selectedEmployee?.employee?.department ?? '-'"></span>
+                <span x-text="selectedEmployee?.job_role ?? selectedEmployee?.applicant?.position?.title ?? selectedEmployee?.employee?.position ?? selectedEmployee?.position ?? '-'"></span><br>
+                <span x-text="selectedEmployee?.applicant?.position?.department ?? selectedEmployee?.employee?.department ?? selectedEmployee?.department ?? '-'"></span>
               </p>
             </div>
             <span
@@ -679,6 +879,22 @@
         </div>
 
       </div>
+    </div>
+
+    <div
+      x-show="openImageZoom"
+      x-transition
+      @click="closeImagePreview()"
+      @keydown.escape.window="closeImagePreview()"
+      class="fixed inset-0 z-[90] bg-black/80 flex items-center justify-center p-6"
+      style="display:none;"
+    >
+      <img
+        :src="zoomImageUrl"
+        alt="Zoomed employee photo"
+        class="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+        @click.stop
+      >
     </div>
 
 
