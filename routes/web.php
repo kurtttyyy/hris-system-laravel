@@ -71,7 +71,9 @@ Route::controller(AdministratorPageController::class)->group(function () {
     Route::get('system/payslip/view', 'display_payslip_view')->name('admin.adminPaySlipView');
     Route::get('system/resignations', 'display_resignations')->name('admin.adminResignations');
     Route::get('system/reports', 'display_reports')->name('admin.adminReports');
-    Route::get('system/compare/code', 'display_compare')->name('admin.compareCode');
+    Route::get('system/matrix/school-administrator', 'display_school_administrator')->name('admin.schoolAdministrator');
+    Route::get('system/matrix/non-teaching', 'display_non_teaching_matrix')->name('admin.nonTeachingMatrix');
+    Route::get('system/matrix/teaching', 'display_teaching_matrix')->name('admin.teachingMatrix');
 
     Route::get('system/applicant', 'display_applicant')->name('admin.adminApplicant');
     Route::get('system/applicants/ID/{id}', 'display_applicant_ID');
@@ -92,6 +94,7 @@ Route::controller(AdministratorPageController::class)->group(function () {
     Route::get('system/personal/detail/employee/PD', 'display_pd')->name('admin.PersonalDetail.adminEmployeePD');
     Route::get('system/personal/detail/employee/performance', 'display_performance')->name('admin.PersonalDetail.adminEmployeePerformance');
     Route::get('system/personal/detail/edit', 'display_edit')->name('admin.PersonalDetail.editProfile');
+    Route::get('system/personal/detail/service-record/edit', 'display_service_record_edit')->name('admin.PersonalDetail.serviceRecordEdit');
 });
 
 Route::controller(AdministratorStoreController::class)->group(function () {
@@ -114,6 +117,7 @@ Route::controller(AdministratorStoreController::class)->group(function () {
     Route::post('system/resignations/{id}/status', 'update_resignation_status')->name('admin.updateResignationStatus');
     Route::post('system/employee/update/biometric', 'update_bio')->name('admin.updateBio');
     Route::post('system/employee/update/profile', 'update_general_profile')->name('admin.updateGeneralProfile');
+    Route::post('system/personal/detail/service-record/update', 'update_service_record')->name('admin.PersonalDetail.serviceRecordEdit.update');
     Route::post('system/calendar/hidden-official-holidays/sync', 'sync_hidden_official_holidays')->name('admin.syncHiddenOfficialHolidays');
     Route::post('admin/attendance/update-status/{id}', 'update_attendance_status')->name('admin.updateAttendanceStatus');
     Route::post('admin/attendance/delete/{id}', 'delete_attendance_file')->name('admin.deleteAttendanceFile');

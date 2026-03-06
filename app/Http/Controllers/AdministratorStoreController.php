@@ -1908,6 +1908,218 @@ class AdministratorStoreController extends Controller
         return redirect()->back()->with('success','Employee can now login');
     }
 
+    public function update_service_record(Request $request)
+    {
+        $attrs = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'position' => 'nullable|string|max:255',
+            'department' => 'nullable|string|max:255',
+            'date_hired' => 'nullable|date',
+            'SSS' => 'nullable|string|max:255',
+            'TIN' => 'nullable|string|max:255',
+            'PhilHealth' => 'nullable|string|max:255',
+            'MID' => 'nullable|string|max:255',
+            'RTN' => 'nullable|string|max:255',
+            'service_rows' => 'nullable|array|max:20',
+            'service_rows.*.from_date' => 'nullable|date',
+            'service_rows.*.to_date' => 'nullable|date',
+            'service_rows.*.designation' => 'nullable|string|max:255',
+            'service_rows.*.status' => 'nullable|string|max:255',
+            'service_rows.*.salary' => 'nullable|string|max:255',
+            'service_rows.*.office' => 'nullable|string|max:255',
+            'service_rows.*.separation_date' => 'nullable|date',
+            'service_rows.*.separation_cause' => 'nullable|string|max:255',
+            'service_rows.*.remarks' => 'nullable|string|max:255',
+        ]);
+
+        $normalize = static function ($value): ?string {
+            $text = trim((string) ($value ?? ''));
+            return $text === '' ? null : $text;
+        };
+
+        $normalizeRow = static function (array $row) use ($normalize): array {
+            return [
+                'from_date' => $normalize($row['from_date'] ?? null),
+                'to_date' => $normalize($row['to_date'] ?? null),
+                'designation' => $normalize($row['designation'] ?? null),
+                'status' => $normalize($row['status'] ?? null),
+                'salary' => $normalize($row['salary'] ?? null),
+                'office' => $normalize($row['office'] ?? null),
+                'separation_date' => $normalize($row['separation_date'] ?? null),
+                'separation_cause' => $normalize($row['separation_cause'] ?? null),
+                'remarks' => $normalize($row['remarks'] ?? null),
+            ];
+        };
+
+        $serviceRows = collect($attrs['service_rows'] ?? [])
+            ->map(fn ($row) => is_array($row) ? $normalizeRow($row) : [])
+            ->filter(function (array $row) {
+                foreach ($row as $value) {
+                    if (filled($value)) {
+                        return true;
+                    }
+                }
+                return false;
+            })
+            ->values()
+            ->all();
+
+        $firstRow = $serviceRows[0] ?? [];
+        $effectiveDateHired = $attrs['date_hired'] ?? ($firstRow['from_date'] ?? null);
+        $effectivePosition = $attrs['position'] ?? ($firstRow['designation'] ?? null);
+        $effectiveDepartment = $attrs['department'] ?? ($firstRow['office'] ?? null);
+
+        $user = User::query()->findOrFail((int) $attrs['user_id']);
+
+        $user->update([
+            'position' => $normalize($effectivePosition) ?? $normalize($user->position),
+            'department' => $normalize($effectiveDepartment) ?? $normalize($user->department),
+        ]);
+
+        $employee = Employee::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $employeePayload = [
+            'position' => $normalize($effectivePosition)
+                ?? ($employee?->position ?? $normalize($user->position) ?? '-'),
+            'department' => $normalize($effectiveDepartment)
+                ?? ($employee?->department ?? $normalize($user->department) ?? '-'),
+            'employement_date' => $effectiveDateHired ?? ($employee?->employement_date ?? null),
+            'service_record_rows' => $serviceRows,
+        ];
+
+        if ($employee) {
+            $employee->update($employeePayload);
+        } else {
+            Employee::create([
+                'user_id' => (int) $attrs['user_id'],
+                'employee_id' => 'EMP-'.str_pad((string) $attrs['user_id'], 5, '0', STR_PAD_LEFT),
+                'employement_date' => $effectiveDateHired ?? (optional($user->created_at)->toDateString() ?? now()->toDateString()),
+                'birthday' => now()->subYears(18)->toDateString(),
+                'account_number' => 'N/A',
+                'sex' => 'Unspecified',
+                'civil_status' => 'Single',
+                'contact_number' => 'N/A',
+                'address' => 'N/A',
+                'department' => $employeePayload['department'] ?? '-',
+                'position' => $employeePayload['position'] ?? '-',
+                'classification' => 'Probationary',
+                'service_record_rows' => $serviceRows,
+            ]);
+        }
+
+        $governmentPayload = [
+            'SSS' => $normalize($attrs['SSS'] ?? null),
+            'TIN' => $normalize($attrs['TIN'] ?? null),
+            'PhilHealth' => $normalize($attrs['PhilHealth'] ?? null),
+            'MID' => $normalize($attrs['MID'] ?? null),
+            'RTN' => $normalize($attrs['RTN'] ?? null),
+        ];
+
+        $hasAnyGovernmentData = collect($governmentPayload)->contains(fn ($value) => filled($value));
+        $existingGovernment = Government::query()->where('user_id', (int) $attrs['user_id'])->first();
+
+        if ($existingGovernment || $hasAnyGovernmentData) {
+            Government::updateOrCreate(
+                ['user_id' => (int) $attrs['user_id']],
+                [
+                    'SSS' => $governmentPayload['SSS'] ?? '',
+                    'TIN' => $governmentPayload['TIN'] ?? '',
+                    'PhilHealth' => $governmentPayload['PhilHealth'] ?? '',
+                    'MID' => $governmentPayload['MID'] ?? '',
+                    'RTN' => $governmentPayload['RTN'] ?? '',
+                ]
+            );
+        }
+
+        $userId = (int) $attrs['user_id'];
+        $email = $normalize($user->email);
+        $firstName = $normalize($user->first_name);
+        $lastName = $normalize($user->last_name);
+
+        $applicant = Applicant::query()
+            ->where('user_id', $userId)
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$applicant && $email) {
+            $applicant = Applicant::query()
+                ->whereNull('user_id')
+                ->whereRaw('LOWER(TRIM(email)) = ?', [strtolower($email)])
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        if (!$applicant) {
+            $openPositionId = $this->resolveFallbackOpenPositionId();
+
+            if ($openPositionId) {
+                $applicant = Applicant::create([
+                    'user_id' => $userId,
+                    'open_position_id' => (int) $openPositionId,
+                    'first_name' => $firstName ?: 'Employee',
+                    'last_name' => $lastName ?: ('#'.$userId),
+                    'email' => $email ?: ('employee-'.$userId.'@placeholder.local'),
+                    'field_study' => '-',
+                    'university_address' => '-',
+                    'work_position' => $normalize($attrs['position'] ?? null) ?: '-',
+                    'work_employer' => '-',
+                    'work_location' => '-',
+                    'work_duration' => '-',
+                    'experience_years' => '0',
+                    'skills_n_expertise' => '-',
+                    'application_status' => 'Hired',
+                    'fresh_graduate' => false,
+                    'date_hired' => $effectiveDateHired ?? null,
+                ]);
+            }
+        }
+
+        if ($applicant) {
+            $applicant->update([
+                'user_id' => $userId,
+                'first_name' => $firstName ?: $applicant->first_name,
+                'last_name' => $lastName ?: $applicant->last_name,
+                'email' => $email ?: $applicant->email,
+                'work_position' => $normalize($effectivePosition) ?? $applicant->work_position,
+                'date_hired' => $effectiveDateHired ?? $applicant->date_hired,
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.PersonalDetail.serviceRecordEdit', ['user_id' => (int) $attrs['user_id']])
+            ->with('success', 'Service record updated successfully.');
+    }
+
+    private function resolveFallbackOpenPositionId(): ?int
+    {
+        $openPositionId = DB::table('open_positions')
+            ->whereNull('deleted_at')
+            ->orderBy('id')
+            ->value('id');
+
+        if ($openPositionId) {
+            return (int) $openPositionId;
+        }
+
+        $fallback = OpenPosition::query()->create([
+            'title' => 'Unassigned Employee',
+            'department' => 'General',
+            'employment' => 'Full-Time',
+            'collage_name' => 'HR',
+            'work_mode' => 'Onsite',
+            'job_description' => 'Auto-generated fallback position for employee sync.',
+            'responsibilities' => '-',
+            'requirements' => '-',
+            'experience_level' => 'Entry Level',
+            'location' => 'N/A',
+            'skills' => '-',
+            'benifits' => '-',
+            'job_type' => 'NT',
+            'passionate' => '-',
+        ]);
+
+        return (int) $fallback->id;
+    }
+
     public function update_general_profile(Request $request){
         $attrs = $request->validate([
             'user_id' => 'required|exists:users,id',
@@ -2010,16 +2222,21 @@ class AdministratorStoreController extends Controller
             'Updated from general profile'
         );
 
-        Government::updateOrCreate(
-            ['user_id' => $attrs['user_id']],
-            [
-                'SSS' => $attrs['SSS'] ?? null,
-                'TIN' => $attrs['TIN'] ?? null,
-                'PhilHealth' => $attrs['PhilHealth'] ?? null,
-                'MID' => $attrs['MID'] ?? null,
-                'RTN' => $attrs['RTN'] ?? null,
-            ]
-        );
+        $existingGovernment = Government::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $governmentPayload = [
+            'SSS' => trim((string) ((array_key_exists('SSS', $attrs) ? $attrs['SSS'] : ($existingGovernment?->SSS ?? '')) ?? '')),
+            'TIN' => trim((string) ((array_key_exists('TIN', $attrs) ? $attrs['TIN'] : ($existingGovernment?->TIN ?? '')) ?? '')),
+            'PhilHealth' => trim((string) ((array_key_exists('PhilHealth', $attrs) ? $attrs['PhilHealth'] : ($existingGovernment?->PhilHealth ?? '')) ?? '')),
+            'MID' => trim((string) ((array_key_exists('MID', $attrs) ? $attrs['MID'] : ($existingGovernment?->MID ?? '')) ?? '')),
+            'RTN' => trim((string) ((array_key_exists('RTN', $attrs) ? $attrs['RTN'] : ($existingGovernment?->RTN ?? '')) ?? '')),
+        ];
+        $hasAnyGovernmentData = collect($governmentPayload)->contains(fn ($value) => $value !== '');
+        if ($existingGovernment || $hasAnyGovernmentData) {
+            Government::updateOrCreate(
+                ['user_id' => $attrs['user_id']],
+                $governmentPayload
+            );
+        }
 
         return redirect()->back()->with('success', 'Profile updated successfully');
     }
@@ -2482,24 +2699,10 @@ class AdministratorStoreController extends Controller
             'emergency_contact_number' => $attrs['emergency_contact_number'] ?? ($existingEmployee?->emergency_contact_number ?? null),
         ];
 
-        if ($existingEmployee || $hasAllRequired($employeePayload, [
-            'employee_id',
-            'employement_date',
-            'birthday',
-            'account_number',
-            'sex',
-            'civil_status',
-            'contact_number',
-            'address',
-            'department',
-            'position',
-            'classification',
-        ])) {
-            Employee::updateOrCreate(
-                ['user_id' => $attrs['user_id']],
-                $employeePayload
-            );
-        }
+        Employee::updateOrCreate(
+            ['user_id' => $attrs['user_id']],
+            $employeePayload
+        );
 
         $this->recordCareerProgressionIfChanged(
             (int) $attrs['user_id'],
@@ -2511,13 +2714,14 @@ class AdministratorStoreController extends Controller
         );
 
         $governmentPayload = [
-            'SSS' => $attrs['SSS'] ?? ($existingGovernment?->SSS ?? null),
-            'TIN' => $attrs['TIN'] ?? ($existingGovernment?->TIN ?? null),
-            'PhilHealth' => $attrs['PhilHealth'] ?? ($existingGovernment?->PhilHealth ?? null),
-            'RTN' => $attrs['RTN'] ?? ($existingGovernment?->RTN ?? null),
-            'MID' => $attrs['MID'] ?? ($existingGovernment?->MID ?? null),
+            'SSS' => trim((string) ((array_key_exists('SSS', $attrs) ? $attrs['SSS'] : ($existingGovernment?->SSS ?? '')) ?? '')),
+            'TIN' => trim((string) ((array_key_exists('TIN', $attrs) ? $attrs['TIN'] : ($existingGovernment?->TIN ?? '')) ?? '')),
+            'PhilHealth' => trim((string) ((array_key_exists('PhilHealth', $attrs) ? $attrs['PhilHealth'] : ($existingGovernment?->PhilHealth ?? '')) ?? '')),
+            'RTN' => trim((string) ((array_key_exists('RTN', $attrs) ? $attrs['RTN'] : ($existingGovernment?->RTN ?? '')) ?? '')),
+            'MID' => trim((string) ((array_key_exists('MID', $attrs) ? $attrs['MID'] : ($existingGovernment?->MID ?? '')) ?? '')),
         ];
-        if ($existingGovernment || $hasAllRequired($governmentPayload, ['SSS', 'TIN', 'PhilHealth', 'RTN', 'MID'])) {
+        $hasAnyGovernmentData = collect($governmentPayload)->contains(fn ($value) => $value !== '');
+        if ($existingGovernment || $hasAnyGovernmentData) {
             Government::updateOrCreate(
                 ['user_id' => $attrs['user_id']],
                 $governmentPayload

@@ -13,7 +13,7 @@
 
   <!-- Edit Icon -->
   <div class="relative group">
-    <button @click="openEditProfile = true; modalTarget = 'biometric'; resetBiometricPhotoEditor(profilePhotoUrl())" class="p-2 bg-green-600 text-white rounded hover:bg-green-700">
+    <button @click="ensureEmployeeClassification(); openEditProfile = true; modalTarget = 'biometric'; resetBiometricPhotoEditor(profilePhotoUrl())" class="p-2 bg-green-600 text-white rounded hover:bg-green-700">
       <!-- Pencil/Edit Icon -->
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -274,15 +274,15 @@
           <span class="value">
             <label class="mr-2">
               <input type="checkbox" disabled
-                :checked="selectedEmployee?.employee?.classification === 'Full-Time'"> Full-time
+                :checked="isBiometricClassification('full-time')"> Full-time
             </label>
             <label class="mr-2">
               <input type="checkbox" disabled
-                :checked="selectedEmployee?.employee?.classification === 'Part-Time'"> Part-time
+                :checked="isBiometricClassification('part-time')"> Part-time
             </label>
             <label>
               <input type="checkbox" disabled
-                :checked="selectedEmployee?.employee?.classification === 'NT'"> NT
+                :checked="isBiometricClassification('nt')"> NT
             </label>
           </span>
         </div>
@@ -464,12 +464,82 @@
 
       <section class="edit-section">
         <h3 class="edit-section-title">Government IDs</h3>
+        <div class="rounded-xl border border-emerald-100 bg-emerald-50/40 p-3 mb-3">
+          <p class="text-[11px] text-emerald-800 font-medium">
+            Enter IDs in standard format. The form auto-formats while typing.
+          </p>
+        </div>
         <div class="edit-grid-3">
-          <div class="edit-field"><label class="edit-label">SSS</label><input name="SSS" class="edit-input" x-model="selectedEmployee.government.SSS"></div>
-          <div class="edit-field"><label class="edit-label">TIN</label><input name="TIN" class="edit-input" x-model="selectedEmployee.government.TIN"></div>
-          <div class="edit-field"><label class="edit-label">PhilHealth</label><input name="PhilHealth" class="edit-input" x-model="selectedEmployee.government.PhilHealth"></div>
-          <div class="edit-field"><label class="edit-label">Pag-IBIG MID</label><input name="MID" class="edit-input" x-model="selectedEmployee.government.MID"></div>
-          <div class="edit-field"><label class="edit-label">Pag-IBIG RTN</label><input name="RTN" class="edit-input" x-model="selectedEmployee.government.RTN"></div>
+          <div class="edit-field gov-field">
+            <label class="edit-label">SSS</label>
+            <input
+              name="SSS"
+              class="edit-input gov-input"
+              x-model="selectedEmployee.government.SSS"
+              placeholder="34-1234567-8"
+              maxlength="11"
+              inputmode="numeric"
+              pattern="^\d{2}-\d{7}-\d{1}$"
+              title="Format: 34-1234567-8"
+              oninput="this.value=this.value.replace(/\D/g,'').slice(0,10).replace(/(\d{2})(\d{0,7})(\d{0,1})/,function(_,a,b,c){return a+(b?'-'+b:'')+(c?'-'+c:'');});"
+            >
+          </div>
+          <div class="edit-field gov-field">
+            <label class="edit-label">TIN</label>
+            <input
+              name="TIN"
+              class="edit-input gov-input"
+              x-model="selectedEmployee.government.TIN"
+              placeholder="123-456-789-000"
+              maxlength="15"
+              inputmode="numeric"
+              pattern="^\d{3}-\d{3}-\d{3}-\d{3}$"
+              title="Format: 123-456-789-000"
+              oninput="this.value=this.value.replace(/\D/g,'').slice(0,12).replace(/(\d{3})(\d{0,3})(\d{0,3})(\d{0,3})/,function(_,a,b,c,d){return a+(b?'-'+b:'')+(c?'-'+c:'')+(d?'-'+d:'');});"
+            >
+          </div>
+          <div class="edit-field gov-field">
+            <label class="edit-label">PhilHealth</label>
+            <input
+              name="PhilHealth"
+              class="edit-input gov-input"
+              x-model="selectedEmployee.government.PhilHealth"
+              placeholder="12-123456789-0"
+              maxlength="14"
+              inputmode="numeric"
+              pattern="^\d{2}-\d{9}-\d{1}$"
+              title="Format: 12-123456789-0"
+              oninput="this.value=this.value.replace(/\D/g,'').slice(0,12).replace(/(\d{2})(\d{0,9})(\d{0,1})/,function(_,a,b,c){return a+(b?'-'+b:'')+(c?'-'+c:'');});"
+            >
+          </div>
+          <div class="edit-field gov-field">
+            <label class="edit-label">Pag-IBIG MID</label>
+            <input
+              name="MID"
+              class="edit-input gov-input"
+              x-model="selectedEmployee.government.MID"
+              placeholder="1234-5678-9012"
+              maxlength="14"
+              inputmode="numeric"
+              pattern="^\d{4}-\d{4}-\d{4}$"
+              title="Format: 1234-5678-9012"
+              oninput="this.value=this.value.replace(/\D/g,'').slice(0,12).replace(/(\d{4})(\d{0,4})(\d{0,4})/,function(_,a,b,c){return a+(b?'-'+b:'')+(c?'-'+c:'');});"
+            >
+          </div>
+          <div class="edit-field gov-field">
+            <label class="edit-label">Pag-IBIG RTN</label>
+            <input
+              name="RTN"
+              class="edit-input gov-input"
+              x-model="selectedEmployee.government.RTN"
+              placeholder="1234-5678-9012"
+              maxlength="14"
+              inputmode="numeric"
+              pattern="^\d{4}-\d{4}-\d{4}$"
+              title="Format: 1234-5678-9012"
+              oninput="this.value=this.value.replace(/\D/g,'').slice(0,12).replace(/(\d{4})(\d{0,4})(\d{0,4})/,function(_,a,b,c){return a+(b?'-'+b:'')+(c?'-'+c:'');});"
+            >
+          </div>
         </div>
       </section>
 
@@ -680,6 +750,19 @@
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
     background: #ffffff;
   }
+  .gov-field .edit-label {
+    letter-spacing: 0.02em;
+  }
+  .gov-input {
+    font-family: "Consolas", "Courier New", monospace;
+    letter-spacing: 0.04em;
+    background: #ffffff;
+    border: 1px solid #b6c7dc;
+  }
+  .gov-input::placeholder {
+    color: #94a3b8;
+    letter-spacing: 0.03em;
+  }
 
   .row {
     border-bottom: 1px solid #000000;
@@ -885,10 +968,49 @@ async function downloadProfileDOCX() {
   const getRow = (label) => rowMap[normalize(label)]?.row || null;
 
   const classificationRow = getRow('Classification');
-  let classificationValue = getValue('Classification');
+  const canonicalClassificationValue = (value) => {
+    const normalized = normalize(value);
+    if (!normalized) return '';
+    if (normalized.includes('full')) return 'full time';
+    if (normalized.includes('part')) return 'part time';
+    if (normalized.includes('probationary') || normalized.includes('permanent') || normalized.includes('regular')) return 'full time';
+    if (normalized === 'nt' || normalized === 'non teaching') return 'nt';
+    if (normalized.includes('non teaching') || normalized.includes('non-teaching')) return 'nt';
+    return '';
+  };
+  const classificationFromAlpine = (() => {
+    const alpineRoot = document.querySelector('main[x-data]');
+    const alpineData = alpineRoot?._x_dataStack?.[0] || alpineRoot?.__x?.$data || null;
+    const selectedEmployee = alpineData?.selectedEmployee ?? null;
+    const candidates = [
+      selectedEmployee?.employee?.classification,
+      selectedEmployee?.applicant?.position?.employment,
+      selectedEmployee?.employee?.job_type,
+      selectedEmployee?.applicant?.position?.job_type,
+    ];
+
+    for (const candidate of candidates) {
+      const canonical = canonicalClassificationValue(candidate);
+      if (canonical) return canonical;
+    }
+    return '';
+  })();
+
+  let classificationValue = '☐ Full-time   ☐ Part-time   ☐ NT';
+
+  if (classificationFromAlpine) {
+    classificationValue = `${classificationFromAlpine === 'full time' ? '☑' : '☐'} Full-time   ${classificationFromAlpine === 'part time' ? '☑' : '☐'} Part-time   ${classificationFromAlpine === 'nt' ? '☑' : '☐'} NT`;
+  } else {
+    const rawClassificationText = getValue('Classification');
+    const canonicalFromText = canonicalClassificationValue(rawClassificationText);
+    if (canonicalFromText) {
+      classificationValue = `${canonicalFromText === 'full time' ? '☑' : '☐'} Full-time   ${canonicalFromText === 'part time' ? '☑' : '☐'} Part-time   ${canonicalFromText === 'nt' ? '☑' : '☐'} NT`;
+    }
+  }
+
   if (classificationRow) {
     const checkboxes = Array.from(classificationRow.querySelectorAll('input[type="checkbox"]'));
-    if (checkboxes.length >= 3) {
+    if (checkboxes.length >= 3 && !classificationFromAlpine) {
       classificationValue = `${checkboxes[0].checked ? '☑' : '☐'} Full-time   ${checkboxes[1].checked ? '☑' : '☐'} Part-time   ${checkboxes[2].checked ? '☑' : '☐'} NT`;
     }
   }

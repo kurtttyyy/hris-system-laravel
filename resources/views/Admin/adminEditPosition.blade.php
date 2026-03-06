@@ -35,6 +35,12 @@
             @csrf
         <div class="bg-white rounded-xl shadow-sm p-8 max-w-6xl mx-auto">
 
+            @if ($errors->any())
+            <div class="mb-6 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                {{ $errors->first() }}
+            </div>
+            @endif
+
             <!-- Header -->
             <div class="flex justify-between items-center mb-8">
             <h1 class="text-2xl font-bold text-slate-800">
@@ -152,22 +158,25 @@
                 <label class="block text-sm font-medium text-slate-600 mb-1">
                     Experience Level
                 </label>
+                @php
+                    $experienceLevel = strtolower(trim((string) old('experience_level', $open->experience_level)));
+                @endphp
                 <select
                     name="experience_level"
                     class="w-full rounded-lg border border-slate-300 px-4 py-3
                         focus:ring-2 focus:ring-indigo-500">
                     <option value="">Select experience level</option>
-                    <option value="Senior Level"
-                        {{ old('experience_level', $open->experience_level) == 'Senior Level' ? 'selected' : '' }}>
-                        Senior Level
+                    <option value="Senior"
+                        {{ in_array($experienceLevel, ['senior', 'senior level'], true) ? 'selected' : '' }}>
+                        Senior
                     </option>
-                    <option value="Mid Level"
-                        {{ old('experience_level', $open->experience_level) == 'Mid Level' ? 'selected' : '' }}>
-                        Mid Level
+                    <option value="Mid"
+                        {{ in_array($experienceLevel, ['mid', 'mid level'], true) ? 'selected' : '' }}>
+                        Mid
                     </option>
-                    <option value="Junior Level"
-                        {{ old('experience_level', $open->experience_level) == 'Junior Level' ? 'selected' : '' }}>
-                        Junior Level
+                    <option value="Junior"
+                        {{ in_array($experienceLevel, ['junior', 'junior level'], true) ? 'selected' : '' }}>
+                        Junior
                     </option>
                 </select>
 
@@ -328,3 +337,5 @@
   }
 </script>
 </html>
+
+

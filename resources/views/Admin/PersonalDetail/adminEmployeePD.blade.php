@@ -92,8 +92,8 @@
         <span class="block uppercase text-gray-400 font-semibold">
           Email Address
         </span>
-      <span class= text-gray-600"
-            x-text="selectedEmployee?.applicant?.email ?? 'â€”'">
+      <span class="text-gray-600"
+            x-text="selectedEmployee?.email ?? selectedEmployee?.employee?.email ?? selectedEmployee?.applicant?.email ?? '—'">
       </span>
       </div>
     </div>
@@ -105,7 +105,7 @@
       </svg>
       <div>
         <span class="block text-xs uppercase text-gray-400 font-semibold">Phone No.</span>
-        <span x-text="selectedEmployee?.applicant?.phone ?? 'â€”'"></span>
+        <span x-text="selectedEmployee?.applicant?.phone ?? selectedEmployee?.employee?.contact_number ?? '—'"></span>
       </div>
     </div>
   </div>
@@ -340,3 +340,5 @@
   </div>
 
 </div>
+
+

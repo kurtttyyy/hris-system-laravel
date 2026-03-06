@@ -10,6 +10,17 @@ class Applicant extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        static::saved(function (self $applicant) {
+            $applicant->syncLinkedUserDepartmentAndPositionFromOpenPosition();
+        });
+
+        static::restored(function (self $applicant) {
+            $applicant->syncLinkedUserDepartmentAndPositionFromOpenPosition();
+        });
+    }
+
     protected $fillable = [
         'first_name',
         'last_name',
@@ -27,6 +38,7 @@ class Applicant extends Model
         'doctoral_year_finished',
         'field_study',
         'skills_n_expertise',
+        'benefit',
         'open_position_id',
         'application_status',
         'user_id',
@@ -81,4 +93,42 @@ class Applicant extends Model
             ? $this->date_hired->format('F j, Y')
             : '';
     }
+
+    private function syncLinkedUserDepartmentAndPositionFromOpenPosition(): void
+    {
+        $userId = (int) ($this->user_id ?? 0);
+        $openPositionId = (int) ($this->open_position_id ?? 0);
+        if ($userId <= 0 || $openPositionId <= 0) {
+            return;
+        }
+
+        $openPosition = OpenPosition::query()->find($openPositionId);
+        if (!$openPosition) {
+            return;
+        }
+
+        $department = trim((string) ($openPosition->department ?? ''));
+        $position = trim((string) ($openPosition->title ?? ''));
+        if ($department === '' && $position === '') {
+            return;
+        }
+
+        $user = User::query()->find($userId);
+        if (!$user) {
+            return;
+        }
+
+        $payload = [];
+        if ($department !== '' && trim((string) ($user->department ?? '')) !== $department) {
+            $payload['department'] = $department;
+        }
+        if ($position !== '' && trim((string) ($user->position ?? '')) !== $position) {
+            $payload['position'] = $position;
+        }
+
+        if (!empty($payload)) {
+            $user->update($payload);
+        }
+    }
 }
+

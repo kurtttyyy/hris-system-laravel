@@ -46,6 +46,10 @@
         normalize(value) {
           return (value ?? '').toString().trim().toLowerCase();
         },
+        isPlaceholderValue(value) {
+          const normalized = this.normalize(value);
+          return normalized === '' || normalized === 'n/a' || normalized === 'na' || normalized === '-';
+        },
         matchesDepartment(empDepartment) {
           if (this.department === 'All') return true;
           return this.normalize(empDepartment) === this.normalize(this.department);
@@ -241,6 +245,17 @@
           leave_applications: [],
           ui_theme: {},
         },
+        async openEmployeeProfile(emp, headerStart, headerEnd) {
+          this.openProfile = true;
+          this.tab = 'overview';
+          await this.setEmployee({
+            ...(emp ?? {}),
+            ui_theme: {
+              header_start: headerStart ?? 'rgb(168 85 247)',
+              header_end: headerEnd ?? 'rgb(99 102 241)',
+            },
+          });
+        },
         async setEmployee(emp) {
           const applicantPosition = emp?.applicant?.position ?? {};
           const employeeData = { ...(emp?.employee ?? {}) };
@@ -266,11 +281,17 @@
             employeeData.department = emp.department;
           }
 
+          if (this.isPlaceholderValue(employeeData.address) && !this.isPlaceholderValue(applicantData.address)) {
+            employeeData.address = applicantData.address;
+          }
+
           if (!employeeData.classification) {
-            employeeData.classification = employeeData.job_type
+            employeeData.classification = applicantPosition.employment
+              || employeeData.job_type
               || applicantPosition.job_type
               || null;
           }
+          employeeData.classification = this.canonicalClassificationValue(employeeData.classification);
 
           if (!educationData.bachelor && bachelorDegreeRow?.degree_name) {
             educationData.bachelor = bachelorDegreeRow.degree_name;
@@ -312,6 +333,8 @@
             leave_applications: Array.isArray(emp?.leave_applications) ? emp.leave_applications : [],
             ui_theme: emp?.ui_theme ?? {},
           };
+
+          this.ensureEmployeeClassification();
 
           this.initDegreeEditRows();
 
@@ -490,6 +513,54 @@
             .toLowerCase()
             .replace(/[-_]/g, ' ')
             .replace(/\s+/g, ' ');
+        },
+        canonicalClassificationValue(value) {
+          const normalized = this.normalizeClassificationValue(value);
+          if (!normalized) return '';
+          if (normalized.includes('full')) return 'Full-Time';
+          if (normalized.includes('part')) return 'Part-Time';
+          if (normalized.includes('probationary') || normalized.includes('permanent') || normalized.includes('regular')) return 'Full-Time';
+          if (normalized === 'nt' || normalized === 'non teaching' || normalized === 'non-teaching') return 'NT';
+          if (normalized.includes('non teaching') || normalized.includes('non-teaching')) return 'NT';
+          return (value ?? '').toString().trim();
+        },
+        ensureEmployeeClassification() {
+          if (!this.selectedEmployee) return;
+          if (!this.selectedEmployee.employee) this.selectedEmployee.employee = {};
+
+          const current = this.canonicalClassificationValue(this.selectedEmployee.employee.classification);
+          if (current) {
+            this.selectedEmployee.employee.classification = current;
+            return;
+          }
+
+          const fallback = this.canonicalClassificationValue(
+            this.selectedEmployee?.applicant?.position?.employment
+            || this.selectedEmployee?.employee?.job_type
+            || this.selectedEmployee?.applicant?.position?.job_type
+          );
+          if (fallback) {
+            this.selectedEmployee.employee.classification = fallback;
+          }
+        },
+        resolveBiometricClassification() {
+          const candidates = [
+            this.selectedEmployee?.employee?.classification,
+            this.selectedEmployee?.applicant?.position?.employment,
+            this.selectedEmployee?.employee?.job_type,
+            this.selectedEmployee?.applicant?.position?.job_type,
+          ];
+
+          for (const candidate of candidates) {
+            const canonical = this.canonicalClassificationValue(candidate);
+            if (!canonical) continue;
+            return this.normalizeClassificationValue(canonical);
+          }
+
+          return '';
+        },
+        isBiometricClassification(type) {
+          return this.resolveBiometricClassification() === this.normalizeClassificationValue(type);
         },
         isProbationaryToPermanent(oldValue, newValue) {
           const oldNorm = this.normalizeClassificationValue(oldValue);
@@ -780,7 +851,8 @@
                         </span>-->
                     </div>
                     <button
-                        @click="openProfile = true; setEmployee({ ...@js($emp), ui_theme: { header_start: @js($headerStart), header_end: @js($headerEnd) } });"
+                        type="button"
+                        @click="openEmployeeProfile(@js($emp), @js($headerStart), @js($headerEnd))"
                         class="text-blue-500 text-sm font-medium hover:underline">
                         View Profile
                     </button>
@@ -834,11 +906,15 @@
             </div>
             <div>
               <h2 class="text-xl font-semibold"
-              x-text="selectedEmployee?.applicant?.first_name + ' ' + selectedEmployee?.applicant?.last_name"
+              x-text="[
+                selectedEmployee?.first_name ?? selectedEmployee?.applicant?.first_name ?? '',
+                selectedEmployee?.middle_name ?? selectedEmployee?.applicant?.middle_name ?? '',
+                selectedEmployee?.last_name ?? selectedEmployee?.applicant?.last_name ?? ''
+              ].filter(Boolean).join(' ') || '-'"
               ></h2>
               <p class="text-sm">
-                <span x-text="selectedEmployee?.job_role ?? selectedEmployee?.applicant?.position?.title ?? selectedEmployee?.employee?.position ?? selectedEmployee?.position ?? '-'"></span><br>
-                <span x-text="selectedEmployee?.applicant?.position?.department ?? selectedEmployee?.employee?.department ?? selectedEmployee?.department ?? '-'"></span>
+                <span x-text="selectedEmployee?.employee?.position ?? selectedEmployee?.job_role ?? selectedEmployee?.applicant?.position?.title ?? selectedEmployee?.position ?? '-'"></span><br>
+                <span x-text="selectedEmployee?.employee?.department ?? selectedEmployee?.applicant?.position?.department ?? selectedEmployee?.department ?? '-'"></span>
               </p>
             </div>
             <span
@@ -922,5 +998,6 @@
   }
 </script>
 
-<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </html>
+
+

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -151,7 +151,7 @@
                 <div>
                     <p class="font-semibold text-gray-900">{{ $record['leave_type'] ?? 'Leave' }}</p>
                     <p class="text-sm text-gray-700">{{ $employeeDisplayName ?? ($record['employee_name'] ?? '-') }}</p>
-                    <p class="text-sm text-gray-500">{{ $dateLabel }} • {{ $daysLabel }} day(s)</p>
+                    <p class="text-sm text-gray-500">{{ $dateLabel }} � {{ $daysLabel }} day(s)</p>
                     <p class="text-sm text-gray-400">{{ $record['reason'] ?? '-' }}</p>
                 </div>
                 <span class="inline-flex rounded-full px-3 py-1 text-xs font-medium {{ $statusClass }}">{{ $statusLabel }}</span>
@@ -231,6 +231,8 @@
 
 </body>
 </html>
+
+
 
 
 

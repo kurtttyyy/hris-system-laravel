@@ -1904,8 +1904,74 @@ class AdministratorPageController extends Controller
         return view('admin.adminReports');
     }
 
-    public function display_compare(){
-        return view('admin.compareCode');
+    public function display_school_administrator(){
+        $administrators = User::with([
+            'employee',
+            'education',
+            'salary',
+            'applicant.position:id,title,department,employment,benifits',
+            'applicant.degrees:id,applicant_id,degree_level,degree_name,school_name,year_finished,sort_order',
+        ])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(department_head, ''))) = ?", ['approved'])
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+
+        return view('Admin.Matrix.adminSchoolAdministrator', compact('administrators'));
+    }
+
+    public function display_non_teaching_matrix()
+    {
+        $nonTeachingEmployees = User::with([
+            'employee',
+            'education',
+            'salary',
+            'applicant.position:id,title,department,employment,benifits,job_type,skills',
+            'applicant.degrees:id,applicant_id,degree_level,degree_name,school_name,year_finished,sort_order',
+        ])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("NOT (TRIM(COALESCE(job_role, '')) <> '' AND TRIM(COALESCE(department_head, '')) <> '')")
+            ->where(function ($query) {
+                $query
+                    ->whereHas('employee', function ($employeeQuery) {
+                        $employeeQuery->whereRaw("LOWER(TRIM(COALESCE(job_type, ''))) IN (?, ?, ?)", ['non-teaching', 'non teaching', 'nt']);
+                    })
+                    ->orWhereHas('applicant.position', function ($positionQuery) {
+                        $positionQuery->whereRaw("LOWER(TRIM(COALESCE(job_type, ''))) IN (?, ?, ?)", ['non-teaching', 'non teaching', 'nt']);
+                    });
+            })
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+
+        return view('Admin.Matrix.adminNon-TeachingMatrix', compact('nonTeachingEmployees'));
+    }
+
+    public function display_teaching_matrix()
+    {
+        $teachingEmployees = User::with([
+            'employee',
+            'education',
+            'salary',
+            'applicant.position:id,title,department,employment,benifits,job_type,skills,responsibilities,requirements',
+            'applicant.degrees:id,applicant_id,degree_level,degree_name,school_name,year_finished,sort_order',
+        ])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->where(function ($query) {
+                $query
+                    ->whereHas('employee', function ($employeeQuery) {
+                        $employeeQuery->whereRaw("LOWER(TRIM(COALESCE(job_type, ''))) IN (?, ?, ?)", ['teaching', 'teacher', 'faculty']);
+                    })
+                    ->orWhereHas('applicant.position', function ($positionQuery) {
+                        $positionQuery->whereRaw("LOWER(TRIM(COALESCE(job_type, ''))) IN (?, ?, ?)", ['teaching', 'teacher', 'faculty']);
+                    });
+            })
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+
+        return view('Admin.Matrix.adminTeachingMatrix', compact('teachingEmployees'));
     }
 
     public function display_applicant(){
@@ -2217,6 +2283,32 @@ class AdministratorPageController extends Controller
 
     public function display_edit(){
         return view('admin.PersonalDetail.editProfile');
+    }
+
+    public function display_service_record_edit(Request $request){
+        $userId = (int) $request->query('user_id', 0);
+        if ($userId <= 0) {
+            return redirect()
+                ->route('admin.adminEmployee')
+                ->with('error', 'Employee not found for service record edit.');
+        }
+
+        $employeeUser = User::with([
+            'employee',
+            'applicant.position:id,title,department',
+            'government',
+        ])
+            ->where('id', $userId)
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->first();
+
+        if (!$employeeUser) {
+            return redirect()
+                ->route('admin.adminEmployee')
+                ->with('error', 'Employee not found for service record edit.');
+        }
+
+        return view('Admin.PersonalDetail.serviceRecordEdit', compact('employeeUser'));
     }
 
     public function display_create_position(){

@@ -1,4 +1,4 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -74,7 +74,7 @@
         <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
           <h3 class="text-sm font-semibold text-amber-700">Pending Leave Requests ({{ $selectedMonth ?? now()->format('Y-m') }})</h3>
           <div class="text-xs text-gray-500">
-            {{ ($pendingLeaveRequests ?? collect())->count() }} request(s) â€¢
+            {{ ($pendingLeaveRequests ?? collect())->count() }} request(s) •
             {{ rtrim(rtrim(number_format((float) ($pendingLeaveDays ?? 0), 1, '.', ''), '0'), '.') }} day(s)
           </div>
         </div>
@@ -96,7 +96,7 @@
                   <span class="ml-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">Pending</span>
                 </p>
                 <p class="text-sm font-semibold text-gray-800">{{ $request->employee_name ?? '-' }}</p>
-                <p class="text-sm text-gray-500">Filed: {{ $requestFilingDate }} â€¢ {{ $requestDays }} day(s)</p>
+                <p class="text-sm text-gray-500">Filed: {{ $requestFilingDate }} • {{ $requestDays }} day(s)</p>
                 <p class="text-sm text-gray-400">{{ $requestReason }}</p>
               </div>
               <div class="flex items-center gap-2 shrink-0">
@@ -172,7 +172,7 @@
                     <span class="ml-2 inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Employee</span>
                   </p>
                   <p class="text-sm font-semibold text-gray-800">{{ $record['employee_name'] ?? '-' }}</p>
-                  <p class="text-sm text-gray-500">{{ $dateLabel }} â€¢ {{ $daysLabel }}</p>
+                  <p class="text-sm text-gray-500">{{ $dateLabel }} • {{ $daysLabel }}</p>
                   <p class="text-sm text-gray-400">{{ $reasonLabel }}</p>
                 </div>
               </div>
@@ -207,6 +207,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 

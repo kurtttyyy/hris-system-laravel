@@ -70,7 +70,7 @@
         </span>
         <span
           class="text-gray-700"
-          x-text="selectedEmployee?.applicant?.phone ?? '—'"
+          x-text="selectedEmployee?.applicant?.phone ?? selectedEmployee?.employee?.contact_number ?? '—'"
         ></span>
       </div>
     </div>
@@ -98,7 +98,7 @@
         </span>
         <span
           class="text-gray-700"
-          x-text="selectedEmployee?.applicant?.address ?? '—'"
+          x-text="selectedEmployee?.applicant?.address ?? selectedEmployee?.employee?.address ?? '—'"
         ></span>
       </div>
     </div>
@@ -201,7 +201,7 @@
         </span>
         <span
           class="text-gray-700"
-          x-text="selectedEmployee?.applicant?.position?.title ?? selectedEmployee?.employee?.position ?? '—'"
+          x-text="selectedEmployee?.employee?.position ?? selectedEmployee?.applicant?.position?.title ?? '—'"
         ></span>
       </div>
     </div>
@@ -227,7 +227,7 @@
         </span>
         <span
           class="text-gray-700"
-          x-text="selectedEmployee?.applicant?.position?.department ?? selectedEmployee?.employee?.department ?? '—'"
+          x-text="selectedEmployee?.employee?.department ?? selectedEmployee?.applicant?.position?.department ?? '—'"
         ></span>
       </div>
     </div>

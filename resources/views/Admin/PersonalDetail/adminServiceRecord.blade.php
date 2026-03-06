@@ -17,7 +17,7 @@
 
       <div class="bg-white rounded-xl p-4 shadow">
         <p class="text-xs text-gray-400">DEPARTMENT</p>
-        <p class="font-semibold mt-1" x-text="selectedEmployee?.applicant?.position?.department ?? selectedEmployee?.employee?.department ?? '-'"></p>
+        <p class="font-semibold mt-1" x-text="selectedEmployee?.employee?.department ?? selectedEmployee?.applicant?.position?.department ?? '-'"></p>
       </div>
 
       <div class="bg-white rounded-xl p-4 shadow">
@@ -186,11 +186,11 @@
             </button>
 
 
-            <button
-              @click="editOpen = true"
-              class="w-full border rounded-lg py-2 hover:bg-gray-50">
+            <a
+              :href="selectedEmployee?.id ? '{{ route('admin.PersonalDetail.serviceRecordEdit') }}?user_id=' + selectedEmployee.id : '#'"
+              class="block w-full border rounded-lg py-2 text-center hover:bg-gray-50">
               Edit Record
-            </button>
+            </a>
           </div>
         </div>
 
