@@ -586,7 +586,7 @@
         buildServiceTimeline() {
           const items = [];
           const hiredRaw = this.selectedEmployee?.applicant?.date_hired || this.selectedEmployee?.employee?.employement_date;
-          const positionTitle = this.selectedEmployee?.job_role || this.selectedEmployee?.applicant?.position?.title || this.selectedEmployee?.employee?.position || 'Employee';
+          const positionTitle = this.selectedEmployee?.employee?.position || this.selectedEmployee?.applicant?.position?.title || this.selectedEmployee?.position || 'Employee';
 
           if (hiredRaw) {
             items.push({

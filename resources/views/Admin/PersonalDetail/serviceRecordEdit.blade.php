@@ -279,9 +279,11 @@
       </div>
 
       <div class="text-center">
-        <h1 class="text-3xl font-extrabold tracking-wide text-emerald-900">NORTHEASTERN COLLEGE</h1>
-        <p class="text-base font-semibold text-slate-700">Santiago City, Philippines</p>
-        <p class="text-base font-semibold text-slate-700">Telephone No.: (078) 305-3226</p>
+        <img
+          src="{{ asset('images/logo.png') }}"
+          alt="Northeastern College"
+          class="mx-auto w-[550px] max-w-full h-auto object-contain"
+        >
       </div>
 
       <hr class="my-4 border-slate-500">
