@@ -219,7 +219,7 @@
                 </td>
                 <td class="border border-stone-300 px-3 py-3">
                   @if ($workPosition !== '' || $displayWorkDuration !== '')
-                    {{ $workPosition !== '' ? $workPosition : '-' }}{{ $displayWorkDuration !== '' ? ' - ('.$displayWorkDuration.')' : '' }}
+                    {{ $workPosition !== '' ? $workPosition : '-' }}{{ $displayWorkDuration !== '' ? ', ('.$displayWorkDuration.')' : '' }}
                   @else
                     -
                   @endif

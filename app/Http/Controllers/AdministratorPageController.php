@@ -2295,7 +2295,7 @@ class AdministratorPageController extends Controller
 
         $employeeUser = User::with([
             'employee',
-            'applicant.position:id,title,department',
+            'applicant.position:id,title,department,employment',
             'government',
         ])
             ->where('id', $userId)
@@ -2309,6 +2309,41 @@ class AdministratorPageController extends Controller
         }
 
         return view('Admin.PersonalDetail.serviceRecordEdit', compact('employeeUser'));
+    }
+
+    public function download_service_record_word(Request $request)
+    {
+        $userId = (int) $request->query('user_id', 0);
+        if ($userId <= 0) {
+            return redirect()
+                ->route('admin.adminEmployee')
+                ->with('error', 'Employee not found for service record download.');
+        }
+
+        $employeeUser = User::with([
+            'employee',
+            'applicant.position:id,title,department,employment',
+            'government',
+            'salary',
+        ])
+            ->where('id', $userId)
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->first();
+
+        if (!$employeeUser) {
+            return redirect()
+                ->route('admin.adminEmployee')
+                ->with('error', 'Employee not found for service record download.');
+        }
+
+        $employeeId = trim((string) ($employeeUser->employee?->employee_id ?? ('EMP-'.$employeeUser->id)));
+        $safeEmployeeId = preg_replace('/[^A-Za-z0-9_-]+/', '-', $employeeId) ?: ('EMP-'.$employeeUser->id);
+        $filename = 'service-record-'.$safeEmployeeId.'.doc';
+
+        return response()
+            ->view('Admin.PersonalDetail.serviceRecordDownload', compact('employeeUser'))
+            ->header('Content-Type', 'application/msword; charset=UTF-8')
+            ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
     }
 
     public function display_create_position(){

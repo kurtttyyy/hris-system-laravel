@@ -95,6 +95,7 @@ Route::controller(AdministratorPageController::class)->group(function () {
     Route::get('system/personal/detail/employee/performance', 'display_performance')->name('admin.PersonalDetail.adminEmployeePerformance');
     Route::get('system/personal/detail/edit', 'display_edit')->name('admin.PersonalDetail.editProfile');
     Route::get('system/personal/detail/service-record/edit', 'display_service_record_edit')->name('admin.PersonalDetail.serviceRecordEdit');
+    Route::get('system/personal/detail/service-record/download-word', 'download_service_record_word')->name('admin.PersonalDetail.serviceRecordEdit.downloadWord');
 });
 
 Route::controller(AdministratorStoreController::class)->group(function () {

@@ -191,6 +191,12 @@
               class="block w-full border rounded-lg py-2 text-center hover:bg-gray-50">
               Edit Record
             </a>
+
+            <a
+              :href="selectedEmployee?.id ? '{{ route('admin.PersonalDetail.serviceRecordEdit.downloadWord') }}?user_id=' + selectedEmployee.id : '#'"
+              class="block w-full border rounded-lg py-2 text-center hover:bg-gray-50">
+              Download Word
+            </a>
           </div>
         </div>
 

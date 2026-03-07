@@ -73,7 +73,6 @@
     }
     .record-table--edit .line-input {
       border: 0;
-      border-bottom: 1px solid #94a3b8;
       border-radius: 0;
       padding: 2px 2px 3px;
       min-height: 28px;
@@ -81,16 +80,17 @@
       font-size: 0.96rem;
     }
     .record-table--edit .line-input:focus {
-      border-bottom-color: #0f172a;
       outline: none;
       box-shadow: none;
     }
     .record-table--edit td {
       padding: 5px 8px;
     }
-    .record-table--edit .line-input::placeholder {
-      color: #9ca3af;
-      opacity: 1;
+    .record-table--edit input[type="date"].line-input:invalid::-webkit-datetime-edit {
+      color: transparent;
+    }
+    .record-table--edit input[type="date"].line-input:focus::-webkit-datetime-edit {
+      color: #111827;
     }
     .tiny {
       font-size: 11px;
@@ -149,9 +149,37 @@
     $formTIN = old('TIN', $employeeUser->government?->TIN ?? '');
     $formPhilHealth = old('PhilHealth', $employeeUser->government?->PhilHealth ?? '');
     $formMID = old('MID', $employeeUser->government?->MID ?? '');
-    $formRTN = old('RTN', $employeeUser->government?->RTN ?? '');
 
-    $employmentDisplay = old('employment', $employeeUser->employee?->classification ?? $employeeUser->applicant?->position?->employment ?? '-');
+    $normalizeServiceStatus = static function ($value): string {
+      $text = trim((string) ($value ?? ''));
+      if ($text === '') {
+        return '';
+      }
+
+      $normalized = strtolower(preg_replace('/[^a-z0-9]+/i', ' ', $text));
+      $normalized = trim(preg_replace('/\s+/', ' ', $normalized));
+
+      if (str_contains($normalized, 'full')) {
+        return 'Full-Time';
+      }
+      if (str_contains($normalized, 'part')) {
+        return 'Part-Time';
+      }
+      if (str_contains($normalized, 'probationary') || str_contains($normalized, 'permanent') || str_contains($normalized, 'regular')) {
+        return 'Full-Time';
+      }
+
+      return $text;
+    };
+
+    $classificationStatus = $normalizeServiceStatus($employeeUser->employee?->classification ?? null);
+    $applicantEmploymentStatus = $normalizeServiceStatus($employeeUser->applicant?->position?->employment ?? null);
+    $employmentDisplay = $normalizeServiceStatus(
+      old(
+        'employment',
+        $classificationStatus !== '' ? $classificationStatus : ($applicantEmploymentStatus !== '' ? $applicantEmploymentStatus : '-')
+      )
+    );
     $salaryDisplay = trim((string) ($employeeUser->salary?->salary ?? '-'));
 
     $defaultServiceRow = [
@@ -168,13 +196,13 @@
 
     $rawStoredRows = old('service_rows', $employeeUser->employee?->service_record_rows ?? []);
     $serviceRows = collect(is_array($rawStoredRows) ? $rawStoredRows : [])
-      ->map(function ($row) use ($defaultServiceRow) {
+      ->map(function ($row) use ($defaultServiceRow, $normalizeServiceStatus) {
         $row = is_array($row) ? $row : [];
         return [
           'from_date' => trim((string) ($row['from_date'] ?? '')),
           'to_date' => trim((string) ($row['to_date'] ?? '')),
           'designation' => trim((string) ($row['designation'] ?? '')),
-          'status' => trim((string) ($row['status'] ?? '')),
+          'status' => $normalizeServiceStatus($row['status'] ?? ''),
           'salary' => trim((string) ($row['salary'] ?? '')),
           'office' => trim((string) ($row['office'] ?? '')),
           'separation_date' => trim((string) ($row['separation_date'] ?? '')),
@@ -272,10 +300,15 @@
     @endif
 
     <div x-show="mode==='preview'" class="paper rounded-xl p-5 md:p-7" style="display:none;">
-      <div class="no-print mb-4 flex justify-end">
-        <button type="button" onclick="window.print()" class="rounded border border-slate-300 bg-slate-50 px-3 py-1.5 text-sm hover:bg-slate-100">
-          Print
-        </button>
+      <div class="no-print mb-4 flex justify-end gap-2">
+        <a
+          href="{{ route('admin.PersonalDetail.serviceRecordEdit.downloadWord', ['user_id' => $employeeUser->id]) }}"
+          class="rounded border border-slate-300 bg-slate-50 px-3 py-1.5 text-sm hover:bg-slate-100"
+          title="Download Word"
+        >
+          <span aria-hidden="true">⬇</span>
+          <span class="sr-only">Download Word</span>
+        </a>
       </div>
 
       <div class="text-center">
@@ -296,15 +329,24 @@
       <div class="mt-6 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
         <div class="md:col-span-1 text-lg font-semibold">NAME:</div>
         <div class="md:col-span-3">
-          <input type="text" class="line-input text-center font-semibold" value="{{ $lastName }}" readonly>
+          <input type="text" class="line-input text-center font-semibold" value="{{ $lastName !== '' ? strtoupper($lastName) : '-' }}" readonly>
+        </div>
+        <div class="md:col-span-4">
+          <input type="text" class="line-input text-center font-semibold" value="{{ $firstName !== '' ? strtoupper($firstName) : '-' }}" readonly>
+        </div>
+        <div class="md:col-span-4">
+          <input type="text" class="line-input text-center font-semibold" value="{{ $middleName !== '' ? strtoupper($middleName) : '-' }}" readonly>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3 -mt-1 mb-1">
+        <div class="md:col-span-1"></div>
+        <div class="md:col-span-3">
           <p class="text-center italic text-slate-600">(Last Name)</p>
         </div>
         <div class="md:col-span-4">
-          <input type="text" class="line-input text-center font-semibold" value="{{ $firstName }}" readonly>
           <p class="text-center italic text-slate-600">(First Name)</p>
         </div>
         <div class="md:col-span-4">
-          <input type="text" class="line-input text-center font-semibold" value="{{ $middleName }}" readonly>
           <p class="text-center italic text-slate-600">(Middle Name)</p>
         </div>
       </div>
@@ -339,10 +381,7 @@
           <label class="col-span-1 font-semibold text-slate-700">PAG-IBIG #:</label>
           <input type="text" class="col-span-2 line-input" value="{{ $formMID !== '' ? $formMID : '-' }}" readonly>
         </div>
-        <div class="grid grid-cols-3 items-center gap-2">
-          <label class="col-span-1 font-semibold text-slate-700">RTN #:</label>
-          <input type="text" class="col-span-2 line-input" value="{{ $formRTN !== '' ? $formRTN : '-' }}" readonly>
-        </div>
+        <div class="hidden md:block"></div>
       </div>
 
       <p class="mt-6 text-center italic text-slate-700 leading-relaxed">
@@ -443,11 +482,6 @@
               <input type="text" name="MID" value="{{ $formMID }}" class="edit-input" placeholder="1234-5678-9012" maxlength="14" inputmode="numeric"
                      oninput="this.value = this.value.replace(/\D/g, '').slice(0,12).replace(/(\d{4})(\d{0,4})(\d{0,4})/, function(_, a, b, c){ return a + (b ? '-' + b : '') + (c ? '-' + c : ''); });">
             </div>
-            <div>
-              <label class="edit-label">PAG-IBIG RTN</label>
-              <input type="text" name="RTN" value="{{ $formRTN }}" class="edit-input" placeholder="1234-5678-9012" maxlength="14" inputmode="numeric"
-                     oninput="this.value = this.value.replace(/\D/g, '').slice(0,12).replace(/(\d{4})(\d{0,4})(\d{0,4})/, function(_, a, b, c){ return a + (b ? '-' + b : '') + (c ? '-' + c : ''); });">
-            </div>
           </div>
         </div>
 
@@ -489,13 +523,13 @@
                   <tr>
                     <td><input type="date" name="service_rows[{{ $idx }}][from_date]" value="{{ $row['from_date'] ?? '' }}" class="line-input"></td>
                     <td><input type="date" name="service_rows[{{ $idx }}][to_date]" value="{{ $row['to_date'] ?? '' }}" class="line-input"></td>
-                    <td><input type="text" name="service_rows[{{ $idx }}][designation]" value="{{ $row['designation'] ?? '' }}" class="line-input" placeholder="Designation"></td>
-                    <td><input type="text" name="service_rows[{{ $idx }}][status]" value="{{ $row['status'] ?? '' }}" class="line-input" placeholder="Status"></td>
-                    <td><input type="text" name="service_rows[{{ $idx }}][salary]" value="{{ $row['salary'] ?? '' }}" class="line-input" placeholder="Salary"></td>
-                    <td><input type="text" name="service_rows[{{ $idx }}][office]" value="{{ $row['office'] ?? '' }}" class="line-input" placeholder="Station / Place of Assignment"></td>
+                    <td><input type="text" name="service_rows[{{ $idx }}][designation]" value="{{ $row['designation'] ?? '' }}" class="line-input"></td>
+                    <td><input type="text" name="service_rows[{{ $idx }}][status]" value="{{ $row['status'] ?? '' }}" class="line-input"></td>
+                    <td><input type="text" name="service_rows[{{ $idx }}][salary]" value="{{ $row['salary'] ?? '' }}" class="line-input"></td>
+                    <td><input type="text" name="service_rows[{{ $idx }}][office]" value="{{ $row['office'] ?? '' }}" class="line-input"></td>
                     <td><input type="date" name="service_rows[{{ $idx }}][separation_date]" value="{{ $row['separation_date'] ?? '' }}" class="line-input"></td>
-                    <td><input type="text" name="service_rows[{{ $idx }}][separation_cause]" value="{{ $row['separation_cause'] ?? '' }}" class="line-input" placeholder="Cause"></td>
-                    <td><input type="text" name="service_rows[{{ $idx }}][remarks]" value="{{ $row['remarks'] ?? '' }}" class="line-input" placeholder="Remarks"></td>
+                    <td><input type="text" name="service_rows[{{ $idx }}][separation_cause]" value="{{ $row['separation_cause'] ?? '' }}" class="line-input"></td>
+                    <td><input type="text" name="service_rows[{{ $idx }}][remarks]" value="{{ $row['remarks'] ?? '' }}" class="line-input"></td>
                   </tr>
                 @endforeach
               </tbody>
