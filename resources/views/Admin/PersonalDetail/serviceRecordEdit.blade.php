@@ -54,6 +54,7 @@
       min-height: 44px;
       height: 44px;
       color: #0f172a;
+      text-align: center;
     }
     .record-table tbody tr:nth-child(even) td {
       background: #fcfcfd;
@@ -78,6 +79,7 @@
       min-height: 28px;
       background: transparent;
       font-size: 0.96rem;
+      text-align: center;
     }
     .record-table--edit .line-input:focus {
       outline: none;
@@ -143,7 +145,10 @@
     $employeeId = trim((string) ($employeeUser->employee?->employee_id ?? '-'));
     $accountNumber = trim((string) ($employeeUser->employee?->account_number ?? '-'));
 
-    $formPosition = old('position', $employeeUser->employee?->position ?? $employeeUser->position ?? $employeeUser->applicant?->work_position ?? '');
+    $displayServiceDesignation = trim((string) ($employeeUser->job_role ?? '')) === 'President'
+      ? 'President'
+      : ($employeeUser->employee?->position ?? $employeeUser->position ?? $employeeUser->applicant?->work_position ?? '');
+    $formPosition = old('position', $displayServiceDesignation);
     $formDepartment = old('department', $employeeUser->employee?->department ?? $employeeUser->department ?? $employeeUser->applicant?->position?->department ?? '');
     $formSSS = old('SSS', $employeeUser->government?->SSS ?? '');
     $formTIN = old('TIN', $employeeUser->government?->TIN ?? '');
@@ -180,7 +185,7 @@
         $classificationStatus !== '' ? $classificationStatus : ($applicantEmploymentStatus !== '' ? $applicantEmploymentStatus : '-')
       )
     );
-    $salaryDisplay = trim((string) ($employeeUser->salary?->salary ?? '-'));
+    $salaryDisplay = trim((string) ($employeeUser->salary?->salary ?? $employeeUser->salary?->rate_per_hour ?? '-'));
 
     $defaultServiceRow = [
       'from_date' => $formDateHired,
@@ -194,16 +199,54 @@
       'remarks' => '',
     ];
 
-    $rawStoredRows = old('service_rows', $employeeUser->employee?->service_record_rows ?? []);
+    $historyRows = collect($employeeUser->positionHistories ?? [])
+      ->map(function ($history) use ($normalizeServiceStatus) {
+        $changedAt = $history->changed_at ?? $history->created_at;
+        $changedDate = $changedAt ? \Illuminate\Support\Carbon::parse($changedAt)->format('Y-m-d') : '';
+
+        return [
+          'from_date' => '',
+          'to_date' => $changedDate,
+          'designation' => trim((string) ($history->old_position ?? '')),
+          'status' => $normalizeServiceStatus($history->old_classification ?? ''),
+          'salary' => trim((string) ($history->old_salary ?? '')),
+          'office' => trim((string) ($history->old_department ?? '')),
+          'separation_date' => '',
+          'separation_cause' => '',
+          'remarks' => trim((string) ($history->note ?? '')),
+        ];
+      })
+      ->filter(function ($row) {
+        return trim((string) ($row['designation'] ?? '')) !== ''
+          || trim((string) ($row['status'] ?? '')) !== ''
+          || trim((string) ($row['salary'] ?? '')) !== ''
+          || trim((string) ($row['office'] ?? '')) !== '';
+      })
+      ->values();
+
+    $rawStoredRows = old('service_rows');
+    if ($rawStoredRows === null) {
+      $storedRows = $employeeUser->employee?->service_record_rows ?? [];
+      if (is_array($storedRows) && !empty($storedRows)) {
+        $rawStoredRows = $storedRows;
+      } else {
+        $rawStoredRows = $historyRows->all();
+      }
+    }
     $serviceRows = collect(is_array($rawStoredRows) ? $rawStoredRows : [])
-      ->map(function ($row) use ($defaultServiceRow, $normalizeServiceStatus) {
+      ->values()
+      ->map(function ($row, $index) use ($defaultServiceRow, $normalizeServiceStatus, $salaryDisplay) {
         $row = is_array($row) ? $row : [];
+        $rowSalary = trim((string) ($row['salary'] ?? ''));
+        if ($rowSalary === '' && $index === 0 && $salaryDisplay !== '' && $salaryDisplay !== '-') {
+          $rowSalary = $salaryDisplay;
+        }
         return [
           'from_date' => trim((string) ($row['from_date'] ?? '')),
           'to_date' => trim((string) ($row['to_date'] ?? '')),
           'designation' => trim((string) ($row['designation'] ?? '')),
           'status' => $normalizeServiceStatus($row['status'] ?? ''),
-          'salary' => trim((string) ($row['salary'] ?? '')),
+          'salary' => $rowSalary,
           'office' => trim((string) ($row['office'] ?? '')),
           'separation_date' => trim((string) ($row['separation_date'] ?? '')),
           'separation_cause' => trim((string) ($row['separation_cause'] ?? '')),
@@ -220,11 +263,21 @@
       })
       ->values();
 
+    $hasCurrentSnapshot = $serviceRows->contains(function ($row) use ($defaultServiceRow, $normalizeServiceStatus) {
+      return strtolower(trim((string) ($row['designation'] ?? ''))) === strtolower(trim((string) ($defaultServiceRow['designation'] ?? '')))
+        && strtolower(trim((string) ($normalizeServiceStatus($row['status'] ?? '')))) === strtolower(trim((string) ($normalizeServiceStatus($defaultServiceRow['status'] ?? ''))))
+        && strtolower(trim((string) ($row['salary'] ?? ''))) === strtolower(trim((string) ($defaultServiceRow['salary'] ?? '')))
+        && strtolower(trim((string) ($row['office'] ?? ''))) === strtolower(trim((string) ($defaultServiceRow['office'] ?? '')));
+    });
+    if (!$hasCurrentSnapshot) {
+      $serviceRows->push($defaultServiceRow);
+    }
+
     if ($serviceRows->isEmpty()) {
       $serviceRows = collect([$defaultServiceRow]);
     }
 
-    $previewRows = $serviceRows->take(9)->values();
+    $previewRows = $serviceRows->slice(-9)->values();
     while ($previewRows->count() < 9) {
       $previewRows->push([
         'from_date' => '',
@@ -239,7 +292,7 @@
       ]);
     }
 
-    $editRows = $serviceRows->take(9)->values();
+    $editRows = $serviceRows->slice(-9)->values();
     while ($editRows->count() < 9) {
       $editRows->push([
         'from_date' => '',
@@ -271,8 +324,7 @@
   <div class="max-w-6xl mx-auto px-4 py-6 md:py-8" x-data="{ mode: 'preview' }">
     <div class="mb-4 flex items-center justify-between gap-3 no-print">
       <a
-        href="{{ route('admin.adminEmployee') }}"
-        onclick="if (window.history.length > 1) { event.preventDefault(); window.history.back(); }"
+        href="{{ route('admin.adminEmployee', ['tab' => 'record', 'user_id' => $employeeUser->id]) }}"
         class="inline-flex items-center rounded border border-slate-400 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
       >
         Back

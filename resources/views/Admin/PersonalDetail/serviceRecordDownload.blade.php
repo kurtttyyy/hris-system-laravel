@@ -1,19 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="UTF-8">
   <title>Service Record</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument xmlns:w="urn:schemas-microsoft-com:office:word">
+      <w:View>Print</w:View>
+      <w:Zoom>100</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
   <style>
-    @page {
-      size: A4 portrait;
-      margin: 0.55in;
+    v\:* {
+      behavior: url(#default#VML);
+      display: inline-block;
     }
+    @page Section1 {
+      size: 8.27in 11.69in;
+      margin: 0.22in 0.22in 0.28in 0.22in;
+      mso-header-margin: 0.2in;
+      mso-footer-margin: 0.2in;
+      mso-paper-source: 0;
+    }
+    div.Section1 { page: Section1; }
     body {
-      margin: 0;
+      margin: 0 !important;
+      padding: 0 !important;
       font-family: Arial, Helvetica, sans-serif;
       color: #0f172a;
-      font-size: 9px;
+      font-size: 10pt;
       line-height: 1.25;
+    }
+    .Section1 {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100%;
     }
     .page {
       width: 100%;
@@ -30,8 +53,22 @@
       display: inline-block;
     }
     .divider {
-      border-top: 1px solid #64748b;
+      border-top: 1.5px solid #1e3a8a;
       margin: 8px 0 10px;
+      height: 0;
+      line-height: 0;
+      font-size: 0;
+    }
+    .divider-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 10px;
+    }
+    .divider-table td {
+      border-top: 1.5px solid #1e3a8a;
+      height: 0;
+      line-height: 0;
+      font-size: 0;
     }
     .title {
       text-align: center;
@@ -158,47 +195,97 @@
     .record-table tbody td {
       height: 20px;
       font-size: 8px;
+      text-align: center;
     }
     .small {
       font-size: 7px;
       font-weight: 600;
     }
-    .sign-row {
-      margin-top: 16px;
+
+    .sign-top {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-bottom: 10px;
+    }
+    .sign-top td {
+      vertical-align: top;
+    }
+    .sign-date {
+      text-align: left;
+      color: #0b234f;
+      white-space: nowrap;
+    }
+    .sign-date-line {
+      display: inline;
+      margin-left: 8px;
+      padding: 0;
+      white-space: nowrap;
+    }
+    .certified-label {
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      color: #0b234f;
+      text-transform: uppercase;
+      text-align: left;
+    }
+    .signature-wrap {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-top: 5px;
+    }
+    .signature-wrap .right-cell {
+      width: 58%;
+      text-align: right;
+      padding-top: 40px;
+      padding-right: 28px; /* change this value to move line/title left-right */
+      vertical-align: top;
+    }
+    .signature-wrap .sig-line-table {
+      width: 220px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin: 0 0 1px auto;
+    }
+    .signature-wrap .sig-line-table td {
+      border-top: 1.2px solid #334155;
+      height: 0;
+      line-height: 0;
+      font-size: 0;
+      padding: 0;
+    }
+    .signature-wrap .sig-title {
+      text-align: right;
+      color: #0b234f;
+      margin-right: 25px;
+    }
+    .sign-spacer {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
     }
-    .sign-row td {
-      vertical-align: top;
+    .sign-spacer td {
+      height: 40px;
+      line-height: 4px;
+      font-size: 0;
+      mso-line-height-rule: exactly;
+      padding: 0;
     }
-    .date-line {
-      display: inline-block;
-      min-width: 120px;
-      border-bottom: 1px solid #334155;
-      padding: 1px 3px;
+    /* Word-compatible global font sizing for downloaded .doc HTML */
+    body, div, p, span, td, th, a, li {
+      font-size: 10pt !important;
+      mso-fareast-font-family: Arial;
     }
-    .certified {
-      text-align: center;
-      font-size: 9px;
-      padding-top: 2px;
-    }
-    .signature {
-      margin-top: 22px;
-      text-align: center;
-    }
-    .signature .sig-line {
-      width: 170px;
-      border-bottom: 1px solid #334155;
-      margin: 0 auto 3px;
-      height: 14px;
-    }
-    .signature .sig-title {
-      font-size: 9px;
+    /* Keep only the main title larger, per request. */
+    .title h1 {
+      font-size: 22px !important;
+      line-height: 1 !important;
     }
   </style>
 </head>
-<body>
+<body style="font-family: Arial, Helvetica, sans-serif; font-size:11pt; mso-bidi-font-size:10.0pt;">
+  <div class="Section1">
   @php
     $lastName = trim((string) ($employeeUser->last_name ?? ''));
     $firstName = trim((string) ($employeeUser->first_name ?? ''));
@@ -245,8 +332,12 @@
       ?? $employeeUser->applicant?->position?->employment
       ?? '-'
     );
-    $salaryDisplay = trim((string) ($employeeUser->salary?->salary ?? '-'));
-    $formPosition = trim((string) ($employeeUser->employee?->position ?? $employeeUser->position ?? $employeeUser->applicant?->work_position ?? ''));
+    $salaryDisplay = trim((string) ($employeeUser->salary?->salary ?? $employeeUser->salary?->rate_per_hour ?? '-'));
+    $formPosition = trim((string) (
+      trim((string) ($employeeUser->job_role ?? '')) === 'President'
+        ? 'President'
+        : ($employeeUser->employee?->position ?? $employeeUser->position ?? $employeeUser->applicant?->work_position ?? '')
+    ));
     $formDepartment = trim((string) ($employeeUser->employee?->department ?? $employeeUser->department ?? $employeeUser->applicant?->position?->department ?? ''));
 
     $defaultServiceRow = [
@@ -261,16 +352,50 @@
       'remarks' => '',
     ];
 
+    $historyRows = collect($employeeUser->positionHistories ?? [])
+      ->map(function ($history) use ($normalizeServiceStatus) {
+        $changedAt = $history->changed_at ?? $history->created_at;
+        $changedDate = $changedAt ? \Illuminate\Support\Carbon::parse($changedAt)->format('Y-m-d') : '';
+
+        return [
+          'from_date' => '',
+          'to_date' => $changedDate,
+          'designation' => trim((string) ($history->old_position ?? '')),
+          'status' => $normalizeServiceStatus($history->old_classification ?? ''),
+          'salary' => trim((string) ($history->old_salary ?? '')),
+          'office' => trim((string) ($history->old_department ?? '')),
+          'separation_date' => '',
+          'separation_cause' => '',
+          'remarks' => trim((string) ($history->note ?? '')),
+        ];
+      })
+      ->filter(function ($row) {
+        return trim((string) ($row['designation'] ?? '')) !== ''
+          || trim((string) ($row['status'] ?? '')) !== ''
+          || trim((string) ($row['salary'] ?? '')) !== ''
+          || trim((string) ($row['office'] ?? '')) !== '';
+      })
+      ->values();
+
     $storedRows = $employeeUser->employee?->service_record_rows ?? [];
-    $previewRows = collect(is_array($storedRows) ? $storedRows : [])
-      ->map(function ($row) use ($normalizeServiceStatus) {
+    $sourceRows = (is_array($storedRows) && !empty($storedRows))
+      ? $storedRows
+      : $historyRows->all();
+
+    $previewRows = collect(is_array($sourceRows) ? $sourceRows : [])
+      ->values()
+      ->map(function ($row, $index) use ($normalizeServiceStatus, $salaryDisplay) {
         $row = is_array($row) ? $row : [];
+        $rowSalary = trim((string) ($row['salary'] ?? ''));
+        if ($rowSalary === '' && $index === 0 && $salaryDisplay !== '' && $salaryDisplay !== '-') {
+          $rowSalary = $salaryDisplay;
+        }
         return [
           'from_date' => trim((string) ($row['from_date'] ?? '')),
           'to_date' => trim((string) ($row['to_date'] ?? '')),
           'designation' => trim((string) ($row['designation'] ?? '')),
           'status' => $normalizeServiceStatus($row['status'] ?? ''),
-          'salary' => trim((string) ($row['salary'] ?? '')),
+          'salary' => $rowSalary,
           'office' => trim((string) ($row['office'] ?? '')),
           'separation_date' => trim((string) ($row['separation_date'] ?? '')),
           'separation_cause' => trim((string) ($row['separation_cause'] ?? '')),
@@ -287,11 +412,21 @@
       })
       ->values();
 
+    $hasCurrentSnapshot = $previewRows->contains(function ($row) use ($defaultServiceRow, $normalizeServiceStatus) {
+      return strtolower(trim((string) ($row['designation'] ?? ''))) === strtolower(trim((string) ($defaultServiceRow['designation'] ?? '')))
+        && strtolower(trim((string) ($normalizeServiceStatus($row['status'] ?? '')))) === strtolower(trim((string) ($normalizeServiceStatus($defaultServiceRow['status'] ?? ''))))
+        && strtolower(trim((string) ($row['salary'] ?? ''))) === strtolower(trim((string) ($defaultServiceRow['salary'] ?? '')))
+        && strtolower(trim((string) ($row['office'] ?? ''))) === strtolower(trim((string) ($defaultServiceRow['office'] ?? '')));
+    });
+    if (!$hasCurrentSnapshot) {
+      $previewRows->push($defaultServiceRow);
+    }
+
     if ($previewRows->isEmpty()) {
       $previewRows = collect([$defaultServiceRow]);
     }
 
-    $previewRows = $previewRows->take(9)->values();
+    $previewRows = $previewRows->slice(-9)->values();
     while ($previewRows->count() < 9) {
       $previewRows->push([
         'from_date' => '',
@@ -318,24 +453,33 @@
       }
     };
 
-    $logoBannerSrc = asset('images/logo.png');
-    try {
-      $logoBannerPath = public_path('images/logo.png');
-      if (is_file($logoBannerPath)) {
-        $logoBannerSrc = 'data:image/png;base64,'.base64_encode((string) file_get_contents($logoBannerPath));
-      }
-    } catch (\Throwable $e) {
-      $logoBannerSrc = asset('images/logo.png');
-    }
+    $logoBannerSrc = 'cid:service-record-banner';
 
   @endphp
 
   <div class="page">
     <div class="header">
-      <img src="{{ $logoBannerSrc }}" alt="Northeastern College">
+      <!--[if gte mso 9]>
+      <v:shape id="serviceRecordBanner" type="#_x0000_t75" style="width:370pt;height:55pt;">
+        <v:imagedata src="{{ $logoBannerSrc }}" o:title="Northeastern College"/>
+      </v:shape>
+      <![endif]-->
+      <!--[if !mso]><!-- -->
+      <img
+        src="{{ $logoBannerSrc }}"
+        alt="Northeastern College"
+        width="560"
+        style="width:560px; max-width:100%; height:auto; border:0; outline:none; text-decoration:none; -ms-interpolation-mode:bicubic;"
+      >
+      <!--<![endif]-->
     </div>
 
     <div class="divider"></div>
+    <table class="divider-table" role="presentation" cellpadding="0" cellspacing="0">
+      <tr>
+        <td>&nbsp;</td>
+      </tr>
+    </table>
 
     <div class="title">
       <h1>SERVICE RECORD</h1>
@@ -500,23 +644,32 @@
       </table>
     </div>
 
-    <table class="sign-row">
-      <tr>
-        <td style="width: 43%;">
-          <div style="font-size: 13px;">
-            Date:
-            <span class="date-line">{{ $displayCurrentDate }}</span>
-          </div>
-        </td>
-        <td style="width: 24%;" class="certified">CERTIFIED CORRECT:</td>
-        <td style="width: 33%;">
-          <div class="signature">
-            <div class="sig-line"></div>
-            <div class="sig-title">Human Resources Director</div>
-          </div>
-        </td>
-      </tr>
+    <table class="sign-spacer" role="presentation" cellpadding="0" cellspacing="0">
+      <tr><td>&nbsp;</td></tr>
     </table>
+    <div class="sign-row" style="margin-top:0; mso-margin-top-alt:0; padding-top:0;">
+      <table class="sign-top" role="presentation" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="width:42%;" class="sign-date">
+            Date:
+            <u class="sign-date-line">{{ $displayCurrentDate }}</u>
+          </td>
+          <td style="width:58%;" class="certified-label">CERTIFIED CORRECT:</td>
+        </tr>
+      </table>
+      <table class="signature-wrap" role="presentation" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="width:42%;">&nbsp;</td>
+          <td class="right-cell">
+            <table class="sig-line-table" role="presentation" cellpadding="0" cellspacing="0">
+              <tr><td>&nbsp;</td></tr>
+            </table>
+            <div class="sig-title">Human Resources Director</div>
+          </td>
+        </tr>
+      </table>
+    </div>
   </div>
+</div>
 </body>
 </html>

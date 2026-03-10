@@ -1936,6 +1936,21 @@ class AdministratorStoreController extends Controller
             $text = trim((string) ($value ?? ''));
             return $text === '' ? null : $text;
         };
+        $normalizeServiceStatus = static function ($value) use ($normalize): ?string {
+            $text = $normalize($value);
+            if ($text === null) {
+                return null;
+            }
+            $normalized = strtolower(preg_replace('/[^a-z0-9]+/i', ' ', $text));
+            $normalized = trim((string) preg_replace('/\s+/', ' ', (string) $normalized));
+            if (str_contains($normalized, 'full')) {
+                return 'Full-Time';
+            }
+            if (str_contains($normalized, 'part')) {
+                return 'Part-Time';
+            }
+            return $text;
+        };
 
         $normalizeRow = static function (array $row) use ($normalize): array {
             return [
@@ -1964,32 +1979,72 @@ class AdministratorStoreController extends Controller
             ->values()
             ->all();
 
-        $firstRow = $serviceRows[0] ?? [];
+        $rowCollection = collect($serviceRows);
+        $firstRow = $rowCollection->first() ?? [];
+        $latestRow = $rowCollection
+            ->reverse()
+            ->first(function (array $row) {
+                return filled($row['designation'] ?? null)
+                    || filled($row['status'] ?? null)
+                    || filled($row['salary'] ?? null)
+                    || filled($row['office'] ?? null);
+            }) ?? ($firstRow ?? []);
+
         $effectiveDateHired = $attrs['date_hired'] ?? ($firstRow['from_date'] ?? null);
-        $effectivePosition = $attrs['position'] ?? ($firstRow['designation'] ?? null);
-        $effectiveDepartment = $attrs['department'] ?? ($firstRow['office'] ?? null);
+        $effectivePosition = $attrs['position']
+            ?? ($latestRow['designation'] ?? null)
+            ?? ($firstRow['designation'] ?? null);
+        $effectiveDepartment = $attrs['department']
+            ?? ($latestRow['office'] ?? null)
+            ?? ($firstRow['office'] ?? null);
+        $effectiveClassification = $normalizeServiceStatus($latestRow['status'] ?? ($firstRow['status'] ?? null));
+        $effectiveSalary = $normalize($latestRow['salary'] ?? ($firstRow['salary'] ?? null));
+        $effectiveJobRole = null;
+        $serviceDesignationText = $normalize($effectivePosition);
+        $effectivePositionText = $serviceDesignationText;
+        $effectiveDepartmentHead = null;
+        $designationNormalized = $serviceDesignationText !== null ? strtolower($serviceDesignationText) : null;
+        if (in_array($designationNormalized, ['president', 'dean'], true)) {
+            $effectiveDepartmentHead = 'Approved';
+        }
+        if ($designationNormalized === 'president') {
+            $effectiveJobRole = 'President';
+            $effectivePositionText = 'Dean';
+        }
+        $hasClassificationSalaryColumn = Schema::hasColumn('employees', 'classification_salary');
 
         $user = User::query()->findOrFail((int) $attrs['user_id']);
+        $existingEmployeeForHistory = Employee::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $oldPositionForHistory = trim((string) ($existingEmployeeForHistory?->position ?? $user->position ?? ''));
+        $oldDepartmentForHistory = trim((string) ($existingEmployeeForHistory?->department ?? $user->department ?? ''));
+        $oldClassificationForHistory = trim((string) ($existingEmployeeForHistory?->classification ?? ''));
 
         $user->update([
-            'position' => $normalize($effectivePosition) ?? $normalize($user->position),
+            'position' => $effectivePositionText ?? $normalize($user->position),
             'department' => $normalize($effectiveDepartment) ?? $normalize($user->department),
+            'job_role' => $effectiveJobRole ?? $user->job_role,
+            'department_head' => $effectiveDepartmentHead ?? $user->department_head,
         ]);
 
-        $employee = Employee::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $employee = $existingEmployeeForHistory;
         $employeePayload = [
             'position' => $normalize($effectivePosition)
                 ?? ($employee?->position ?? $normalize($user->position) ?? '-'),
             'department' => $normalize($effectiveDepartment)
                 ?? ($employee?->department ?? $normalize($user->department) ?? '-'),
+            'classification' => $normalize($effectiveClassification)
+                ?? ($employee?->classification ?? null),
             'employement_date' => $effectiveDateHired ?? ($employee?->employement_date ?? null),
-            'service_record_rows' => $serviceRows,
         ];
+        if ($hasClassificationSalaryColumn) {
+            $employeePayload['classification_salary'] = $effectiveSalary
+                ?? ($employee?->classification_salary ?? null);
+        }
 
         if ($employee) {
             $employee->update($employeePayload);
         } else {
-            Employee::create([
+            $employeeCreatePayload = [
                 'user_id' => (int) $attrs['user_id'],
                 'employee_id' => 'EMP-'.str_pad((string) $attrs['user_id'], 5, '0', STR_PAD_LEFT),
                 'employement_date' => $effectiveDateHired ?? (optional($user->created_at)->toDateString() ?? now()->toDateString()),
@@ -2001,9 +2056,25 @@ class AdministratorStoreController extends Controller
                 'address' => 'N/A',
                 'department' => $employeePayload['department'] ?? '-',
                 'position' => $employeePayload['position'] ?? '-',
-                'classification' => 'Probationary',
-                'service_record_rows' => $serviceRows,
-            ]);
+                'classification' => $employeePayload['classification'] ?? 'Probationary',
+            ];
+            if ($hasClassificationSalaryColumn) {
+                $employeeCreatePayload['classification_salary'] = $effectiveSalary;
+            }
+            Employee::create($employeeCreatePayload);
+        }
+
+        $existingSalary = Salary::query()->where('user_id', (int) $attrs['user_id'])->first();
+        $oldSalaryForHistory = trim((string) ($existingSalary?->salary ?? ''));
+        if ($existingSalary || filled($effectiveSalary)) {
+            Salary::updateOrCreate(
+                ['user_id' => (int) $attrs['user_id']],
+                [
+                    'salary' => $effectiveSalary ?? ($existingSalary?->salary ?? null),
+                    'rate_per_hour' => $existingSalary?->rate_per_hour ?? null,
+                    'cola' => $existingSalary?->cola ?? null,
+                ]
+            );
         }
 
         $governmentPayload = [
@@ -2074,15 +2145,63 @@ class AdministratorStoreController extends Controller
         }
 
         if ($applicant) {
+            $newPositionForHistory = trim((string) ($effectivePositionText ?? $applicant->work_position ?? ''));
+            $mergedRelevantExperiencePosition = $this->buildRelevantExperiencePositions(
+                (string) ($applicant->work_position ?? ''),
+                $oldPositionForHistory,
+                $newPositionForHistory
+            );
             $applicant->update([
                 'user_id' => $userId,
                 'first_name' => $firstName ?: $applicant->first_name,
                 'last_name' => $lastName ?: $applicant->last_name,
                 'email' => $email ?: $applicant->email,
-                'work_position' => $normalize($effectivePosition) ?? $applicant->work_position,
+                'work_position' => $mergedRelevantExperiencePosition
+                    ?? ($effectivePositionText ?? $applicant->work_position),
                 'date_hired' => $effectiveDateHired ?? $applicant->date_hired,
             ]);
         }
+
+        $effectiveDepartmentText = $normalize($effectiveDepartment);
+        $effectiveClassificationText = $normalize($effectiveClassification);
+
+        // Final sync pass: enforce service-record values across users/employees after applicant save hooks run.
+        User::query()
+            ->where('id', $userId)
+            ->update([
+                'position' => $effectivePositionText ?? $user->position,
+                'department' => $effectiveDepartmentText ?? $user->department,
+                'job_role' => $effectiveJobRole ?? $user->job_role,
+                'department_head' => $effectiveDepartmentHead ?? $user->department_head,
+            ]);
+
+        $employeeSyncPayload = [
+            'position' => $effectivePositionText ?? ($employeePayload['position'] ?? null),
+            'department' => $effectiveDepartmentText ?? ($employeePayload['department'] ?? null),
+            'classification' => $effectiveClassificationText ?? ($employeePayload['classification'] ?? null),
+            'employement_date' => $effectiveDateHired ?? ($employeePayload['employement_date'] ?? null),
+        ];
+        if ($hasClassificationSalaryColumn) {
+            $employeeSyncPayload['classification_salary'] = $effectiveSalary
+                ?? ($employeePayload['classification_salary'] ?? null);
+        }
+
+        Employee::query()
+            ->where('user_id', $userId)
+            ->update($employeeSyncPayload);
+
+        $this->recordCareerProgressionIfChanged(
+            $userId,
+            $oldPositionForHistory,
+            trim((string) ($employeeSyncPayload['position'] ?? '')),
+            $oldClassificationForHistory,
+            trim((string) ($employeeSyncPayload['classification'] ?? '')),
+            'Updated from service record',
+            $oldDepartmentForHistory,
+            trim((string) ($employeeSyncPayload['department'] ?? '')),
+            $oldSalaryForHistory,
+            trim((string) ($effectiveSalary ?? ($existingSalary?->salary ?? '')))
+        );
 
         return redirect()
             ->route('admin.PersonalDetail.serviceRecordEdit', ['user_id' => (int) $attrs['user_id']])
@@ -2157,6 +2276,8 @@ class AdministratorStoreController extends Controller
         $existingSalary = Salary::query()->where('user_id', (int) $attrs['user_id'])->first();
         $oldPosition = trim((string) ($existingEmployee?->position ?? ''));
         $oldClassification = trim((string) ($existingEmployee?->classification ?? ''));
+        $oldDepartment = trim((string) ($existingEmployee?->department ?? $user->department ?? ''));
+        $oldSalary = trim((string) ($existingSalary?->salary ?? ''));
         $hasAllRequired = function (array $payload, array $requiredKeys): bool {
             foreach ($requiredKeys as $key) {
                 if (!filled($payload[$key] ?? null)) {
@@ -2219,8 +2340,32 @@ class AdministratorStoreController extends Controller
             trim((string) ($employeePayload['position'] ?? '')),
             $oldClassification,
             trim((string) ($employeePayload['classification'] ?? '')),
-            'Updated from general profile'
+            'Updated from general profile',
+            $oldDepartment,
+            trim((string) ($employeePayload['department'] ?? '')),
+            $oldSalary,
+            trim((string) ($existingSalary?->salary ?? ''))
         );
+
+        $profileApplicant = Applicant::query()
+            ->where('user_id', (int) $attrs['user_id'])
+            ->orderByDesc('id')
+            ->first();
+
+        if ($profileApplicant) {
+            $newPositionForHistory = trim((string) ($employeePayload['position'] ?? ''));
+            $mergedRelevantExperiencePosition = $this->buildRelevantExperiencePositions(
+                (string) ($profileApplicant->work_position ?? ''),
+                $oldPosition,
+                $newPositionForHistory
+            );
+
+            if ($mergedRelevantExperiencePosition !== null) {
+                $profileApplicant->update([
+                    'work_position' => $mergedRelevantExperiencePosition,
+                ]);
+            }
+        }
 
         $existingGovernment = Government::query()->where('user_id', (int) $attrs['user_id'])->first();
         $governmentPayload = [
@@ -2660,6 +2805,8 @@ class AdministratorStoreController extends Controller
         $existingSalary = Salary::query()->where('user_id', (int) $attrs['user_id'])->first();
         $oldPosition = trim((string) ($existingEmployee?->position ?? ''));
         $oldClassification = trim((string) ($existingEmployee?->classification ?? ''));
+        $oldDepartment = trim((string) ($existingEmployee?->department ?? $user->department ?? ''));
+        $oldSalary = trim((string) ($existingSalary?->salary ?? ''));
         $hasAllRequired = function (array $payload, array $requiredKeys): bool {
             foreach ($requiredKeys as $key) {
                 if (!filled($payload[$key] ?? null)) {
@@ -2710,7 +2857,11 @@ class AdministratorStoreController extends Controller
             trim((string) ($employeePayload['position'] ?? ($existingEmployee?->position ?? ''))),
             $oldClassification,
             trim((string) ($employeePayload['classification'] ?? ($existingEmployee?->classification ?? ''))),
-            'Updated from profile edit'
+            'Updated from profile edit',
+            $oldDepartment,
+            trim((string) ($employeePayload['department'] ?? ($existingEmployee?->department ?? ''))),
+            $oldSalary,
+            trim((string) ($attrs['salary'] ?? ($existingSalary?->salary ?? '')))
         );
 
         $governmentPayload = [
@@ -2759,6 +2910,13 @@ class AdministratorStoreController extends Controller
             ->first();
 
         if ($applicant) {
+            $newPositionForHistory = trim((string) ($employeePayload['position'] ?? ($existingEmployee?->position ?? '')));
+            $mergedRelevantExperiencePosition = $this->buildRelevantExperiencePositions(
+                (string) ($applicant->work_position ?? ''),
+                $oldPosition,
+                $newPositionForHistory
+            );
+
             $applicant->update([
                 'bachelor_degree' => $attrs['bachelor'] ?? null,
                 'bachelor_school_name' => $attrs['bachelor_school_name'] ?? null,
@@ -2769,6 +2927,7 @@ class AdministratorStoreController extends Controller
                 'doctoral_degree' => $attrs['doctorate'] ?? null,
                 'doctoral_school_name' => $attrs['doctoral_school_name'] ?? null,
                 'doctoral_year_finished' => $attrs['doctoral_year_finished'] ?? null,
+                'work_position' => $mergedRelevantExperiencePosition ?? ($applicant->work_position ?? null),
             ]);
 
             $degreeInputs = $attrs['degree_inputs'] ?? [];
@@ -2930,7 +3089,11 @@ class AdministratorStoreController extends Controller
         string $newPosition,
         string $oldClassification = '',
         string $newClassification = '',
-        string $note = ''
+        string $note = '',
+        string $oldDepartment = '',
+        string $newDepartment = '',
+        string $oldSalary = '',
+        string $newSalary = ''
     ): void {
         if ($userId <= 0) {
             return;
@@ -2940,11 +3103,17 @@ class AdministratorStoreController extends Controller
         $newNormalized = strtolower(trim($newPosition));
         $oldClassNormalized = strtolower(trim($oldClassification));
         $newClassNormalized = strtolower(trim($newClassification));
+        $oldDepartmentNormalized = strtolower(trim($oldDepartment));
+        $newDepartmentNormalized = strtolower(trim($newDepartment));
+        $oldSalaryNormalized = strtolower(trim($oldSalary));
+        $newSalaryNormalized = strtolower(trim($newSalary));
 
         $positionChanged = $newNormalized !== '' && $oldNormalized !== $newNormalized;
         $classificationChanged = $newClassNormalized !== '' && $oldClassNormalized !== $newClassNormalized;
+        $departmentChanged = $newDepartmentNormalized !== '' && $oldDepartmentNormalized !== $newDepartmentNormalized;
+        $salaryChanged = $newSalaryNormalized !== '' && $oldSalaryNormalized !== $newSalaryNormalized;
 
-        if (!$positionChanged && !$classificationChanged) {
+        if (!$positionChanged && !$classificationChanged && !$departmentChanged && !$salaryChanged) {
             return;
         }
 
@@ -2962,10 +3131,61 @@ class AdministratorStoreController extends Controller
             'new_position' => $finalNewPosition,
             'old_classification' => trim($oldClassification) !== '' ? trim($oldClassification) : null,
             'new_classification' => trim($newClassification) !== '' ? trim($newClassification) : null,
+            'old_department' => trim($oldDepartment) !== '' ? trim($oldDepartment) : null,
+            'new_department' => trim($newDepartment) !== '' ? trim($newDepartment) : null,
+            'old_salary' => trim($oldSalary) !== '' ? trim($oldSalary) : null,
+            'new_salary' => trim($newSalary) !== '' ? trim($newSalary) : null,
             'changed_by' => Auth::id(),
             'changed_at' => now(),
             'note' => trim($note) !== '' ? trim($note) : null,
         ]);
+    }
+
+    private function buildRelevantExperiencePositions(?string $existingWorkPosition, string $oldPosition, string $newPosition): ?string
+    {
+        $positions = $this->parseRelevantExperiencePositions($existingWorkPosition);
+        $old = trim($oldPosition);
+        $new = trim($newPosition);
+
+        if ($old !== '' && strcasecmp($old, $new) !== 0) {
+            $positions = $this->appendUniqueRelevantPosition($positions, $old);
+        }
+        if ($new !== '') {
+            $positions = $this->appendUniqueRelevantPosition($positions, $new);
+        }
+
+        return empty($positions) ? null : implode(' | ', $positions);
+    }
+
+    private function parseRelevantExperiencePositions(?string $raw): array
+    {
+        $text = trim((string) ($raw ?? ''));
+        if ($text === '') {
+            return [];
+        }
+
+        return collect(preg_split('/\s*(?:\||\/|,|;|\r?\n)\s*/', $text) ?: [])
+            ->map(fn ($value) => trim((string) $value))
+            ->filter(fn ($value) => $value !== '')
+            ->values()
+            ->all();
+    }
+
+    private function appendUniqueRelevantPosition(array $positions, string $candidate): array
+    {
+        $normalizedCandidate = strtolower(trim($candidate));
+        if ($normalizedCandidate === '') {
+            return $positions;
+        }
+
+        foreach ($positions as $existing) {
+            if (strtolower(trim((string) $existing)) === $normalizedCandidate) {
+                return $positions;
+            }
+        }
+
+        $positions[] = trim($candidate);
+        return $positions;
     }
 
     private function normalizeEmployeeId($value): string

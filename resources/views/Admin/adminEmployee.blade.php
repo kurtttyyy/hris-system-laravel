@@ -256,6 +256,31 @@
             },
           });
         },
+        async openEmployeeFromQuery() {
+          const params = new URLSearchParams(window.location.search);
+          const userId = Number.parseInt((params.get('user_id') ?? '').toString(), 10);
+          if (!Number.isFinite(userId) || userId <= 0) {
+            return;
+          }
+
+          const employees = @js($employee->values());
+          const matchedEmployee = Array.isArray(employees)
+            ? employees.find((row) => Number.parseInt((row?.id ?? '').toString(), 10) === userId)
+            : null;
+
+          if (!matchedEmployee) {
+            return;
+          }
+
+          this.openProfile = true;
+          await this.setEmployee(matchedEmployee);
+
+          const requestedTab = this.normalize(params.get('tab'));
+          const allowedTabs = ['overview', 'personal', 'performance', 'documents', 'record', 'biometric'];
+          if (allowedTabs.includes(requestedTab)) {
+            this.tab = requestedTab;
+          }
+        },
         async setEmployee(emp) {
           const applicantPosition = emp?.applicant?.position ?? {};
           const employeeData = { ...(emp?.employee ?? {}) };
@@ -710,7 +735,7 @@
           'department' => trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? ''))),
           'status' => $emp->account_status ?? '',
         ])->values()
-      )"
+      ); openEmployeeFromQuery()"
 >
 
     <!-- Header -->

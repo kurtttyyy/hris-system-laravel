@@ -1387,21 +1387,39 @@ class EmployeePageController extends Controller
         $disk = Storage::disk('local');
         $path = 'required_employee_documents.json';
         if (!$disk->exists($path)) {
-            return [];
+            return $this->defaultRequiredDocumentConfig();
         }
 
         $payload = json_decode((string) $disk->get($path), true);
         if (!is_array($payload)) {
-            return [];
+            return $this->defaultRequiredDocumentConfig();
         }
 
         $applicants = is_array($payload['applicants'] ?? null) ? $payload['applicants'] : [];
         $entry = $applicants[(string) $applicantId] ?? null;
         if (!is_array($entry)) {
-            return [];
+            return $this->defaultRequiredDocumentConfig();
         }
 
         return $entry;
+    }
+
+    private function defaultRequiredDocumentConfig(): array
+    {
+        return [
+            'required_documents' => [
+                'Resume/CV',
+                'Cover Letter',
+                'Personal Data Sheet',
+                'Transcript Of Records',
+                'Diploma',
+                'PRC License/Board Rating',
+                'Certificate Of Eligibility / Certificate of Passing',
+                'Certifications & Supporting Document',
+                'Membership/Affiliation',
+            ],
+            'document_notice' => '',
+        ];
     }
 
     private function normalizeDocumentLabel(string $value): string

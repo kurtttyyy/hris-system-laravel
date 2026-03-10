@@ -1,11 +1,10 @@
 <style>
     @page {
-        size: legal portrait;
-        margin-top: 2mm;
-        margin-bottom: 2mm;
+        size: 8.5in 13in;
+        margin-top: 0;
+        margin-bottom: 0;
         margin-left: -70px;
         margin-right: -70px;
-
     }
 
     @media print {
@@ -258,13 +257,13 @@
                                     </div>
                             </label>
                     </div>
-                            <div class="flex justify-center mt-6" >
+                            <div class="final-approval-signatory flex justify-center mt-6">
                                 <div class="w-full text-center" style="width: 240px;">
-                                    <h1 class="text-sm font-bold" style="margin-bottom: -80px; font-size: 17px;">
+                                    <h1 class="text-sm font-bold" style="margin-bottom: 4px; font-size: 17px; line-height: 1.15;">
                                         TOMAS C. BAUTISTA, PhD
                                     </h1>
-                                    <div class="border-b border-gray-600 w-full h-0.5 mt-20"></div>
-                                    <label class="text-sm font-medium block mb-2">Presindent</label>
+                                    <div class="border-b border-gray-600 w-full h-0.5 mt-2"></div>
+                                    <label class="text-sm font-medium block mt-1 mb-2">President</label>
                                 </div>
                             </div>
                             <label class="block text-sm">
@@ -308,7 +307,7 @@
                 
 
         </form>
-            <p class="mt-4">NC HR Form No. 13 - Application for Official Business and Official Time Rev. 01</p>
+            <p class="download-form-footer mt-4">NC HR Form No. 13 - Application for Official Business and Official Time Rev. 01</p>
 
 
         <div class="mt-6 flex justify-end">
@@ -534,6 +533,7 @@
 
                 const printArea = document.getElementById('application-obf-print-area');
                 const instructionsArea = document.getElementById('application-obf-instructions');
+                const footerArea = document.querySelector('.download-form-footer');
                 if (!printArea) {
                     return;
                 }
@@ -557,6 +557,10 @@
                         <title>Application for Official Business / Official Time</title>
                         ${styles}
                         <style>
+                            @page {
+                                size: 8.5in 13in;
+                                margin: 0.25in;
+                            }
                             body {
                                 margin: 0;
                                 padding: 0;
@@ -571,6 +575,13 @@
                                 width: auto;
                                 margin: 0 auto 6px;
                             }
+                            .print-form-header h3 {
+                                margin: 2px 0;
+                                font-size: 1.15rem;
+                                font-weight: 500;
+                                line-height: 1.15;
+                                text-transform: uppercase;
+                            }
                             #obf-print-fit-wrapper {
                                 width: 100%;
                             }
@@ -578,15 +589,108 @@
                                 width: 100% !important;
                                 margin: 0 !important;
                                 box-sizing: border-box !important;
-                                min-height: 100vh !important;
+                                min-height: auto !important;
                                 padding-left: 12px !important;
                                 padding-right: 12px !important;
                                 border-radius: 0 !important;
-                                font-size: 1.1rem !important;
-                                line-height: 1.4 !important;
+                                font-size: 1rem !important;
+                                line-height: 1.25 !important;
+                            }
+                            #application-obf-print-area h4 {
+                                margin-bottom: 0.15rem !important;
+                            }
+                            #application-obf-print-area .print-row-two {
+                                margin-top: -0.2rem !important;
+                            }
+                            #application-obf-print-area .print-row-three {
+                                margin-top: -0.15rem !important;
+                                margin-bottom: -0.1rem !important;
+                            }
+                            #application-obf-print-area .print-row-two,
+                            #application-obf-print-area .print-row-three {
+                                gap: 0.25rem !important;
+                                margin-bottom: 0.05rem !important;
+                            }
+                            #application-obf-print-area .print-row-two label,
+                            #application-obf-print-area .print-row-three label {
+                                margin-bottom: 0 !important;
+                                display: block !important;
+                            }
+                            #application-obf-print-area .print-row-three {
+                                margin-bottom: -0.1rem !important;
+                            }
+                            #application-obf-print-area .border-t.pt-4 {
+                                padding-top: 0.2rem !important;
+                            }
+                            #application-obf-print-area .border-t.pt-4 h5 {
+                                margin-bottom: 0.45rem !important;
+                            }
+                            #application-obf-print-area .border-t.pt-6 {
+                                padding-top: 0.35rem !important;
+                            }
+                            #application-obf-print-area .border-t.pt-6 h5 {
+                                margin-bottom: 0.45rem !important;
+                            }
+                            #application-obf-print-area .print-action-two {
+                                gap: 0.45rem !important;
+                            }
+                            #application-obf-print-area .border-t.pt-6.space-y-4 {
+                                gap: 0.35rem !important;
+                            }
+                            #application-obf-print-area .print-details-two {
+                                gap: 0.55rem !important;
+                            }
+                            #application-obf-print-area .space-y-3 {
+                                gap: 0.25rem !important;
+                            }
+                            #application-obf-print-area .space-y-1 {
+                                gap: 0.05rem !important;
+                            }
+                            #application-obf-print-area .print-right-divider {
+                                padding-left: 0.55rem !important;
+                            }
+                            #application-obf-print-area .mt-6 {
+                                margin-top: 0.2rem !important;
+                            }
+                            #application-obf-print-area .mt-20 {
+                                margin-top: 3.5rem !important;
+                            }
+                            #application-obf-print-area .final-approval-signatory {
+                                margin-top: 0.5rem !important;
+                            }
+                            #application-obf-print-area .final-approval-signatory h1 {
+                                margin-bottom: 0.2rem !important;
+                                line-height: 1.1 !important;
+                            }
+                            #application-obf-print-area .final-approval-signatory .mt-2 {
+                                margin-top: 0.15rem !important;
+                            }
+                            #application-obf-print-area .final-approval-signatory label {
+                                margin-top: 0.2rem !important;
+                                margin-bottom: 0 !important;
+                            }
+                            #application-obf-print-area label,
+                            #application-obf-print-area p,
+                            #application-obf-print-area span {
+                                font-size: 1.02rem !important;
+                            }
+                            #application-obf-print-area table th,
+                            #application-obf-print-area table td {
+                                font-size: 0.96rem !important;
                             }
                             #application-obf-instructions {
                                 margin-top: 8px !important;
+                            }
+                            #application-obf-instructions .download-form-footer,
+                            .download-form-footer {
+                                display: block !important;
+                                font-size: 1rem !important;
+                                font-weight: 400 !important;
+                                margin-top: 0.5rem !important;
+                            }
+                            #obf-print-fit-wrapper,
+                            #application-obf-instructions {
+                                zoom: 0.95;
                             }
                         </style>
                     </head>
@@ -598,6 +702,7 @@
                         </div>
                         <div id="obf-print-fit-wrapper">${buildApplicationOBFPrintMarkup(printArea)}</div>
                         ${instructionsArea ? instructionsArea.outerHTML : ''}
+                        ${footerArea ? footerArea.outerHTML : ''}
                     </body>
                     </html>
                 `);
@@ -618,7 +723,3 @@
                 };
             }
         </script>
-
-
-
-

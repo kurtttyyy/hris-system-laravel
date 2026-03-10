@@ -324,6 +324,10 @@ class AdministratorPageController extends Controller
                         'new_position',
                         'old_classification',
                         'new_classification',
+                        'old_department',
+                        'new_department',
+                        'old_salary',
+                        'new_salary',
                         'changed_by',
                         'changed_at',
                         'note',
@@ -1914,6 +1918,17 @@ class AdministratorPageController extends Controller
         ])
             ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
             ->whereRaw("LOWER(TRIM(COALESCE(department_head, ''))) = ?", ['approved'])
+            ->orderByRaw("
+                CASE
+                    WHEN LOWER(TRIM(COALESCE(job_role, position, ''))) = 'president' THEN 0
+                    WHEN LOWER(TRIM(COALESCE(job_role, position, ''))) LIKE 'vice president%' THEN 1
+                    WHEN LOWER(TRIM(COALESCE(job_role, position, ''))) LIKE 'vice-president%' THEN 1
+                    WHEN LOWER(TRIM(COALESCE(job_role, position, ''))) LIKE 'dean%' THEN 2
+                    WHEN LOWER(TRIM(COALESCE(job_role, position, ''))) LIKE '%department head%' THEN 3
+                    ELSE 4
+                END
+            ")
+            ->orderByRaw("LOWER(TRIM(COALESCE(job_role, position, '')))")
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
@@ -2297,6 +2312,23 @@ class AdministratorPageController extends Controller
             'employee',
             'applicant.position:id,title,department,employment',
             'government',
+            'salary',
+            'positionHistories' => function ($query) {
+                $query
+                    ->select([
+                        'id',
+                        'user_id',
+                        'old_position',
+                        'old_classification',
+                        'old_department',
+                        'old_salary',
+                        'note',
+                        'changed_at',
+                        'created_at',
+                    ])
+                    ->orderBy('changed_at')
+                    ->orderBy('id');
+            },
         ])
             ->where('id', $userId)
             ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
@@ -2325,6 +2357,22 @@ class AdministratorPageController extends Controller
             'applicant.position:id,title,department,employment',
             'government',
             'salary',
+            'positionHistories' => function ($query) {
+                $query
+                    ->select([
+                        'id',
+                        'user_id',
+                        'old_position',
+                        'old_classification',
+                        'old_department',
+                        'old_salary',
+                        'note',
+                        'changed_at',
+                        'created_at',
+                    ])
+                    ->orderBy('changed_at')
+                    ->orderBy('id');
+            },
         ])
             ->where('id', $userId)
             ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
@@ -2339,10 +2387,50 @@ class AdministratorPageController extends Controller
         $employeeId = trim((string) ($employeeUser->employee?->employee_id ?? ('EMP-'.$employeeUser->id)));
         $safeEmployeeId = preg_replace('/[^A-Za-z0-9_-]+/', '-', $employeeId) ?: ('EMP-'.$employeeUser->id);
         $filename = 'service-record-'.$safeEmployeeId.'.doc';
+        $html = view('Admin.PersonalDetail.serviceRecordDownload', compact('employeeUser'))->render();
 
-        return response()
-            ->view('Admin.PersonalDetail.serviceRecordDownload', compact('employeeUser'))
-            ->header('Content-Type', 'application/msword; charset=UTF-8')
+        $bannerCandidates = [
+            public_path('images/logo.png'),
+        ];
+
+        $bannerPath = null;
+        foreach ($bannerCandidates as $candidate) {
+            if (is_file($candidate)) {
+                $bannerPath = $candidate;
+                break;
+            }
+        }
+
+        if (!$bannerPath) {
+            return response($html)
+                ->header('Content-Type', 'application/msword; charset=UTF-8')
+                ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
+        }
+
+        $bannerMime = (string) (mime_content_type($bannerPath) ?: 'image/jpeg');
+        $bannerData = (string) file_get_contents($bannerPath);
+        $boundary = '----=_NextPart_'.md5((string) microtime(true));
+
+        $mhtml = "MIME-Version: 1.0\r\n";
+        $mhtml .= "Content-Type: multipart/related; boundary=\"{$boundary}\"; type=\"text/html\"\r\n\r\n";
+        $mhtml .= "This is a multi-part message in MIME format.\r\n\r\n";
+
+        $mhtml .= "--{$boundary}\r\n";
+        $mhtml .= "Content-Type: text/html; charset=\"utf-8\"\r\n";
+        $mhtml .= "Content-Transfer-Encoding: 8bit\r\n";
+        $mhtml .= "Content-Location: file:///service-record.htm\r\n\r\n";
+        $mhtml .= $html."\r\n\r\n";
+
+        $mhtml .= "--{$boundary}\r\n";
+        $mhtml .= "Content-Type: {$bannerMime}\r\n";
+        $mhtml .= "Content-Transfer-Encoding: base64\r\n";
+        $mhtml .= "Content-Location: file:///service-record-banner\r\n";
+        $mhtml .= "Content-ID: <service-record-banner>\r\n\r\n";
+        $mhtml .= chunk_split(base64_encode($bannerData), 76, "\r\n")."\r\n";
+        $mhtml .= "--{$boundary}--";
+
+        return response($mhtml)
+            ->header('Content-Type', 'application/msword')
             ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
     }
 
@@ -2392,21 +2480,39 @@ class AdministratorPageController extends Controller
         $disk = Storage::disk('local');
         $path = 'required_employee_documents.json';
         if (!$disk->exists($path)) {
-            return [];
+            return $this->defaultRequiredDocumentConfig();
         }
 
         $payload = json_decode((string) $disk->get($path), true);
         if (!is_array($payload)) {
-            return [];
+            return $this->defaultRequiredDocumentConfig();
         }
 
         $applicants = is_array($payload['applicants'] ?? null) ? $payload['applicants'] : [];
         $entry = $applicants[(string) $applicantId] ?? null;
         if (!is_array($entry)) {
-            return [];
+            return $this->defaultRequiredDocumentConfig();
         }
 
         return $entry;
+    }
+
+    private function defaultRequiredDocumentConfig(): array
+    {
+        return [
+            'required_documents' => [
+                'Resume/CV',
+                'Cover Letter',
+                'Personal Data Sheet',
+                'Transcript Of Records',
+                'Diploma',
+                'PRC License/Board Rating',
+                'Certificate Of Eligibility / Certificate of Passing',
+                'Certifications & Supporting Document',
+                'Membership/Affiliation',
+            ],
+            'document_notice' => '',
+        ];
     }
 
     private function normalizeDocumentLabel(string $value): string
@@ -2420,5 +2526,3 @@ class AdministratorPageController extends Controller
     }
 
 }
-
-
