@@ -12,7 +12,6 @@
 
         <!-- RIGHT : Search + Department -->
         <div class="flex items-center gap-4">
-
             <!-- Search Bar -->
             <div class="relative">
                 <span class="absolute inset-y-0 left-3 flex items-center text-gray-400">

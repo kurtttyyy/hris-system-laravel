@@ -103,6 +103,9 @@
                         <p class="text-xs text-gray-500">JOIN DATE</p>
                         <p class="font-medium mb-3">{{ $emp->employee->formatted_employement_date ?? $emp->applicant?->formatted_date_hired ?? '-' }}</p>
 
+                        <p class="text-xs text-gray-500">AGE</p>
+                        <p class="font-medium mb-3">{{ $ageDisplay ?? 'N/A' }}</p>
+
                         <p class="text-xs text-gray-500">REPORTING MANAGER</p>
                         <p class="font-medium">Michael Chen</p>
                     </div>

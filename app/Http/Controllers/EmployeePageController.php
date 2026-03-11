@@ -287,6 +287,20 @@ class EmployeePageController extends Controller
             $serviceDurationText = $diff->y.'Y '.$diff->m.'M '.$diff->d.'D';
         }
 
+        $ageDisplay = 'N/A';
+        try {
+            if (!empty($emp?->employee?->birthday)) {
+                $birthday = Carbon::parse($emp->employee->birthday)->startOfDay();
+                $today = now()->startOfDay();
+                if ($birthday->lte($today)) {
+                    $ageDiff = $birthday->diff($today);
+                    $ageDisplay = $ageDiff->y.'Y '.$ageDiff->m.'M '.$ageDiff->d.'D';
+                }
+            }
+        } catch (\Throwable $e) {
+            $ageDisplay = 'N/A';
+        }
+
         $attendanceMetrics = $this->buildEmployeeAttendanceMetrics($user, now()->format('Y-m'));
         $attendanceRatePercent = (float) ($attendanceMetrics['attendanceRatePercent'] ?? 0);
         $leaveMetrics = $this->buildEmployeeLeaveMetrics($user, now()->format('Y-m'));
@@ -322,6 +336,7 @@ class EmployeePageController extends Controller
         return view('employee.employeeProfile', compact(
             'emp',
             'serviceDurationText',
+            'ageDisplay',
             'attendanceRatePercent',
             'leaveDaysUsed',
             'employmentStatus',

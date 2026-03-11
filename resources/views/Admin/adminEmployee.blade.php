@@ -938,7 +938,7 @@
               ].filter(Boolean).join(' ') || '-'"
               ></h2>
               <p class="text-sm">
-                <span x-text="selectedEmployee?.employee?.position ?? selectedEmployee?.job_role ?? selectedEmployee?.applicant?.position?.title ?? selectedEmployee?.position ?? '-'"></span><br>
+                <span x-text="selectedEmployee?.job_role ?? selectedEmployee?.employee?.position ?? selectedEmployee?.applicant?.position?.title ?? selectedEmployee?.position ?? '-'"></span><br>
                 <span x-text="selectedEmployee?.employee?.department ?? selectedEmployee?.applicant?.position?.department ?? selectedEmployee?.department ?? '-'"></span>
               </p>
             </div>

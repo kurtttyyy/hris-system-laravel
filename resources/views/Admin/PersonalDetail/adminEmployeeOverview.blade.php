@@ -44,7 +44,7 @@
         <span
           x-show="!selectedEmployee?.email"
           class="text-gray-400"
-        >—</span>
+        >Ã¢â‚¬â€</span>
       </div>
     </div>
 
@@ -70,7 +70,7 @@
         </span>
         <span
           class="text-gray-700"
-          x-text="selectedEmployee?.applicant?.phone ?? selectedEmployee?.employee?.contact_number ?? '—'"
+          x-text="selectedEmployee?.applicant?.phone ?? selectedEmployee?.employee?.contact_number ?? 'Ã¢â‚¬â€'"
         ></span>
       </div>
     </div>
@@ -98,11 +98,63 @@
         </span>
         <span
           class="text-gray-700"
-          x-text="selectedEmployee?.applicant?.address ?? selectedEmployee?.employee?.address ?? '—'"
+          x-text="selectedEmployee?.applicant?.address ?? selectedEmployee?.employee?.address ?? 'Ã¢â‚¬â€'"
+        ></span>
+      </div>
+    </div>
+
+    <!-- Age -->
+    <div class="flex items-start gap-3 mb-5">
+      <svg
+        class="w-5 h-5 text-gray-400 mt-0.5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 6v6l4 2"
+        />
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+        />
+      </svg>
+
+      <div>
+        <span class="block font-semibold text-xs uppercase text-gray-400">
+          Age
+        </span>
+        <span
+          class="text-gray-700"
+          x-text="(() => {
+            const rawBirthday = selectedEmployee?.employee?.birthday;
+            if (!rawBirthday) return '—';
+
+            const birthday = new Date(rawBirthday);
+            if (Number.isNaN(birthday.getTime())) return '—';
+
+            const today = new Date();
+            if (birthday > today) return '—';
+
+            let years = today.getFullYear() - birthday.getFullYear();
+            const monthDiff = today.getMonth() - birthday.getMonth();
+            const dayDiff = today.getDate() - birthday.getDate();
+
+            if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+              years -= 1;
+            }
+
+            return years >= 0 ? String(years) : '—';
+          })()"
         ></span>
       </div>
     </div>
   </div>
+
 
   <!-- Employment Details -->
   <div class="bg-slate-50 p-4 rounded-xl text-sm">
@@ -134,7 +186,7 @@
           Employee ID
         </span>
         <span class="text-gray-700"
-            x-text="selectedEmployee?.employee.employee_id ?? '—'"
+            x-text="selectedEmployee?.employee.employee_id ?? 'Ã¢â‚¬â€'"
         ></span>
       </div>
     </div>
@@ -163,7 +215,7 @@
             if (formatted) return formatted;
 
             const raw = selectedEmployee?.employee?.employement_date;
-            if (!raw) return '—';
+            if (!raw) return 'Ã¢â‚¬â€';
 
             const parsed = new Date(raw);
             return Number.isNaN(parsed.getTime())
@@ -173,6 +225,7 @@
         ></span>
       </div>
     </div>
+
 
     <!-- Position -->
     <div class="flex items-start gap-3 mb-5">
@@ -201,7 +254,7 @@
         </span>
         <span
           class="text-gray-700"
-          x-text="selectedEmployee?.employee?.position ?? selectedEmployee?.applicant?.position?.title ?? '—'"
+          x-text="selectedEmployee?.job_role ?? selectedEmployee?.employee?.position ?? selectedEmployee?.applicant?.position?.title ?? 'Ã¢â‚¬â€'"
         ></span>
       </div>
     </div>
@@ -227,7 +280,7 @@
         </span>
         <span
           class="text-gray-700"
-          x-text="selectedEmployee?.employee?.department ?? selectedEmployee?.applicant?.position?.department ?? '—'"
+          x-text="selectedEmployee?.employee?.department ?? selectedEmployee?.applicant?.position?.department ?? 'Ã¢â‚¬â€'"
         ></span>
       </div>
     </div>
@@ -254,7 +307,7 @@
         </span>
         <span
           class="text-gray-700"
-          x-text="selectedEmployee?.employee?.classification ?? selectedEmployee?.applicant?.position?.employment ?? '—'"
+          x-text="selectedEmployee?.employee?.classification ?? selectedEmployee?.applicant?.position?.employment ?? 'Ã¢â‚¬â€'"
         ></span>
       </div>
     </div>

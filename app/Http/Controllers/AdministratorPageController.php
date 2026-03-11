@@ -1914,6 +1914,7 @@ class AdministratorPageController extends Controller
             'education',
             'salary',
             'applicant.position:id,title,department,employment,benifits',
+            'applicant.documents:id,applicant_id,filename,filepath,mime_type,type',
             'applicant.degrees:id,applicant_id,degree_level,degree_name,school_name,year_finished,sort_order',
         ])
             ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
@@ -1943,6 +1944,7 @@ class AdministratorPageController extends Controller
             'education',
             'salary',
             'applicant.position:id,title,department,employment,benifits,job_type,skills',
+            'applicant.documents:id,applicant_id,filename,filepath,mime_type,type',
             'applicant.degrees:id,applicant_id,degree_level,degree_name,school_name,year_finished,sort_order',
         ])
             ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
@@ -1970,6 +1972,7 @@ class AdministratorPageController extends Controller
             'education',
             'salary',
             'applicant.position:id,title,department,employment,benifits,job_type,skills,responsibilities,requirements',
+            'applicant.documents:id,applicant_id,filename,filepath,mime_type,type',
             'applicant.degrees:id,applicant_id,degree_level,degree_name,school_name,year_finished,sort_order',
         ])
             ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
