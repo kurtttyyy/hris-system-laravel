@@ -14,9 +14,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class EmployeePageController extends Controller
 {
+    private const FOLDER_TYPE = '__FOLDER__';
+
     public function display_home(){  // Employee Home page
         $user = Auth::user();
         $selectedMonth = now()->format('Y-m');
@@ -259,7 +262,7 @@ class EmployeePageController extends Controller
         $user = Auth::user();
         $emp = User::with([
             'employee',
-            'applicant',
+            'applicant.documents',
             'education',
             'license',
             'salary',
@@ -332,6 +335,22 @@ class EmployeePageController extends Controller
             });
         $employmentStatus = $isOnLeaveToday ? 'On Leave' : 'Active';
         $employmentStatusClass = $isOnLeaveToday ? 'text-amber-600' : 'text-emerald-600';
+        $profilePhotoDocument = optional($emp?->applicant)->documents
+            ?->first(function ($doc) {
+                return strtoupper(trim((string) ($doc->type ?? ''))) === 'PROFILE_PHOTO' && !empty($doc->filepath);
+            });
+
+        if (!$profilePhotoDocument) {
+            $profilePhotoDocument = optional($emp?->applicant)->documents
+                ?->first(function ($doc) {
+                    $mime = strtolower(trim((string) ($doc->mime_type ?? '')));
+                    $filename = strtolower(trim((string) ($doc->filename ?? '')));
+
+                    return !empty($doc->filepath) && (str_starts_with($mime, 'image/') || preg_match('/\.(png|jpe?g|gif|webp)$/i', $filename));
+                });
+        }
+
+        $profilePhotoUrl = $profilePhotoDocument?->filepath ? asset('storage/'.$profilePhotoDocument->filepath) : null;
 
         return view('employee.employeeProfile', compact(
             'emp',
@@ -340,7 +359,8 @@ class EmployeePageController extends Controller
             'attendanceRatePercent',
             'leaveDaysUsed',
             'employmentStatus',
-            'employmentStatusClass'
+            'employmentStatusClass',
+            'profilePhotoUrl'
         ));
     }
 
@@ -444,19 +464,68 @@ class EmployeePageController extends Controller
                                 ->first();
 
         $documents = collect();
+        $allDocuments = collect();
+        $folders = collect();
         $latestDocument = null;
         $requiredDocuments = [];
         $missingDocuments = [];
         $documentNotice = '';
+        $unfiledCount = 0;
+        $selectedFolderKey = trim((string) request()->query('folder', 'all'));
+        $activeFolderLabel = 'All Files';
         if ($applicant) {
             $requiredPrefix = '__REQUIRED__::';
             $noticeType = '__NOTICE__';
-            $documents = ApplicantDocument::where('applicant_id', $applicant->id)
+            $storedItems = ApplicantDocument::where('applicant_id', $applicant->id)
                 ->where('type', 'not like', $requiredPrefix.'%')
                 ->where('type', '!=', $noticeType)
                 ->latest('created_at')
                 ->get();
-            $latestDocument = $documents->first();
+            $folders = $storedItems
+                ->filter(fn (ApplicantDocument $document) => $this->isFolderDocument($document))
+                ->map(function (ApplicantDocument $document) use ($storedItems) {
+                    $folderKey = $this->folderKeyFromFolderDocument($document);
+
+                    return [
+                        'key' => $folderKey,
+                        'name' => trim((string) $document->filename),
+                        'count' => $storedItems
+                            ->reject(fn (ApplicantDocument $item) => $this->isFolderDocument($item))
+                            ->filter(fn (ApplicantDocument $item) => $this->folderKeyFromFileDocument($item) === $folderKey)
+                            ->count(),
+                    ];
+                })
+                ->filter(fn (array $folder) => $folder['key'] !== '')
+                ->sortBy('name')
+                ->values();
+
+            $allDocuments = $storedItems
+                ->reject(fn (ApplicantDocument $document) => $this->isFolderDocument($document))
+                ->values();
+            $unfiledCount = $allDocuments
+                ->filter(fn (ApplicantDocument $document) => $this->folderKeyFromFileDocument($document) === '')
+                ->count();
+            $latestDocument = $allDocuments->first();
+
+            if ($selectedFolderKey === 'unfiled') {
+                $documents = $allDocuments
+                    ->filter(fn (ApplicantDocument $document) => $this->folderKeyFromFileDocument($document) === '')
+                    ->values();
+                $activeFolderLabel = 'Unfiled';
+            } elseif ($selectedFolderKey !== 'all') {
+                $selectedFolder = $folders->firstWhere('key', $selectedFolderKey);
+                if ($selectedFolder) {
+                    $documents = $allDocuments
+                        ->filter(fn (ApplicantDocument $document) => $this->folderKeyFromFileDocument($document) === $selectedFolderKey)
+                        ->values();
+                    $activeFolderLabel = (string) ($selectedFolder['name'] ?? 'Folder');
+                } else {
+                    $selectedFolderKey = 'all';
+                    $documents = $allDocuments;
+                }
+            } else {
+                $documents = $allDocuments;
+            }
 
             $requiredConfig = $this->getRequiredDocumentConfigForApplicant((int) $applicant->id);
             $requiredDocuments = collect($requiredConfig['required_documents'] ?? [])
@@ -466,7 +535,7 @@ class EmployeePageController extends Controller
                 ->all();
             $documentNotice = (string) ($requiredConfig['document_notice'] ?? '');
 
-            $uploadedDocumentTypesNormalized = $documents
+            $uploadedDocumentTypesNormalized = $allDocuments
                 ->map(function ($doc) {
                     return $this->normalizeDocumentLabel((string) ($doc->type ?: $doc->filename));
                 })
@@ -486,10 +555,15 @@ class EmployeePageController extends Controller
 
         return view('employee.employeeDocument', compact(
             'documents',
+            'folders',
+            'allDocuments',
             'latestDocument',
             'requiredDocuments',
             'missingDocuments',
-            'documentNotice'
+            'documentNotice',
+            'unfiledCount',
+            'selectedFolderKey',
+            'activeFolderLabel'
         ));
     }
 
@@ -507,6 +581,9 @@ class EmployeePageController extends Controller
         $document = ApplicantDocument::where('id', $id)
             ->where('applicant_id', $applicant->id)
             ->firstOrFail();
+        if ($this->isFolderDocument($document)) {
+            abort(404);
+        }
 
         $relativePath = ltrim((string) ($document->filepath ?? ''), '/');
         if ($relativePath === '') {
@@ -559,6 +636,9 @@ class EmployeePageController extends Controller
         $document = ApplicantDocument::where('id', $id)
             ->where('applicant_id', $applicant->id)
             ->firstOrFail();
+        if ($this->isFolderDocument($document)) {
+            abort(404);
+        }
 
         $fileName = (string) ($document->filename ?: 'Document');
         $extension = strtolower((string) pathinfo($fileName, PATHINFO_EXTENSION));
@@ -1445,6 +1525,36 @@ class EmployeePageController extends Controller
         }
 
         return preg_replace('/\s+/', ' ', $normalized);
+    }
+
+    private function isFolderDocument(ApplicantDocument $document): bool
+    {
+        return trim((string) ($document->type ?? '')) === self::FOLDER_TYPE;
+    }
+
+    private function folderKeyFromFolderDocument(ApplicantDocument $document): string
+    {
+        $path = trim(str_replace('\\', '/', (string) ($document->filepath ?? '')), '/');
+        if (str_starts_with($path, 'system/folders/')) {
+            return trim((string) Str::after($path, 'system/folders/'));
+        }
+
+        return '';
+    }
+
+    private function folderKeyFromFileDocument(ApplicantDocument $document): string
+    {
+        $path = trim(str_replace('\\', '/', (string) ($document->filepath ?? '')), '/');
+        if (!preg_match('#^uploads/applicant-documents/\d+/([^/]+)/#', $path, $matches)) {
+            return '';
+        }
+
+        $folderKey = trim((string) ($matches[1] ?? ''));
+        if ($folderKey === '' || $folderKey === 'unfiled') {
+            return '';
+        }
+
+        return $folderKey;
     }
 
 }

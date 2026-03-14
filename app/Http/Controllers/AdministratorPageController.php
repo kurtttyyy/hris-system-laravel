@@ -261,6 +261,7 @@ class AdministratorPageController extends Controller
                 ])
                 ->where('type', 'not like', '__REQUIRED__::%')
                 ->where('type', '!=', '__NOTICE__')
+                ->where('type', '!=', '__FOLDER__')
                 ->orderByDesc('created_at');
             },
             'applicant.degrees' => function ($query) {
@@ -2047,7 +2048,14 @@ class AdministratorPageController extends Controller
     }
 
     public function display_edit_position($id){
-        $open = OpenPosition::findOrFail($id);
+        $open = OpenPosition::withTrashed()->findOrFail($id);
+
+        if ($open->deleted_at) {
+            return redirect()
+                ->route('admin.adminPosition')
+                ->with('error', 'This position is already closed and can no longer be edited.');
+        }
+
         return view('admin.adminEditPosition', compact('open'));
     }
 
@@ -2204,8 +2212,8 @@ class AdministratorPageController extends Controller
     }
 
     public function display_position(){
-        $openPosition = OpenPosition::withCount('applicants')->get();
-        $openPositions = OpenPosition::all();
+        $openPosition = OpenPosition::withTrashed()->withCount('applicants')->get();
+        $openPositions = OpenPosition::withTrashed()->get();
         $countApplication = Applicant::groupBy('open_position_id')->count();
         $logs = GuestLog::count();
         $positionCounts = $openPositions->count();
@@ -2215,8 +2223,8 @@ class AdministratorPageController extends Controller
     }
 
     public function display_show_position($id){
-        $open = OpenPosition::findOrFail($id);
-        $titles = OpenPosition::pluck('id');
+        $open = OpenPosition::withTrashed()->findOrFail($id);
+        $titles = OpenPosition::withTrashed()->pluck('id');
         $admin = User::admins()->get();
         $countApplication = Applicant::whereIn('open_position_id', $titles)->count();
         return view('admin.adminShowPosition', compact('open','countApplication','admin'));
@@ -2229,8 +2237,9 @@ class AdministratorPageController extends Controller
     public function employee_documents($id){
         $requiredPrefix = '__REQUIRED__::';
         $noticeType = '__NOTICE__';
+        $folderType = '__FOLDER__';
         $employee = User::with([
-            'applicant.documents' => function ($query) use ($requiredPrefix, $noticeType) {
+            'applicant.documents' => function ($query) use ($requiredPrefix, $noticeType, $folderType) {
                 $query->select([
                     'id',
                     'applicant_id',
@@ -2243,6 +2252,7 @@ class AdministratorPageController extends Controller
                 ])
                 ->where('type', 'not like', $requiredPrefix.'%')
                 ->where('type', '!=', $noticeType)
+                ->where('type', '!=', $folderType)
                 ->orderByDesc('created_at');
             },
         ])->where('role', 'Employee')->findOrFail($id);

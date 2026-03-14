@@ -10,98 +10,250 @@
     body { font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; transition: margin-left 0.3s ease; }
     main { transition: margin-left 0.3s ease; }
     aside ~ main { margin-left: 16rem; }
+    .payslip-file-active {
+      border-color: rgb(125 211 252);
+      background: linear-gradient(180deg, rgba(224, 242, 254, 0.85), rgba(255, 255, 255, 0.96));
+      box-shadow: 0 18px 38px rgba(14, 165, 233, 0.12);
+    }
   </style>
 </head>
-<body class="bg-slate-100">
+<body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#eef4ff_45%,#f8fafc_100%)] text-slate-800">
 <div class="flex min-h-screen">
   @include('components.adminSideBar')
 
   <main class="flex-1 ml-16 transition-all duration-300">
+    @php
+      $payslipFiles = $payslipFiles ?? collect();
+      $uploadedCount = $payslipFiles->count();
+      $scannedCount = $payslipFiles->filter(fn ($file) => in_array(strtolower((string) ($file->status ?? '')), ['scanned', 'processed']))->count();
+      $pendingCount = max($uploadedCount - $scannedCount, 0);
+      $latestUpload = $payslipFiles->sortByDesc(fn ($file) => optional($file->uploaded_at)?->timestamp ?? 0)->first();
+    @endphp
+
     <div class="p-4 md:p-8 pt-10 space-y-6">
-      <div class="bg-white rounded-xl border border-slate-200 p-6">
-        <h1 class="text-2xl font-semibold text-slate-800">Payslip</h1>
-        <p class="text-sm text-slate-500 mt-2">Upload stores the file. Scan currently reads the Excel/CSV for preview only (not saved to payslip records yet).</p>
+      <section class="relative overflow-hidden rounded-[2rem] border border-sky-100/80 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(99,102,241,0.08),rgba(255,255,255,0.96))] px-6 py-6 shadow-[0_28px_60px_rgba(37,99,235,0.10)] md:px-8">
+        <div class="absolute -left-8 top-6 h-24 w-24 rounded-full bg-sky-300/25 blur-3xl"></div>
+        <div class="absolute right-0 top-0 h-32 w-32 translate-x-10 -translate-y-8 rounded-full bg-indigo-300/25 blur-3xl"></div>
+        <div class="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div class="max-w-3xl">
+            <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-700">
+              <span class="h-2 w-2 rounded-full bg-sky-500"></span>
+              Payroll Center
+            </div>
+            <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">Payslip Operations</h1>
+            <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
+              Upload payroll files, scan them into preview-ready records, and move from raw spreadsheet to payslip review in one workspace.
+            </p>
+            <div class="mt-4 flex flex-wrap gap-3 text-xs font-medium text-slate-500">
+              <span class="rounded-full border border-slate-200 bg-white/85 px-3 py-1.5">{{ now()->format('l, F j, Y') }}</span>
+              <span class="rounded-full border border-slate-200 bg-white/85 px-3 py-1.5">{{ $uploadedCount }} uploaded file(s)</span>
+              <span class="rounded-full border border-slate-200 bg-white/85 px-3 py-1.5">{{ $scannedCount }} scanned</span>
+            </div>
+          </div>
+
+          <div class="grid gap-3 sm:grid-cols-2 xl:min-w-[420px]">
+            <div class="rounded-2xl border border-white/80 bg-white/80 px-4 py-4 shadow-sm">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Latest Upload</p>
+              <p class="mt-2 text-sm font-semibold text-slate-800">{{ $latestUpload?->original_name ?? 'No file yet' }}</p>
+              <p class="mt-1 text-xs text-slate-500">{{ optional($latestUpload?->uploaded_at)->format('M d, Y h:i A') ?? 'Waiting for first upload' }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-900/90 bg-slate-900 px-4 py-4 shadow-sm">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Queue Status</p>
+              <p class="mt-2 text-sm font-semibold text-white">{{ $pendingCount }} pending scan</p>
+              <p class="mt-1 text-xs text-slate-400">Scan reads and saves file data for payslip view.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
+            <i class="fa-solid fa-folder-tree text-lg"></i>
+          </span>
+          <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Uploaded Files</p>
+          <p class="mt-2 text-3xl font-black tracking-tight text-slate-900">{{ $uploadedCount }}</p>
+          <p class="mt-1 text-sm text-slate-500">Stored payroll source files</p>
+        </div>
+
+        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+            <i class="fa-solid fa-circle-check text-lg"></i>
+          </span>
+          <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Scanned Files</p>
+          <p class="mt-2 text-3xl font-black tracking-tight text-emerald-700">{{ $scannedCount }}</p>
+          <p class="mt-1 text-sm text-slate-500">Preview-ready payslip data</p>
+        </div>
+
+        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+            <i class="fa-solid fa-hourglass-half text-lg"></i>
+          </span>
+          <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pending Scan</p>
+          <p class="mt-2 text-3xl font-black tracking-tight text-amber-600">{{ $pendingCount }}</p>
+          <p class="mt-1 text-sm text-slate-500">Files waiting for processing</p>
+        </div>
+
+        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+            <i class="fa-solid fa-eye text-lg"></i>
+          </span>
+          <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">View Ready</p>
+          <p class="mt-2 text-3xl font-black tracking-tight text-indigo-700">{{ $scannedCount }}</p>
+          <p class="mt-1 text-sm text-slate-500">Files with available preview</p>
+        </div>
       </div>
 
-      <div class="bg-white rounded-xl border border-gray-200 p-6 max-full mx-auto">
-        <div id="payslip_message" class="hidden mb-4 rounded-lg border px-4 py-3 text-sm"></div>
-        @if (session('success'))
-          <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {{ session('success') }}
+      <div class="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
+        <section class="space-y-6">
+          <div class="overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
+                  Upload Center
+                </div>
+                <h2 class="mt-4 text-2xl font-black tracking-tight text-slate-900">Import payslip file</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-500">
+                  Upload payroll spreadsheets in `.xlsx` or `.csv`, then select one from the queue to scan and open its preview.
+                </p>
+              </div>
+              <div class="hidden h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-sky-600 sm:flex">
+                <i class="fa-solid fa-file-arrow-up text-xl"></i>
+              </div>
+            </div>
+
+            <div id="payslip_message" class="hidden mt-5 rounded-2xl border px-4 py-3 text-sm"></div>
+            @if (session('success'))
+              <div class="mt-5 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {{ session('success') }}
+              </div>
+            @endif
+            @if ($errors->has('payslip_file'))
+              <div class="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {{ $errors->first('payslip_file') }}
+              </div>
+            @endif
+
+            <form id="payslip_upload_form" action="{{ route('admin.uploadPayslipFile') }}" method="POST" enctype="multipart/form-data" class="mt-6 space-y-5">
+              @csrf
+              <label for="payslip_file" class="group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[1.5rem] border-2 border-dashed border-sky-200 bg-[linear-gradient(180deg,rgba(239,246,255,0.9),rgba(255,255,255,0.95))] px-6 py-10 text-center transition hover:border-sky-300 hover:bg-sky-50">
+                <div class="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-sky-300 to-transparent"></div>
+                <span class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-sky-600 shadow-sm">
+                  <i class="fa-solid fa-file-invoice-dollar text-2xl"></i>
+                </span>
+                <p class="mt-5 text-base font-semibold text-slate-800">Browse payslip file to upload</p>
+                <p class="mt-2 text-sm text-slate-500">Accepted formats: `.xlsx` and `.csv`.</p>
+                <div class="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500">
+                  <span class="rounded-full border border-slate-200 bg-white px-3 py-1">1. Upload</span>
+                  <span class="rounded-full border border-slate-200 bg-white px-3 py-1">2. Select</span>
+                  <span class="rounded-full border border-slate-200 bg-white px-3 py-1">3. Scan</span>
+                  <span class="rounded-full border border-slate-200 bg-white px-3 py-1">4. View</span>
+                </div>
+                <p id="selected_payslip_name" class="mt-5 text-sm font-medium text-sky-700">No file selected</p>
+              </label>
+
+              <input id="payslip_file" name="payslip_file" type="file" accept=".xlsx,.csv" class="hidden" />
+
+              <div class="grid gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-3">
+                <div class="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Accepted</p>
+                  <p class="mt-2 text-sm font-semibold text-slate-700">Excel and CSV</p>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Scan Result</p>
+                  <p class="mt-2 text-sm font-semibold text-slate-700">Preview-ready records</p>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 shadow-sm">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Workflow</p>
+                  <p class="mt-2 text-sm font-semibold text-slate-700">Stored before processing</p>
+                </div>
+              </div>
+
+              <div class="flex justify-end gap-3">
+                <button id="upload_payslip_btn" type="submit" disabled class="inline-flex items-center gap-2 rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-300">
+                  <i class="fa-solid fa-upload"></i>
+                  Upload
+                </button>
+                <button id="scan_payslip_btn" type="button" class="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700">
+                  <i class="fa-solid fa-barcode"></i>
+                  Scan
+                </button>
+              </div>
+            </form>
           </div>
-        @endif
-        @if ($errors->has('payslip_file'))
-          <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {{ $errors->first('payslip_file') }}
-          </div>
-        @endif
+        </section>
 
-        <form id="payslip_upload_form" action="{{ route('admin.uploadPayslipFile') }}" method="POST" enctype="multipart/form-data">
-          @csrf
-          <label for="payslip_file" class="cursor-pointer border-2 border-dashed border-blue-300 rounded-lg p-6 flex flex-col items-center justify-center text-center hover:bg-blue-50 transition">
-            <i class="fa-solid fa-cloud-arrow-up text-3xl text-blue-500 mb-2"></i>
-            <p class="text-sm text-blue-600 font-medium">Browse payslip file to upload</p>
-            <p class="text-xs text-gray-400 mt-1">Accepted formats: .xlsx, .csv</p>
-            <p id="selected_payslip_name" class="text-xs text-slate-500 mt-2">No file selected</p>
-          </label>
-
-          <input id="payslip_file" name="payslip_file" type="file" accept=".xlsx,.csv" class="hidden" />
-
-          <div class="flex justify-end mt-4 gap-2">
-            <button id="upload_payslip_btn" type="submit" disabled class="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-              <i class="fa-solid fa-upload mr-2"></i>
-              Upload
-            </button>
-            <button id="scan_payslip_btn" type="button" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
-              <i class="fa-solid fa-barcode mr-2"></i>
-              Scan
-            </button>
-          </div>
-        </form>
-
-        <div class="bg-white border-2 border-gray-200 rounded-xl p-6 mt-6">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-semibold text-gray-700">Files Status</h3>
-            <span class="text-xs text-slate-500">Scan reads and saves file data for payslip view.</span>
+        <section class="overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                Processing Queue
+              </div>
+              <h2 class="mt-4 text-2xl font-black tracking-tight text-slate-900">File status and preview access</h2>
+              <p class="mt-2 text-sm leading-6 text-slate-500">
+                Select a file to scan, monitor processing status, and open the payslip preview once scanning completes.
+              </p>
+            </div>
+            <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-500">
+              Scan currently reads the Excel/CSV for preview and saves the file data for payslip view.
+            </div>
           </div>
 
-          <div id="payslip_file_list" class="space-y-3">
-            @forelse (($payslipFiles ?? collect()) as $file)
+          <div id="payslip_file_list" class="mt-6 space-y-4">
+            @forelse ($payslipFiles as $file)
               @php
                 $isScanned = strcasecmp((string) ($file->status ?? ''), 'Scanned') === 0
                   || strcasecmp((string) ($file->status ?? ''), 'Processed') === 0;
                 $progress = $isScanned ? 100 : 0;
               @endphp
-              <div class="payslip-file-item flex items-center gap-3 bg-blue-50 p-3 rounded-lg cursor-pointer hover:bg-blue-100 transition" data-file-id="{{ $file->id }}">
-                <input type="radio" name="selected_payslip_file" value="{{ $file->id }}" class="payslip-file-radio cursor-pointer">
-                <i class="fa-solid fa-file-excel text-green-600 text-xl"></i>
-                <div class="flex-1">
-                  <div class="flex items-center justify-between gap-2">
-                    <p class="text-sm font-medium">
-                      {{ $file->original_name }}
-                      <span class="payslip-scan-status text-gray-500">- {{ $file->status }}</span>
-                    </p>
-                    <span class="payslip-progress-text text-xs font-semibold text-gray-700">{{ $progress }}%</span>
+              <div class="payslip-file-item group rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] p-4 transition hover:border-sky-200 hover:shadow-md" data-file-id="{{ $file->id }}">
+                <div class="flex flex-col gap-4 xl:flex-row xl:items-center">
+                  <div class="flex items-center gap-4">
+                    <input type="radio" name="selected_payslip_file" value="{{ $file->id }}" class="payslip-file-radio h-4 w-4 cursor-pointer border-slate-300 text-sky-600 focus:ring-sky-500">
+                    <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 shadow-sm">
+                      <i class="fa-solid fa-file-excel text-xl"></i>
+                    </span>
+
+                    <div>
+                      <div class="flex flex-wrap items-center gap-2">
+                        <p class="text-sm font-semibold text-slate-800">{{ $file->original_name }}</p>
+                        <span class="payslip-scan-status rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{{ $file->status }}</span>
+                      </div>
+                      <p class="mt-1 text-xs text-slate-500">Stored file ready for payroll scan and preview generation.</p>
+                    </div>
                   </div>
-                  <div class="w-full bg-gray-300 rounded-full h-2 mt-2">
-                    <div class="payslip-progress-bar bg-green-500 h-2 rounded-full transition-all duration-500" style="width: {{ $progress }}%"></div>
+
+                  <div class="flex-1">
+                    <div class="mb-2 flex items-center justify-between gap-2">
+                      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Processing Progress</p>
+                      <span class="payslip-progress-text min-w-[40px] text-right text-xs font-semibold text-slate-700">{{ $progress }}%</span>
+                    </div>
+                    <div class="w-full rounded-full bg-slate-200 h-2.5">
+                      <div class="payslip-progress-bar h-2.5 rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 transition-all duration-500" style="width: {{ $progress }}%"></div>
+                    </div>
                   </div>
-                </div>
-                <div class="min-w-[140px] text-xs text-gray-500 flex flex-col items-end justify-center">
-                  <span>{{ optional($file->uploaded_at)->format('M d, Y') ?? '-' }}</span>
-                  <span>{{ optional($file->uploaded_at)->format('h:i A') ?? '-' }}</span>
-                  <a href="{{ route('admin.adminPaySlipView', ['upload_id' => $file->id]) }}" class="payslip-view-link {{ $isScanned ? '' : 'hidden' }} mt-2 inline-flex w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-sm font-medium text-blue-600 hover:bg-blue-100 hover:text-blue-800">
-                    View
-                  </a>
+
+                  <div class="min-w-[160px] text-left text-xs text-slate-500 xl:text-right">
+                    <span class="block">{{ optional($file->uploaded_at)->format('M d, Y') ?? '-' }}</span>
+                    <span class="block">{{ optional($file->uploaded_at)->format('h:i A') ?? '-' }}</span>
+                    <a href="{{ route('admin.adminPaySlipView', ['upload_id' => $file->id]) }}" class="payslip-view-link {{ $isScanned ? '' : 'hidden' }} mt-3 inline-flex w-full items-center justify-center rounded-full border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 hover:text-sky-800">
+                      <i class="fa-solid fa-eye mr-2"></i>
+                      View
+                    </a>
+                  </div>
                 </div>
               </div>
             @empty
-              <div class="rounded-lg border border-dashed border-gray-300 p-5 text-center text-sm text-gray-500">
-                No uploaded files yet.
+              <div class="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50/80 p-8 text-center">
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm">
+                  <i class="fa-solid fa-folder-open text-xl"></i>
+                </div>
+                <p class="mt-4 text-sm font-semibold text-slate-700">No uploaded files yet.</p>
+                <p class="mt-1 text-sm text-slate-500">Upload a payslip source file to start the payroll processing flow.</p>
               </div>
             @endforelse
           </div>
-        </div>
+        </section>
       </div>
     </div>
   </main>
@@ -183,10 +335,9 @@
       scanPayslipBtn.classList.add('opacity-60', 'cursor-not-allowed');
       uploadPayslipBtn.classList.add('opacity-60', 'cursor-not-allowed');
       scanPayslipBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Scanning...';
-      status.textContent = ' - Scanning...';
+      status.textContent = 'Scanning';
       progressText.textContent = '0%';
 
-      // Smooth progress animation using requestAnimationFrame.
       const durationMs = 2200;
       const maxBeforeComplete = 92;
       const startTime = performance.now();
@@ -222,7 +373,7 @@
 
             bar.style.width = '100%';
             progressText.textContent = '100%';
-            status.textContent = ' - Scanned';
+            status.textContent = 'Scanned';
             scanPayslipBtn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>Scanned';
             scanPayslipBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
             scanPayslipBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
@@ -253,6 +404,14 @@
   }
 
   const payslipFileItems = document.querySelectorAll('.payslip-file-item');
+
+  const setActivePayslipItem = (activeItem) => {
+    payslipFileItems.forEach((row) => row.classList.remove('payslip-file-active'));
+    if (activeItem) {
+      activeItem.classList.add('payslip-file-active');
+    }
+  };
+
   payslipFileItems.forEach((item) => {
     item.addEventListener('click', function (event) {
       if (event.target.tagName.toLowerCase() === 'a') return;
@@ -262,8 +421,7 @@
         radio.checked = true;
       }
 
-      payslipFileItems.forEach((row) => row.classList.remove('bg-blue-200'));
-      this.classList.add('bg-blue-200');
+      setActivePayslipItem(this);
     });
   });
 
@@ -280,5 +438,3 @@
 </script>
 </body>
 </html>
-
-

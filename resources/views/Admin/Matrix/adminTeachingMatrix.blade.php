@@ -138,6 +138,40 @@
       font-size: 0.92rem;
     }
 
+    .matrix-export-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 95;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: rgba(15, 23, 42, 0.55);
+    }
+
+    .matrix-export-modal.is-open {
+      display: flex;
+    }
+
+    .matrix-export-card {
+      width: min(420px, 100%);
+      border: 1px solid #d6d3d1;
+      border-radius: 1rem;
+      background: #ffffff;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.24);
+      overflow: hidden;
+    }
+
+    .matrix-export-card-header {
+      padding: 1.1rem 1.4rem 0.4rem;
+    }
+
+    .matrix-export-card-body {
+      padding: 0 1.4rem 1.4rem;
+      display: grid;
+      gap: 0.75rem;
+    }
+
     @media (max-width: 640px) {
       .matrix-employee-card-body {
         grid-template-columns: 1fr;
@@ -149,9 +183,30 @@
       }
     }
 
+    .matrix-main-content {
+      width: calc(100vw - 4rem);
+      min-width: 0;
+      max-width: calc(100vw - 4rem);
+    }
+
+    .matrix-content-section,
+    .matrix-print-wrapper {
+      min-width: 0;
+      max-width: 100%;
+    }
+
     @media (min-width: 1024px) {
-      .matrix-admin-shell > aside:hover + main {
+      .matrix-admin-shell > .matrix-print-hide:hover + .matrix-main-content {
         margin-left: 18rem;
+        width: calc(100vw - 18rem);
+        max-width: calc(100vw - 18rem);
+      }
+    }
+
+    @media (max-width: 1023px) {
+      .matrix-main-content {
+        width: 100%;
+        max-width: 100%;
       }
     }
 
@@ -245,8 +300,8 @@
     @include('components.adminSideBar')
   </div>
 
-  <main class="flex-1 ml-16 transition-all duration-300">
-    <section class="matrix-print-hide px-4 md:px-8 pt-8 pb-6">
+  <main class="matrix-main-content flex-1 ml-16 transition-all duration-300">
+    <section class="matrix-content-section matrix-print-hide px-4 md:px-8 pt-8 pb-6">
       <div class="rounded-2xl border border-stone-300 bg-white/80 backdrop-blur-sm shadow-sm p-5 md:p-7">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -269,7 +324,7 @@
             </button>
             <button
               type="button"
-              onclick="downloadMatrixExcel('teaching-matrix', 'Academic Teaching Matrix')"
+              onclick="openMatrixExcelExportModal('teaching-matrix', 'Academic Teaching Matrix')"
               class="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
             >
               <i class="fa-solid fa-file-excel"></i>
@@ -288,11 +343,11 @@
       </div>
     </section>
 
-    <section class="matrix-print-section px-4 md:px-8 pb-10">
+    <section class="matrix-content-section matrix-print-section px-4 md:px-8 pb-10">
       @php
         $rows = collect($teachingEmployees ?? ($administrators ?? []));
       @endphp
-      <div class="matrix-print-wrapper overflow-x-auto rounded-2xl border border-stone-300 bg-white shadow-sm">
+      <div class="matrix-print-wrapper w-full overflow-x-auto rounded-2xl border border-stone-300 bg-white shadow-sm">
         <table id="teaching-matrix" class="min-w-[1700px] w-full text-sm text-stone-800 border-collapse">
           <thead class="bg-stone-100">
             <tr class="hidden print:table-row">
@@ -361,6 +416,14 @@
                     } catch (\Throwable $e) {
                       $employmentStatus = 'Probationary';
                     }
+                  }
+                }
+                $regularizationDateDisplay = '';
+                if (!empty($rawJoinDate)) {
+                  try {
+                    $regularizationDateDisplay = \Carbon\Carbon::parse($rawJoinDate)->addYears(3)->format('m/d/Y');
+                  } catch (\Throwable $e) {
+                    $regularizationDateDisplay = '';
                   }
                 }
 
@@ -434,6 +497,14 @@
                 }
                 $employeeIdDisplay = trim((string) (optional($staff->employee)->employee_id ?? $staff->employee_id ?? $staff->id ?? ''));
                 $employeeIdDisplay = $employeeIdDisplay !== '' ? $employeeIdDisplay : 'N/A';
+                $ageDisplay = 'N/A';
+                if (!empty(optional($staff->employee)->birthday)) {
+                  try {
+                    $ageDisplay = (string) \Carbon\Carbon::parse(optional($staff->employee)->birthday)->age;
+                  } catch (\Throwable $e) {
+                    $ageDisplay = 'N/A';
+                  }
+                }
                 $genderDisplay = collect([
                   trim((string) ($staff->gender ?? '')),
                   trim((string) (optional($staff->employee)->sex ?? '')),
@@ -484,6 +555,11 @@
                   'hired_date' => $hireDateDisplay,
                   'position' => $positionDisplay,
                   'department' => $departmentDisplay,
+                  'full_name' => $fullName !== '' ? $fullName : 'N/A',
+                  'age' => $ageDisplay,
+                  'rate' => $salaryText !== '' ? $salaryText : 'N/A',
+                  'employment_status' => $employmentStatus,
+                  'regularization_date' => $regularizationDateDisplay,
                   'initials' => $initials,
                   'profile_photo_url' => $profilePhotoUrl,
                 ];
@@ -494,6 +570,7 @@
                     role="button"
                     tabindex="0"
                     class="matrix-name-button"
+                    data-matrix-employee="{{ e(json_encode($matrixEmployeeModalData)) }}"
                     onclick="openMatrixEmployeeModal({{ \Illuminate\Support\Js::from($matrixEmployeeModalData) }})"
                     onkeydown="handleMatrixNameKeydown(event, this)"
                   >
@@ -607,7 +684,23 @@
   </div>
 </div>
 
+<div id="matrix-excel-export-modal" class="matrix-export-modal" onclick="closeMatrixExcelExportModalOnBackdrop(event)">
+  <div class="matrix-export-card" role="dialog" aria-modal="true" aria-labelledby="matrix-excel-export-title">
+    <div class="matrix-export-card-header">
+      <h3 id="matrix-excel-export-title" class="text-lg font-semibold text-stone-900">Choose Excel Format</h3>
+      <p class="mt-1 text-sm text-stone-600">Select which version you want to export.</p>
+    </div>
+    <div class="matrix-export-card-body">
+      <button type="button" onclick="confirmMatrixExcelExport('CHED')" class="inline-flex items-center justify-center rounded-lg border border-blue-300 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 hover:bg-blue-100">CHED</button>
+      <button type="button" onclick="confirmMatrixExcelExport('DOLE')" class="inline-flex items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100">DOLE</button>
+      <button type="button" onclick="closeMatrixExcelExportModal()" class="inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-100">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
+  let matrixExcelExportState = { tableId: null, title: null };
+
   function openMatrixEmployeeModal(employee) {
     const modal = document.getElementById('matrix-employee-modal');
     if (!modal || !employee) {
@@ -669,6 +762,45 @@
     }
 
     closeMatrixEmployeeModal();
+  }
+
+  function openMatrixExcelExportModal(tableId, title) {
+    const modal = document.getElementById('matrix-excel-export-modal');
+    if (!modal) {
+      downloadMatrixExcel(tableId, title, 'CHED');
+      return;
+    }
+
+    matrixExcelExportState = { tableId, title };
+    modal.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMatrixExcelExportModal() {
+    const modal = document.getElementById('matrix-excel-export-modal');
+    if (!modal) {
+      return;
+    }
+
+    modal.classList.remove('is-open');
+    document.body.style.overflow = '';
+  }
+
+  function closeMatrixExcelExportModalOnBackdrop(event) {
+    if (event.target?.id !== 'matrix-excel-export-modal') {
+      return;
+    }
+
+    closeMatrixExcelExportModal();
+  }
+
+  function confirmMatrixExcelExport(formatLabel) {
+    const { tableId, title } = matrixExcelExportState;
+    closeMatrixExcelExportModal();
+    if (!tableId || !title) {
+      return;
+    }
+    downloadMatrixExcel(tableId, title, formatLabel);
   }
 
   document.addEventListener('keydown', function (event) {
@@ -761,6 +893,10 @@
       .replace(/'/g, '&apos;');
   }
 
+  function escapeExcelFormulaString(value) {
+    return String(value ?? '').replace(/"/g, '""');
+  }
+
   function normalizeExcelCellText(cell) {
     return (cell.innerText || cell.textContent || '')
       .replace(/\r\n/g, '\n')
@@ -768,8 +904,250 @@
       .trim();
   }
 
-  function buildMatrixExcelXml(sourceTable, worksheetName, titleText, widths) {
+  function collectMatrixEmployeeDetails(sourceTable) {
+    return Array.from(sourceTable.querySelectorAll('tbody tr')).map((row, rowIndex) => {
+      const trigger = row.querySelector('.matrix-name-button');
+      if (!trigger) {
+        return null;
+      }
+
+      let employee = null;
+      try {
+        employee = JSON.parse(trigger.dataset.matrixEmployeeEmployee || trigger.dataset.matrixEmployee || '{}');
+      } catch (error) {
+        employee = null;
+      }
+
+      if (!employee) {
+        return null;
+      }
+
+      const fullName = [employee.first_name, employee.last_name]
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+        .join(' ') || `Employee ${rowIndex + 1}`;
+
+      const details = [
+        ['Employee Name', fullName],
+        ['Employee ID', employee.employee_id || 'N/A'],
+        ['First Name', employee.first_name || 'N/A'],
+        ['Last Name', employee.last_name || 'N/A'],
+        ['Age', employee.age || 'N/A'],
+        ['Gender', employee.gender || 'N/A'],
+        ['Hired Date', employee.hired_date || 'N/A'],
+        ['Position', employee.position || 'N/A'],
+        ['Department', employee.department || 'N/A'],
+        ['Rate', employee.rate || 'N/A'],
+        ['Status of Employment', employee.employment_status || 'N/A'],
+      ];
+
+      return {
+        rowIndex,
+        fullName,
+        age: employee.age || 'N/A',
+        gender: employee.gender || 'N/A',
+        hiredDate: employee.hired_date || 'N/A',
+        position: employee.position || 'N/A',
+        rate: employee.rate || 'N/A',
+        employmentStatus: employee.employment_status || 'N/A',
+        regularizationDate: employee.regularization_date || '',
+        details,
+      };
+    }).filter(Boolean);
+  }
+
+  function getMatrixHeaderRow(sourceTable, widths) {
+    const rows = Array.from(sourceTable.querySelectorAll('thead tr'));
+    return rows.find((row) => row.cells.length === widths.length) || rows[rows.length - 1] || null;
+  }
+
+  function escapeExcelWorksheetName(value) {
+    const sanitized = String(value ?? '')
+      .replace(/[\\\/\?\*\[\]:]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return (sanitized || 'Sheet').slice(0, 31);
+  }
+
+  function buildMatrixSheetNameMap(employeeDetails) {
+    const usedNames = new Set();
+    return new Map(employeeDetails.map((employee) => {
+      const baseName = escapeExcelWorksheetName(`${employee.fullName} Details`);
+      let sheetName = baseName;
+      let counter = 2;
+      while (usedNames.has(sheetName)) {
+        const suffix = ` ${counter}`;
+        sheetName = `${baseName.slice(0, Math.max(1, 31 - suffix.length))}${suffix}`;
+        counter += 1;
+      }
+      usedNames.add(sheetName);
+      return [employee.rowIndex, sheetName];
+    }));
+  }
+
+  function buildMatrixDetailSheetXml(employee, sheetName) {
+    const detailRows = employee.details.map(([label, value]) => `
+      <Row ss:AutoFitHeight="1">
+        <Cell ss:StyleID="detailLabel"><Data ss:Type="String">${escapeExcelXml(label)}</Data></Cell>
+        <Cell ss:StyleID="detailValue"><Data ss:Type="String">${escapeExcelXml(value)}</Data></Cell>
+      </Row>
+    `).join('');
+
+    return `
+      <Worksheet ss:Name="${escapeExcelXml(sheetName)}">
+        <Table>
+          <Column ss:AutoFitWidth="0" ss:Width="150"/>
+          <Column ss:AutoFitWidth="0" ss:Width="260"/>
+          <Row ss:AutoFitHeight="0" ss:Height="26">
+            <Cell ss:MergeAcross="1" ss:StyleID="detailTitle">
+              <Data ss:Type="String">${escapeExcelXml(employee.fullName)}</Data>
+            </Cell>
+          </Row>
+          ${detailRows}
+        </Table>
+      </Worksheet>
+    `;
+  }
+
+  function getMatrixDoleProfile() {
+    return {
+      establishmentName: 'NORTHEASTERN COLLEGE',
+      headOfficeAddress: 'VILLASIS, SANTIAGO CITY',
+      branchOfficeAddress: '',
+      principalActivity: '',
+      ownerPresident: 'TOMAS C. BAUTISTA, PhD',
+      contactNumber: '',
+      emailAddress: 'ncpresidentsoffice@gmail.com',
+      ownership: 'Corporation',
+      noOfShifts: '',
+      schedule: '',
+    };
+  }
+
+  function getMatrixDoleSummary(employeeDetails) {
+    const parseAge = (value) => {
+      const numeric = parseInt(String(value ?? '').replace(/[^\d]/g, ''), 10);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
+    const normalizeGender = (value) => String(value ?? '').trim().toUpperCase();
+    const summary = {
+      below15: 0,
+      age15to17: 0,
+      age18to24: 0,
+      age25to59: 0,
+      age60to65: 0,
+      males: 0,
+      females: 0,
+      total: employeeDetails.length,
+    };
+
+    employeeDetails.forEach((employee) => {
+      const age = parseAge(employee.age);
+      const gender = normalizeGender(employee.gender);
+      if (gender.startsWith('M')) summary.males += 1;
+      if (gender.startsWith('F')) summary.females += 1;
+      if (age === null) return;
+      if (age < 15) summary.below15 += 1;
+      else if (age <= 17) summary.age15to17 += 1;
+      else if (age <= 24) summary.age18to24 += 1;
+      else if (age <= 59) summary.age25to59 += 1;
+      else if (age <= 65) summary.age60to65 += 1;
+    });
+
+    return summary;
+  }
+
+  function buildDoleExcelXml(employeeDetails) {
+    const profile = getMatrixDoleProfile();
+    const summary = getMatrixDoleSummary(employeeDetails);
+    const checkbox = (active) => active ? 'X' : '';
+    const statusValue = (employee, label) => employee.employmentStatus === label ? '/' : '';
+    const contractorRows = [1, 2, 3].map((index) => `
+      <Row><Cell ss:Index="2" ss:StyleID="doleSectionCell"><Data ss:Type="Number">${index}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="1" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleSectionCell"></Cell></Row>
+    `).join('');
+    const principalRows = [1, 2].map((index, rowIndex) => `
+      <Row><Cell ss:Index="2" ss:StyleID="${rowIndex === 1 ? 'doleNote' : 'doleSectionCell'}"><Data ss:Type="String">${rowIndex === 1 ? 'add separate sheet if needed' : ''}</Data></Cell><Cell ss:StyleID="doleSectionCell"><Data ss:Type="Number">${index}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="1" ss:StyleID="doleSectionCell"></Cell></Row>
+    `).join('');
+    const rows = [
+      '<Row ss:AutoFitHeight="0" ss:Height="24"><Cell ss:MergeAcross="19" ss:StyleID="doleTitle"><Data ss:Type="String">ESTABLISHMENT WORKER&apos;S PROFILE</Data></Cell></Row>',
+      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Name of Establishment:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValueBold"><Data ss:Type="String">${escapeExcelXml(profile.establishmentName)}</Data></Cell><Cell ss:Index="10" ss:StyleID="doleLabel"><Data ss:Type="String">Kind of Ownership</Data></Cell><Cell ss:Index="15" ss:StyleID="doleMiniHeader"><Data ss:Type="String">Age Group</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">Male</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">Female</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">Total</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">No of Shifts</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">No.of Workers /shifts</Data></Cell></Row>`,
+      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Head Office Address:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValueBold"><Data ss:Type="String">${escapeExcelXml(profile.headOfficeAddress)}</Data></Cell><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Sole Proprietorship')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Sole Proprietorship</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">below 15</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">Schedule</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
+      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Brach Office Address:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValue"><Data ss:Type="String">${escapeExcelXml(profile.branchOfficeAddress)}</Data></Cell><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Partnership')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Partnership</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">15-17 yrs.</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
+      `<Row><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Corporation')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Corporation</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">18-24 yrs.</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
+      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Principal Product/Main Activity:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValue"><Data ss:Type="String">${escapeExcelXml(profile.principalActivity)}</Data></Cell><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Cooperative')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Cooperative</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">25-59 yrs.</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
+      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Owner/President/CEO:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValueBold"><Data ss:Type="String">${escapeExcelXml(profile.ownerPresident)}</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">60-65 yrs.</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
+      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Contact Number:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValue"><Data ss:Type="String">${escapeExcelXml(profile.contactNumber)}</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">Total</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.males}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.females}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.total}</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
+      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Email Address:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValueLink"><Data ss:Type="String">${escapeExcelXml(profile.emailAddress)}</Data></Cell></Row>`,
+      '<Row><Cell ss:Index="2" ss:MergeAcross="1" ss:StyleID="doleLabel"><Data ss:Type="String">Contractors with existing agreements:</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleHeader"><Data ss:Type="String">Name of Contractor/Subcontractor</Data></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleHeader"><Data ss:Type="String">Regstrered Address</Data></Cell><Cell ss:MergeAcross="1" ss:StyleID="doleHeader"><Data ss:Type="String">No. of employees Deployed</Data></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleHeader"><Data ss:Type="String">Service/s being provided by the</Data></Cell></Row>',
+      contractorRows,
+      '<Row/>',
+      '<Row><Cell ss:Index="3" ss:MergeAcross="3" ss:StyleID="doleHeader"><Data ss:Type="String">Name of Principal Employers</Data></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleHeader"><Data ss:Type="String">Office Address</Data></Cell><Cell ss:MergeAcross="1" ss:StyleID="doleHeader"><Data ss:Type="String">No. of employees Deployed</Data></Cell></Row>',
+      principalRows,
+      '<Row/>',
+      '<Row><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">No.</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">NAME OF EMPLYEE</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">GENDER</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">AGE</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">RATE</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">DATE HIRED</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">DATE REGULARIZED</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">POSITION</Data></Cell><Cell ss:MergeAcross="11" ss:StyleID="doleHeader"><Data ss:Type="String">STATUS OF EMPLOYMENT</Data></Cell></Row>',
+      '<Row><Cell ss:Index="9" ss:StyleID="doleStatusHeader"><Data ss:Type="String">Regular</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Probationary</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Fixed term</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Casual</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Regular-Seasonal</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Contract workers</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">PWD</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Foreign National</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Apprent</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Learners</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Trainee (DTS)</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Trainee (DTP)</Data></Cell></Row>',
+    ];
+
+    employeeDetails.forEach((employee, index) => {
+      rows.push(`
+        <Row><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${index + 1}</Data></Cell><Cell ss:StyleID="doleCell"><Data ss:Type="String">${escapeExcelXml(employee.fullName)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(employee.gender)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(employee.age)}</Data></Cell><Cell ss:StyleID="doleCell"><Data ss:Type="String">${escapeExcelXml(employee.rate)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(employee.hiredDate)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(employee.regularizationDate)}</Data></Cell><Cell ss:StyleID="doleCell"><Data ss:Type="String">${escapeExcelXml(employee.position)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${statusValue(employee, 'Permanent')}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${statusValue(employee, 'Probationary')}</Data></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell></Row>
+      `);
+    });
+
+    return [
+      '<?xml version="1.0"?>',
+      '<?mso-application progid="Excel.Sheet"?>',
+      '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"',
+      ' xmlns:o="urn:schemas-microsoft-com:office:office"',
+      ' xmlns:x="urn:schemas-microsoft-com:office:excel"',
+      ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"',
+      ' xmlns:html="http://www.w3.org/TR/REC-html40">',
+      '<Styles>',
+      '<Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders/><Font ss:FontName="Calibri" ss:Size="10" ss:Color="#111827"/><Interior/><NumberFormat/><Protection/></Style>',
+      '<Style ss:ID="doleTitle"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1"/></Style>',
+      '<Style ss:ID="doleLabel"><Alignment ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#A8A29E"/></Borders><Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1"/></Style>',
+      '<Style ss:ID="doleValue"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/></Borders></Style>',
+      '<Style ss:ID="doleValueBold"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/></Borders><Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1"/></Style>',
+      '<Style ss:ID="doleValueLink"><Alignment ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/></Borders><Font ss:FontName="Calibri" ss:Size="10" ss:Underline="Single" ss:Color="#1D4ED8"/></Style>',
+      '<Style ss:ID="doleCheck"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/></Borders><Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1"/></Style>',
+      '<Style ss:ID="doleMiniHeader"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/></Borders><Font ss:FontName="Calibri" ss:Size="9" ss:Bold="1"/></Style>',
+      '<Style ss:ID="doleHeader"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/></Borders><Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1"/><Interior ss:Color="#E7E5E4" ss:Pattern="Solid"/></Style>',
+      '<Style ss:ID="doleStatusHeader"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/></Borders><Font ss:FontName="Calibri" ss:Size="8"/></Style>',
+      '<Style ss:ID="doleSectionCell"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/></Borders></Style>',
+      '<Style ss:ID="doleNote"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="10" ss:Italic="1"/></Style>',
+      '<Style ss:ID="doleCell"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/></Borders></Style>',
+      '<Style ss:ID="doleCellCenter"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/></Borders></Style>',
+      '</Styles>',
+      '<Worksheet ss:Name="Sheet1"><Table>',
+      '<Column ss:AutoFitWidth="0" ss:Width="38"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="240"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="58"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="50"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="92"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="88"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="92"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="128"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="45"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="45"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="45"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="45"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="45"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="45"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="45"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="45"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="45"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="45"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="52"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="52"/>',
+      rows.join(''),
+      '</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><DisplayGridlines/></WorksheetOptions></Worksheet>',
+      '</Workbook>',
+    ].join('');
+  }
+
+  function buildMatrixExcelXml(sourceTable, worksheetName, titleText, widths, employeeDetails = []) {
     const rows = [];
+    const detailSheetNameMap = buildMatrixSheetNameMap(employeeDetails);
     rows.push(`
       <Row ss:AutoFitHeight="0" ss:Height="28">
         <Cell ss:MergeAcross="${widths.length - 1}" ss:StyleID="title">
@@ -778,7 +1156,7 @@
       </Row>
     `);
 
-    const headerRow = sourceTable.querySelector('thead tr');
+    const headerRow = getMatrixHeaderRow(sourceTable, widths);
     if (headerRow) {
       const headerCells = Array.from(headerRow.cells).map((cell) => `
         <Cell ss:StyleID="header">
@@ -790,12 +1168,18 @@
 
     Array.from(sourceTable.querySelectorAll('tbody tr')).forEach((row, rowIndex) => {
       const cells = Array.from(row.cells).map((cell, cellIndex) => {
+        const employee = employeeDetails.find((item) => item.rowIndex === rowIndex);
+        const detailSheetName = employee ? detailSheetNameMap.get(rowIndex) : '';
+        const cellText = normalizeExcelCellText(cell);
         const styleId = cellIndex === 0
-          ? 'name'
+          ? (employee ? 'nameLink' : 'name')
           : (rowIndex % 2 === 0 ? 'bodyAlt' : 'body');
+        const formulaAttr = cellIndex === 0 && employee
+          ? ` ss:Formula="${escapeExcelXml(`=HYPERLINK("#'${escapeExcelFormulaString(detailSheetName)}'!A1","${escapeExcelFormulaString(cellText)}")`)}"`
+          : '';
         return `
-          <Cell ss:StyleID="${styleId}">
-            <Data ss:Type="String">${escapeExcelXml(normalizeExcelCellText(cell))}</Data>
+          <Cell ss:StyleID="${styleId}"${formulaAttr}>
+            <Data ss:Type="String">${escapeExcelXml(cellText)}</Data>
           </Cell>
         `;
       }).join('');
@@ -807,6 +1191,10 @@
       const numericWidth = parseInt(width, 10) || 120;
       return `<Column ss:AutoFitWidth="0" ss:Width="${numericWidth}"/>`;
     }).join('');
+
+    const detailWorksheets = employeeDetails.map((employee) =>
+      buildMatrixDetailSheetXml(employee, detailSheetNameMap.get(employee.rowIndex))
+    ).join('');
 
     const xmlParts = [
       '<?xml version="1.0"?>',
@@ -837,6 +1225,21 @@
       '<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#94A3B8"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/></Borders>',
       '<Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#111827"/>',
       '<Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/></Style>',
+      '<Style ss:ID="nameLink"><Alignment ss:Vertical="Top" ss:WrapText="0"/>',
+      '<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#94A3B8"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/></Borders>',
+      '<Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Underline="Single" ss:Color="#1D4ED8"/>',
+      '<Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/></Style>',
+      '<Style ss:ID="detailTitle"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>',
+      '<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1E3A8A"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1E3A8A"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1E3A8A"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#1E3A8A"/></Borders>',
+      '<Font ss:FontName="Calibri" ss:Size="13" ss:Bold="1" ss:Color="#FFFFFF"/>',
+      '<Interior ss:Color="#1D4ED8" ss:Pattern="Solid"/></Style>',
+      '<Style ss:ID="detailLabel"><Alignment ss:Vertical="Center" ss:WrapText="1"/>',
+      '<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/></Borders>',
+      '<Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#111827"/>',
+      '<Interior ss:Color="#F5F7FA" ss:Pattern="Solid"/></Style>',
+      '<Style ss:ID="detailValue"><Alignment ss:Vertical="Center" ss:WrapText="1"/>',
+      '<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#CBD5E1"/></Borders>',
+      '<Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/></Style>',
       '</Styles>',
       `<Worksheet ss:Name="${escapeExcelXml(worksheetName).slice(0, 31)}">`,
       '<Table>',
@@ -845,6 +1248,7 @@
       '</Table>',
       '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><DisplayGridlines/><FreezePanes/><FrozenNoSplit/><SplitHorizontal>2</SplitHorizontal><TopRowBottomPane>2</TopRowBottomPane></WorksheetOptions>',
       '</Worksheet>',
+      detailWorksheets,
       '</Workbook>',
     ];
 
@@ -1102,21 +1506,29 @@
   }
 
 
-  function downloadMatrixExcel(tableId, title) {
+  function downloadMatrixExcel(tableId, title, formatLabel = 'CHED') {
     const table = document.getElementById(tableId);
     if (!table) {
       return;
     }
 
     const exportWidths = ['260px', '360px', '170px', '190px', '135px', '150px', '140px', '130px', '190px'];
+    const employeeDetails = collectMatrixEmployeeDetails(table);
+    if (String(formatLabel).toUpperCase() === 'DOLE') {
+      const doleXml = buildDoleExcelXml(employeeDetails);
+      downloadMatrixFile(doleXml, `${tableId}-dole.xls`, 'application/vnd.ms-excel');
+      return;
+    }
     const xml = buildMatrixExcelXml(
       table,
-      title,
+      `${title} - ${formatLabel}`,
       '16. Matrix list of academic teaching personnel including subject assignments/loads and contact hours per week',
-      exportWidths
+      exportWidths,
+      employeeDetails
     );
 
-    downloadMatrixFile(xml, `${tableId}.xls`, 'application/vnd.ms-excel');
+    const safeFormat = String(formatLabel || 'CHED').trim() || 'CHED';
+    downloadMatrixFile(xml, `${tableId}-${safeFormat.toLowerCase()}.xls`, 'application/vnd.ms-excel');
   }
 </script>
 

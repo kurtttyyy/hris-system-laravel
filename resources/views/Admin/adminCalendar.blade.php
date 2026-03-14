@@ -9,12 +9,19 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 
   <style>
-    body { font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; transition: margin-left 0.3s ease; }
+    body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; transition: margin-left 0.3s ease; }
     main { transition: margin-left 0.3s ease; }
     aside ~ main { margin-left: 16rem; }
+    .admin-display {
+      font-family: "Arial Black", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      letter-spacing: -0.03em;
+    }
+    .admin-kicker {
+      letter-spacing: 0.22em;
+    }
   </style>
 </head>
-<body class="bg-slate-100">
+<body class="bg-[radial-gradient(circle_at_top,_#f8fafc,_#eef2ff_40%,_#f8fafc_100%)] text-slate-900">
 
 <div class="flex min-h-screen">
   @include('components.adminSideBar')
@@ -22,115 +29,270 @@
   <main class="flex-1 ml-16 transition-all duration-300">
     @include('components.adminHeader.calenderHeader')
 
-    <div class="p-4 md:p-8 pt-20">
-      <div class="bg-white rounded-xl border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-4">
-          <button id="calendarPrevBtn" type="button" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-            <i class="fa-solid fa-chevron-left"></i>
-            Previous
-          </button>
-          <h3 id="calendarMonthLabel" class="text-xl font-semibold text-gray-800"></h3>
-          <button id="calendarNextBtn" type="button" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-            Next
-            <i class="fa-solid fa-chevron-right"></i>
-          </button>
-        </div>
+    <div class="space-y-8 p-4 pt-20 md:p-8">
+      <section class="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 py-7 text-white shadow-[0_30px_80px_rgba(15,23,42,0.22)] md:px-8">
+        <div class="absolute -left-12 top-0 h-32 w-32 rounded-full bg-sky-400/15 blur-3xl"></div>
+        <div class="absolute right-10 top-2 h-28 w-28 rounded-full bg-emerald-400/15 blur-3xl"></div>
 
-        <div class="mb-4 flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-          <p id="selectedDateLabel" class="text-sm text-slate-700">Select a date to add a custom event or holiday.</p>
-          <div class="flex items-center gap-2">
-            <button
-              id="addCustomEventBtn"
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled
-            >
-              <i class="fa-solid fa-plus"></i>
-              Add Event
-            </button>
-            <button
-              id="addExamDayBtn"
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled
-            >
-              <i class="fa-solid fa-graduation-cap"></i>
-              Add Exam Day
-            </button>
-            <button
-              id="addCustomHolidayBtn"
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled
-            >
-              <i class="fa-solid fa-plus"></i>
-              Add Holiday
-            </button>
-            <button
-              id="convertEventToHolidayBtn"
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled
-            >
-              <i class="fa-solid fa-arrows-rotate"></i>
-              Event to Holiday
-            </button>
-            <button
-              id="removeCustomEventBtn"
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled
-            >
-              <i class="fa-solid fa-trash"></i>
-              Remove Event
-            </button>
-            <button
-              id="removeCustomHolidayBtn"
-              type="button"
-              class="inline-flex items-center gap-2 rounded-lg bg-rose-800 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled
-            >
-              <i class="fa-solid fa-trash"></i>
-              Remove Holiday
-            </button>
+        <div class="relative grid gap-8 xl:grid-cols-[1.4fr_0.9fr] xl:items-end">
+          <div class="space-y-5">
+            <div class="admin-kicker inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase text-sky-100">
+              Calendar Control Center
+            </div>
+            <div>
+              <h1 class="admin-display max-w-3xl text-3xl leading-tight text-white md:text-5xl">Organize holidays, school events, and exam days from one beautiful calendar.</h1>
+              <p class="mt-3 max-w-2xl text-sm leading-7 text-slate-200 md:text-base">
+                Keep the academic rhythm visible at a glance, then jump straight into the dates that need action.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div class="rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm">
+                <p class="admin-kicker text-[11px] font-semibold uppercase text-slate-300">Holidays</p>
+                <p id="holidayCount" class="admin-display mt-2 text-3xl text-white">0</p>
+                <p class="mt-1 text-xs text-rose-200">Official and custom</p>
+              </div>
+              <div class="rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm">
+                <p class="admin-kicker text-[11px] font-semibold uppercase text-slate-300">No Classes</p>
+                <p id="noClassCount" class="admin-display mt-2 text-3xl text-white">0</p>
+                <p class="mt-1 text-xs text-orange-200">Sunday and holiday dates</p>
+              </div>
+              <div class="rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm">
+                <p class="admin-kicker text-[11px] font-semibold uppercase text-slate-300">Events</p>
+                <p id="eventCount" class="admin-display mt-2 text-3xl text-white">0</p>
+                <p class="mt-1 text-xs text-amber-200">Special and school activities</p>
+              </div>
+              <div class="rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm">
+                <p class="admin-kicker text-[11px] font-semibold uppercase text-slate-300">Exam Days</p>
+                <p id="examCount" class="admin-display mt-2 text-3xl text-white">0</p>
+                <p class="mt-1 text-xs text-emerald-200">Recurring assessment dates</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-[1.75rem] border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="admin-kicker text-xs font-semibold uppercase text-sky-100">Selected Date</p>
+                <h2 class="admin-display mt-2 text-2xl text-white">Date Spotlight</h2>
+              </div>
+              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-sky-100">
+                <i class="fa-solid fa-calendar-days text-2xl"></i>
+              </div>
+            </div>
+
+            <p id="selectedDateLabel" class="mt-5 text-sm leading-6 text-slate-200">Select a date to add a custom event or holiday.</p>
+
+            <div class="mt-5 grid grid-cols-2 gap-3">
+              <div class="rounded-2xl bg-white/10 px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-300">Holiday</p>
+                <p id="selectedHolidayCount" class="mt-2 text-2xl font-black text-white">0</p>
+              </div>
+              <div class="rounded-2xl bg-white/10 px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-300">Events</p>
+                <p id="selectedEventCount" class="mt-2 text-2xl font-black text-white">0</p>
+              </div>
+              <div class="rounded-2xl bg-white/10 px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-300">Special</p>
+                <p id="selectedSpecialCount" class="mt-2 text-2xl font-black text-white">0</p>
+              </div>
+              <div class="rounded-2xl bg-white/10 px-4 py-3">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-300">Exams</p>
+                <p id="selectedExamCount" class="mt-2 text-2xl font-black text-white">0</p>
+              </div>
+            </div>
+
+            <div class="mt-5">
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">What&rsquo;s happening</p>
+              <div id="selectedDateItems" class="mt-3 space-y-2 text-sm text-slate-100">
+                <div class="rounded-2xl bg-white/10 px-4 py-3 text-slate-300">No date selected yet.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid grid-cols-1 gap-6 xl:grid-cols-[1.45fr_0.75fr]">
+        <div class="rounded-[2rem] border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur-sm md:p-6">
+          <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-center md:justify-between">
+            <div class="flex items-center gap-3">
+              <button id="calendarPrevBtn" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:-translate-y-0.5 hover:border-sky-200 hover:text-sky-700 hover:shadow-sm">
+                <i class="fa-solid fa-chevron-left"></i>
+              </button>
+              <div>
+                <p class="admin-kicker text-xs font-semibold uppercase text-sky-700">Monthly View</p>
+                <h3 id="calendarMonthLabel" class="admin-display mt-1 text-2xl text-slate-900"></h3>
+              </div>
+              <button id="calendarNextBtn" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:-translate-y-0.5 hover:border-sky-200 hover:text-sky-700 hover:shadow-sm">
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <span class="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-2 text-rose-700">
+                <span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                Holiday
+              </span>
+              <span class="inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-2 text-orange-700">
+                <span class="inline-block h-2.5 w-2.5 rounded-full bg-orange-500"></span>
+                No Class
+              </span>
+              <span class="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-2 text-sky-700">
+                <span class="inline-block h-2.5 w-2.5 rounded-full bg-sky-500"></span>
+                Special
+              </span>
+              <span class="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-2 text-amber-700">
+                <span class="inline-block h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+                School Event
+              </span>
+              <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-emerald-700">
+                <span class="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                Exam Day
+              </span>
+            </div>
+          </div>
+
+          <div class="mt-5 grid grid-cols-7 gap-2 text-center text-[11px] font-bold uppercase tracking-[0.25em] text-slate-400 md:text-xs">
+            <div class="rounded-2xl bg-slate-50 py-3">Sun</div>
+            <div class="rounded-2xl bg-slate-50 py-3">Mon</div>
+            <div class="rounded-2xl bg-slate-50 py-3">Tue</div>
+            <div class="rounded-2xl bg-slate-50 py-3">Wed</div>
+            <div class="rounded-2xl bg-slate-50 py-3">Thu</div>
+            <div class="rounded-2xl bg-slate-50 py-3">Fri</div>
+            <div class="rounded-2xl bg-slate-50 py-3">Sat</div>
+          </div>
+
+          <div id="calendarGrid" class="mt-3 grid grid-cols-7 gap-3"></div>
+
+          <div class="mt-5 flex flex-col gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p class="text-sm font-semibold text-slate-700">Holiday sync status</p>
+              <p id="holidayStatus" class="text-xs text-slate-500">Ready to load holidays</p>
+            </div>
+            <div class="text-xs text-slate-500">Tip: click a date card to unlock the action panel.</div>
           </div>
         </div>
 
-        <div class="grid grid-cols-7 text-center text-xs md:text-sm font-semibold text-slate-600 border-b border-slate-200 pb-2 mb-2">
-          <div>Sun</div>
-          <div>Mon</div>
-          <div>Tue</div>
-          <div>Wed</div>
-          <div>Thu</div>
-          <div>Fri</div>
-          <div>Sat</div>
-        </div>
+        <aside class="space-y-6">
+          <section class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="admin-kicker text-xs font-semibold uppercase text-sky-700">Quick Actions</p>
+                <h3 class="admin-display mt-2 text-2xl text-slate-900">Create</h3>
+              </div>
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+                <i class="fa-solid fa-wand-magic-sparkles text-xl"></i>
+              </div>
+            </div>
 
-        <div id="calendarGrid" class="grid grid-cols-7 gap-2"></div>
-        <div class="mt-4 flex flex-wrap items-center gap-4 text-xs text-slate-600">
-          <span class="inline-flex items-center gap-2">
-            <span class="inline-block h-2.5 w-2.5 rounded-full bg-rose-500"></span>
-            <span>Employee Holiday</span>
-          </span>
-          <span class="inline-flex items-center gap-2">
-            <span class="inline-block h-2.5 w-2.5 rounded-full bg-red-500"></span>
-            <span>No Classes</span>
-          </span>
-          <span class="inline-flex items-center gap-2">
-            <span class="inline-block h-2.5 w-2.5 rounded-full bg-red-500"></span>
-            <span>Special Events</span>
-          </span>
-          <span class="inline-flex items-center gap-2">
-            <span class="inline-block h-2.5 w-2.5 rounded-full bg-yellow-500"></span>
-            <span>School Events/Activities</span>
-          </span>
-          <span class="inline-flex items-center gap-2">
-            <span class="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-            <span>Exam Day</span>
-          </span>
-          <span id="holidayStatus" class="ml-auto text-slate-500"></span>
-        </div>
-      </div>
+            <div class="mt-5 grid gap-3">
+              <button
+                id="addCustomEventBtn"
+                type="button"
+                class="inline-flex items-center justify-between rounded-[1.25rem] border border-amber-100 bg-amber-50 px-4 py-3 text-left text-sm font-semibold text-amber-800 transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                disabled
+              >
+                <span class="inline-flex items-center gap-3">
+                  <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500 text-white">
+                    <i class="fa-solid fa-plus"></i>
+                  </span>
+                  Add School Event
+                </span>
+                <i class="fa-solid fa-arrow-right text-amber-500"></i>
+              </button>
+
+              <button
+                id="addExamDayBtn"
+                type="button"
+                class="inline-flex items-center justify-between rounded-[1.25rem] border border-emerald-100 bg-emerald-50 px-4 py-3 text-left text-sm font-semibold text-emerald-800 transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                disabled
+              >
+                <span class="inline-flex items-center gap-3">
+                  <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500 text-white">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                  </span>
+                  Add Exam Day
+                </span>
+                <i class="fa-solid fa-arrow-right text-emerald-500"></i>
+              </button>
+
+              <button
+                id="addCustomHolidayBtn"
+                type="button"
+                class="inline-flex items-center justify-between rounded-[1.25rem] border border-rose-100 bg-rose-50 px-4 py-3 text-left text-sm font-semibold text-rose-800 transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                disabled
+              >
+                <span class="inline-flex items-center gap-3">
+                  <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500 text-white">
+                    <i class="fa-solid fa-calendar-plus"></i>
+                  </span>
+                  Add Holiday
+                </span>
+                <i class="fa-solid fa-arrow-right text-rose-500"></i>
+              </button>
+            </div>
+          </section>
+
+          <section class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="admin-kicker text-xs font-semibold uppercase text-amber-700">Management</p>
+                <h3 class="admin-display mt-2 text-2xl text-slate-900">Refine</h3>
+              </div>
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                <i class="fa-solid fa-sliders text-xl"></i>
+              </div>
+            </div>
+
+            <div class="mt-5 grid gap-3">
+              <button
+                id="convertEventToHolidayBtn"
+                type="button"
+                class="inline-flex items-center justify-between rounded-[1.25rem] border border-sky-100 bg-sky-50 px-4 py-3 text-left text-sm font-semibold text-sky-800 transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                disabled
+              >
+                <span class="inline-flex items-center gap-3">
+                  <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-500 text-white">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                  </span>
+                  Event to Holiday
+                </span>
+                <i class="fa-solid fa-arrow-right text-sky-500"></i>
+              </button>
+
+              <button
+                id="removeCustomEventBtn"
+                type="button"
+                class="inline-flex items-center justify-between rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                disabled
+              >
+                <span class="inline-flex items-center gap-3">
+                  <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-700 text-white">
+                    <i class="fa-solid fa-trash"></i>
+                  </span>
+                  Remove Event
+                </span>
+                <i class="fa-solid fa-arrow-right text-slate-500"></i>
+              </button>
+
+              <button
+                id="removeCustomHolidayBtn"
+                type="button"
+                class="inline-flex items-center justify-between rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                disabled
+              >
+                <span class="inline-flex items-center gap-3">
+                  <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                    <i class="fa-solid fa-calendar-xmark"></i>
+                  </span>
+                  Remove Holiday
+                </span>
+                <i class="fa-solid fa-arrow-right text-slate-500"></i>
+              </button>
+            </div>
+          </section>
+        </aside>
+      </section>
     </div>
   </main>
 </div>
@@ -161,6 +323,15 @@
   const addCustomHolidayBtn = document.getElementById('addCustomHolidayBtn');
   const convertEventToHolidayBtn = document.getElementById('convertEventToHolidayBtn');
   const removeCustomHolidayBtn = document.getElementById('removeCustomHolidayBtn');
+  const holidayCountEl = document.getElementById('holidayCount');
+  const noClassCountEl = document.getElementById('noClassCount');
+  const eventCountEl = document.getElementById('eventCount');
+  const examCountEl = document.getElementById('examCount');
+  const selectedHolidayCountEl = document.getElementById('selectedHolidayCount');
+  const selectedEventCountEl = document.getElementById('selectedEventCount');
+  const selectedSpecialCountEl = document.getElementById('selectedSpecialCount');
+  const selectedExamCountEl = document.getElementById('selectedExamCount');
+  const selectedDateItemsEl = document.getElementById('selectedDateItems');
 
   const HOLIDAY_COUNTRY = 'US';
   const CUSTOM_EVENT_STORAGE_KEY = 'school_custom_events_v1';
@@ -184,6 +355,7 @@
   let currentEventEntriesByDate = {};
   let currentHolidayEntriesByDate = {};
   let currentSpecialEventEntriesByDate = {};
+  let currentExamEntriesByDate = {};
   let selectedDateForCustomEvent = null;
   let calendarDate = new Date();
 
@@ -344,6 +516,50 @@
     return Array.isArray(holidays) ? holidays : [];
   }
 
+  function createSelectedDateItem(label, colorClass, iconClass) {
+    const item = document.createElement('div');
+    item.className = 'flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3';
+    item.innerHTML = `
+      <span class="flex h-10 w-10 items-center justify-center rounded-2xl ${colorClass} text-white">
+        <i class="${iconClass}"></i>
+      </span>
+      <span class="min-w-0 truncate text-sm font-medium text-white">${label}</span>
+    `;
+    return item;
+  }
+
+  function renderSelectedDateSummary(isoDate) {
+    const holidays = currentHolidayEntriesByDate[isoDate] || [];
+    const events = currentEventEntriesByDate[isoDate] || [];
+    const specials = currentSpecialEventEntriesByDate[isoDate] || [];
+    const exams = currentExamEntriesByDate[isoDate] || [];
+
+    selectedHolidayCountEl.textContent = String(holidays.length);
+    selectedEventCountEl.textContent = String(events.length);
+    selectedSpecialCountEl.textContent = String(specials.length);
+    selectedExamCountEl.textContent = String(exams.length);
+
+    selectedDateItemsEl.innerHTML = '';
+
+    if (!holidays.length && !events.length && !specials.length && !exams.length) {
+      selectedDateItemsEl.innerHTML = '<div class="rounded-2xl bg-white/10 px-4 py-3 text-slate-300">No saved items for this date yet.</div>';
+      return;
+    }
+
+    holidays.forEach((entry) => {
+      selectedDateItemsEl.appendChild(createSelectedDateItem(entry.name, 'bg-rose-500', 'fa-solid fa-umbrella-beach'));
+    });
+    events.forEach((entry) => {
+      selectedDateItemsEl.appendChild(createSelectedDateItem(entry.name, 'bg-amber-500', 'fa-solid fa-bullhorn'));
+    });
+    specials.forEach((entry) => {
+      selectedDateItemsEl.appendChild(createSelectedDateItem(entry, 'bg-sky-500', 'fa-solid fa-star'));
+    });
+    exams.forEach((entry) => {
+      selectedDateItemsEl.appendChild(createSelectedDateItem(entry, 'bg-emerald-500', 'fa-solid fa-graduation-cap'));
+    });
+  }
+
   function setSelectedDate(isoDate) {
     selectedDateForCustomEvent = isoDate;
     const parsedDate = new Date(`${isoDate}T00:00:00`);
@@ -360,6 +576,7 @@
     addCustomHolidayBtn.disabled = false;
     convertEventToHolidayBtn.disabled = (currentSpecialEventEntriesByDate[isoDate] || []).length === 0;
     removeCustomHolidayBtn.disabled = (currentHolidayEntriesByDate[isoDate] || []).length === 0;
+    renderSelectedDateSummary(isoDate);
   }
 
   async function getHolidaysForYear(year) {
@@ -406,11 +623,16 @@
     currentEventEntriesByDate = {};
     currentHolidayEntriesByDate = {};
     currentSpecialEventEntriesByDate = {};
+    currentExamEntriesByDate = {};
 
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const daysInPrevMonth = new Date(year, month, 0).getDate();
     const today = new Date();
+    let totalHolidayCount = 0;
+    let totalNoClassCount = 0;
+    let totalEventCount = 0;
+    let totalExamCount = 0;
 
     monthLabel.textContent = calendarDate.toLocaleDateString('en-US', {
       month: 'long',
@@ -421,8 +643,8 @@
 
     for (let i = firstDay - 1; i >= 0; i--) {
       const cell = document.createElement('div');
-      cell.className = 'rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs md:text-sm text-slate-400 min-h-[84px]';
-      cell.textContent = String(daysInPrevMonth - i);
+      cell.className = 'min-h-[132px] rounded-[1.4rem] border border-slate-100 bg-slate-50 px-3 py-3 text-xs text-slate-300';
+      cell.innerHTML = `<div class="text-right text-sm font-semibold">${String(daysInPrevMonth - i)}</div>`;
       grid.appendChild(cell);
     }
 
@@ -459,73 +681,97 @@
       const examEntries = getRecurringExamNamesForDate(isoDate);
       const hasCustomEvent = customEventEntries.length > 0;
       const hasExamDay = examEntries.length > 0;
+      const isSelected = selectedDateForCustomEvent === isoDate;
 
-      const cell = document.createElement('div');
-      cell.className = [
-        'rounded-lg border p-3 min-h-[84px] text-xs md:text-sm flex flex-col',
-        isToday
-          ? 'border-blue-300 bg-blue-50 text-blue-700 font-semibold'
-          : 'border-slate-200 bg-white text-slate-700',
-        isHoliday ? 'ring-1 ring-rose-300 bg-rose-50/60' : '',
-        !isHoliday && isNoClassSunday ? 'ring-1 ring-red-300 bg-red-50/60' : '',
-        !isHoliday && !isNoClassSunday && hasSpecialEvent ? 'ring-1 ring-red-300 bg-red-50/60' : '',
-        hasCustomEvent ? 'ring-2 ring-yellow-400 bg-yellow-50/60' : '',
-        hasExamDay ? 'ring-2 ring-emerald-400 bg-emerald-50/70' : '',
-        'cursor-pointer hover:border-indigo-300',
-      ].join(' ');
-      cell.innerHTML = `<span>${day}</span>`;
-      cell.addEventListener('click', function () {
-        setSelectedDate(isoDate);
-      });
-
-      holidayEntries.forEach((holidayEntry) => {
-        const employeeHolidayEl = document.createElement('span');
-        employeeHolidayEl.className = 'mt-1 inline-flex items-center gap-1 text-[10px] leading-tight font-medium text-rose-700';
-        employeeHolidayEl.innerHTML = `<span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-500"></span>${holidayEntry.name}`;
-        cell.appendChild(employeeHolidayEl);
-      });
-
+      totalHolidayCount += holidayEntries.length;
+      totalEventCount += customEventEntries.length + events.length;
+      totalExamCount += examEntries.length;
       if (noClassLabel) {
-        const schoolNoClassEl = document.createElement('span');
-        schoolNoClassEl.className = 'mt-1 inline-flex items-center gap-1 text-[10px] leading-tight font-medium text-red-700';
-        schoolNoClassEl.innerHTML = `<span class="inline-block h-1.5 w-1.5 rounded-full bg-red-500"></span>${noClassLabel}`;
-        cell.appendChild(schoolNoClassEl);
+        totalNoClassCount += 1;
       }
 
-      events.forEach((eventName) => {
-        const eventEl = document.createElement('span');
-        eventEl.className = 'mt-1 inline-flex items-center gap-1 text-[10px] leading-tight font-medium text-red-700';
-        eventEl.innerHTML = `<span class="inline-block h-1.5 w-1.5 rounded-full bg-red-500"></span>${eventName}`;
-        cell.appendChild(eventEl);
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = [
+        'group min-h-[132px] rounded-[1.4rem] border px-3 py-3 text-left text-xs md:text-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md',
+        isToday
+          ? 'border-blue-200 bg-blue-50 text-blue-900'
+          : 'border-slate-200 bg-white text-slate-700',
+        isHoliday ? 'shadow-[inset_0_0_0_1px_rgba(244,63,94,0.25)] bg-rose-50/70' : '',
+        !isHoliday && isNoClassSunday ? 'shadow-[inset_0_0_0_1px_rgba(249,115,22,0.25)] bg-orange-50/70' : '',
+        !isHoliday && !isNoClassSunday && hasSpecialEvent ? 'shadow-[inset_0_0_0_1px_rgba(14,165,233,0.25)] bg-sky-50/70' : '',
+        hasCustomEvent ? 'ring-1 ring-amber-300' : '',
+        hasExamDay ? 'ring-2 ring-emerald-300' : '',
+        isSelected ? 'ring-2 ring-slate-900 shadow-lg' : '',
+      ].join(' ');
+
+      const markers = [];
+      if (holidayEntries.length) markers.push('<span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>');
+      if (noClassLabel) markers.push('<span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>');
+      if (events.length) markers.push('<span class="h-2.5 w-2.5 rounded-full bg-sky-500"></span>');
+      if (customEventEntries.length) markers.push('<span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>');
+      if (examEntries.length) markers.push('<span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>');
+
+      const visibleLabels = [];
+      holidayEntries.slice(0, 1).forEach((entry) => {
+        visibleLabels.push(`<div class="truncate rounded-xl bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-700">${entry.name}</div>`);
+      });
+      if (noClassLabel) {
+        visibleLabels.push(`<div class="truncate rounded-xl bg-orange-100 px-2 py-1 text-[10px] font-semibold text-orange-700">${noClassLabel}</div>`);
+      }
+      events.slice(0, visibleLabels.length < 2 ? 2 - visibleLabels.length : 0).forEach((entry) => {
+        visibleLabels.push(`<div class="truncate rounded-xl bg-sky-100 px-2 py-1 text-[10px] font-semibold text-sky-700">${entry}</div>`);
+      });
+      customEventEntries.slice(0, visibleLabels.length < 2 ? 2 - visibleLabels.length : 0).forEach((entry) => {
+        visibleLabels.push(`<div class="truncate rounded-xl bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-700">${entry.name}</div>`);
+      });
+      examEntries.slice(0, visibleLabels.length < 2 ? 2 - visibleLabels.length : 0).forEach((entry) => {
+        visibleLabels.push(`<div class="truncate rounded-xl bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700">${entry}</div>`);
       });
 
-      customEventEntries.forEach((eventEntry) => {
-        const customEventEl = document.createElement('span');
-        customEventEl.className = 'mt-1 inline-flex items-center gap-1 text-[10px] leading-tight font-medium text-yellow-700';
-        customEventEl.innerHTML = `<span class="inline-block h-1.5 w-1.5 rounded-full bg-yellow-500"></span>${eventEntry.name}`;
-        cell.appendChild(customEventEl);
-      });
+      const totalEntries = holidayEntries.length + (noClassLabel ? 1 : 0) + events.length + customEventEntries.length + examEntries.length;
+      const moreCount = Math.max(totalEntries - visibleLabels.length, 0);
 
-      examEntries.forEach((examName) => {
-        const examEl = document.createElement('span');
-        examEl.className = 'mt-1 inline-flex items-center gap-1 text-[10px] leading-tight font-medium text-emerald-700';
-        examEl.innerHTML = `<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500"></span>${examName}`;
-        cell.appendChild(examEl);
+      cell.innerHTML = `
+        <div class="flex items-start justify-between gap-2">
+          <div class="inline-flex items-center gap-1.5 rounded-full bg-slate-100/80 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+            ${markers.join('')}
+          </div>
+          <span class="flex h-9 w-9 items-center justify-center rounded-2xl ${isToday ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'} text-sm font-bold">${day}</span>
+        </div>
+        <div class="mt-3 space-y-2">
+          ${visibleLabels.join('')}
+          ${moreCount > 0 ? `<div class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">+${moreCount} more</div>` : ''}
+        </div>
+      `;
+      cell.addEventListener('click', function () {
+        setSelectedDate(isoDate);
+        renderCalendar();
       });
 
       grid.appendChild(cell);
       currentEventEntriesByDate[isoDate] = customEventEntries;
       currentHolidayEntriesByDate[isoDate] = holidayEntries;
       currentSpecialEventEntriesByDate[isoDate] = events;
+      currentExamEntriesByDate[isoDate] = examEntries;
     }
 
     const totalCells = firstDay + daysInMonth;
     const trailing = (7 - (totalCells % 7)) % 7;
     for (let day = 1; day <= trailing; day++) {
       const cell = document.createElement('div');
-      cell.className = 'rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs md:text-sm text-slate-400 min-h-[84px]';
-      cell.textContent = String(day);
+      cell.className = 'min-h-[132px] rounded-[1.4rem] border border-slate-100 bg-slate-50 px-3 py-3 text-xs text-slate-300';
+      cell.innerHTML = `<div class="text-right text-sm font-semibold">${String(day)}</div>`;
       grid.appendChild(cell);
+    }
+
+    holidayCountEl.textContent = String(totalHolidayCount);
+    noClassCountEl.textContent = String(totalNoClassCount);
+    eventCountEl.textContent = String(totalEventCount);
+    examCountEl.textContent = String(totalExamCount);
+
+    if (selectedDateForCustomEvent) {
+      renderSelectedDateSummary(selectedDateForCustomEvent);
     }
   }
 
@@ -730,7 +976,6 @@
       events[date].push(label);
     };
 
-    // Fixed-date observances
     add(`${year}-02-14`, "Valentine's Day");
     add(`${year}-03-08`, "International Women's Day");
     add(`${year}-04-22`, "Earth Day");
@@ -740,7 +985,6 @@
     add(`${year}-12-24`, "Christmas Eve");
     add(`${year}-12-31`, "New Year's Eve");
 
-    // Chinese New Year (mapped dates)
     const chineseNewYearByYear = {
       2024: '2024-02-10',
       2025: '2025-01-29',
@@ -769,5 +1013,3 @@
 
 </body>
 </html>
-
-

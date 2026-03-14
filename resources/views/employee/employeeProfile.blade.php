@@ -24,95 +24,219 @@
         }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-[radial-gradient(circle_at_top,_#eff6ff,_#f8fafc_42%,_#f8fafc_100%)] text-slate-900">
+@php
+    $fullName = trim(implode(' ', array_filter([
+        $emp->first_name ?? null,
+        $emp->middle_name ?? null,
+        $emp->last_name ?? null,
+    ])));
+    $employeeId = $emp->employee->employee_id ?? 'N/A';
+    $email = $emp->email ?? 'N/A';
+    $phone = $emp->employee->contact_number ?? 'N/A';
+    $address = $emp->employee->address ?? 'N/A';
+    $position = $emp->employee->position ?? 'Not assigned';
+    $department = $emp->employee->department ?? 'Department not available';
+    $joinDate = $emp->employee->formatted_employement_date ?? $emp->applicant?->formatted_date_hired ?? '-';
+@endphp
 
 <div class="flex min-h-screen">
 
     @include('components.employeeSideBar')
 
-    <!-- Main Content -->
     <main class="flex-1 ml-16 transition-all duration-300">
+        @include('components.employeeHeader.myProfileHeader')
 
-    @include('components.employeeHeader.myProfileHeader')
-            <!-- Content -->
-            <div class="p-4 md:p-8 space-y-8 pt-20">
+        <div class="space-y-8 p-4 pt-20 md:p-8">
+            @if (session('success'))
+                <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-700">
+                    {{ session('success') }}
+                </div>
+            @endif
 
-                <!-- Profile Card -->
-                <div class="bg-white rounded-xl shadow p-6">
-                    <div class="flex items-center gap-6">
-                        <div class="w-24 h-24 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-3xl font-bold">
-                            {{ $emp->initials}}
+            @if ($errors->any())
+                <div class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">
+                    {{ $errors->first() }}
+                </div>
+            @endif
+
+            <section class="relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/80 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl md:p-8">
+                <div class="absolute -left-12 top-6 h-28 w-28 rounded-full bg-sky-100/70 blur-3xl"></div>
+                <div class="absolute right-10 top-0 h-24 w-24 rounded-full bg-emerald-100/70 blur-3xl"></div>
+
+                <div class="relative">
+                    <div class="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+                        <div class="flex flex-col gap-5 md:flex-row md:items-start">
+                            <div class="relative">
+                                @if (!empty($profilePhotoUrl))
+                                    <img
+                                        src="{{ $profilePhotoUrl }}"
+                                        alt="{{ $fullName !== '' ? $fullName : 'Employee profile photo' }}"
+                                        class="h-[27rem] w-[27rem] rounded-[2.5rem] object-cover shadow-lg ring-4 ring-emerald-300"
+                                    >
+                                @else
+                                    <div class="flex h-[27rem] w-[27rem] items-center justify-center rounded-[2.5rem] bg-gradient-to-br from-sky-500 via-indigo-500 to-violet-500 text-8xl font-black text-white shadow-lg ring-4 ring-emerald-300">
+                                        {{ $emp->initials }}
+                                    </div>
+                                @endif
+                                <div class="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/30">
+                                    <i class="fa fa-check"></i>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">
+                                    Employee Profile
+                                </div>
+                                <h2 class="mt-3 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">
+                                    {{ $fullName !== '' ? $fullName : 'Employee Name' }}
+                                </h2>
+                                <p class="mt-2 text-base font-medium text-slate-600">{{ $position }}</p>
+                                <p class="mt-1 text-sm text-slate-500">{{ $department }}</p>
+
+                                <div class="mt-4 flex flex-wrap gap-3">
+                                    <span class="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-2 text-sm font-semibold text-emerald-700">
+                                        <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                                        {{ $employmentStatus ?? 'Active' }}
+                                    </span>
+                                    <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600">
+                                        <i class="fa fa-id-badge"></i>
+                                        {{ $employeeId }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
+                        <div class="w-full max-w-md rounded-[1.75rem] border border-slate-200 bg-white/90 p-4 shadow-sm">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Profile Photo</p>
+                                    <h3 class="mt-1 text-lg font-black text-slate-900">Update display picture only</h3>
+                                    <p class="mt-1 text-sm leading-6 text-slate-500">
+                                        Personal and employment details stay read-only here. You can only change your profile picture from this page.
+                                    </p>
+                                </div>
+                                <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Photo only</span>
+                            </div>
+
+                            <form action="{{ route('employee.upload_documents') }}" method="POST" enctype="multipart/form-data" class="mt-4 space-y-3">
+                                @csrf
+                                <input type="hidden" name="document_name" value="PROFILE_PHOTO">
+                                <input type="hidden" name="folder_key" value="">
+
+                                <label for="profile-photo-upload" class="block rounded-[1.25rem] border-2 border-dashed border-sky-200 bg-sky-50/70 px-4 py-4 text-center transition hover:border-sky-300 hover:bg-sky-50">
+                                    <span class="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-sky-600 shadow-sm">
+                                        <i class="fa fa-camera text-lg"></i>
+                                    </span>
+                                    <span class="mt-2 block text-sm font-semibold text-slate-700">Choose a new profile photo</span>
+                                    <span class="mt-1 block text-xs text-slate-500">Accepted: JPG, JPEG, PNG, GIF, WEBP</span>
+                                </label>
+                                <input
+                                    id="profile-photo-upload"
+                                    type="file"
+                                    name="uploadFile"
+                                    accept=".jpg,.jpeg,.png,.gif,.webp,image/*"
+                                    required
+                                    class="block w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:font-semibold file:text-slate-700 hover:file:bg-slate-200"
+                                >
+
+                                <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
+                                    <i class="fa fa-upload"></i>
+                                    Save Profile Picture
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-4 text-center">
+                            <p class="text-2xl font-black text-slate-900">{{ $serviceDurationText ?? '0Y 0M 0D' }}</p>
+                            <p class="mt-1 text-sm font-medium text-slate-500">Length of Service</p>
+                        </div>
+                        <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-4 text-center">
+                            <p class="text-2xl font-black text-slate-900">{{ number_format((float) ($attendanceRatePercent ?? 0), 1) }}%</p>
+                            <p class="mt-1 text-sm font-medium text-slate-500">Attendance Rate</p>
+                        </div>
+                        <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-4 text-center">
+                            <p class="text-2xl font-black text-slate-900">{{ rtrim(rtrim(number_format((float) ($leaveDaysUsed ?? 0), 1, '.', ''), '0'), '.') }}</p>
+                            <p class="mt-1 text-sm font-medium text-slate-500">Leave Days Used</p>
+                        </div>
+                        <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-5 py-4 text-center">
+                            <p class="text-2xl font-black {{ $employmentStatusClass ?? 'text-emerald-600' }}">{{ $employmentStatus ?? 'Active' }}</p>
+                            <p class="mt-1 text-sm font-medium text-slate-500">Current Status</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                    <div class="mb-6 flex items-center gap-3">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+                            <i class="fa fa-user"></i>
+                        </div>
                         <div>
-                            <h2 class="text-2xl font-semibold">{{ $emp->first_name }} {{ $emp->middle_name }} {{ $emp->last_name }}</h2>
-                            <p class="text-gray-600">{{ $emp->employee->position}}</p>
-                            <p class="text-sm text-gray-500">{{ $emp->employee->department }}</p>
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Profile Details</p>
+                            <h3 class="mt-1 text-xl font-black text-slate-900">Personal Information</h3>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-4 gap-4 mt-6 text-center">
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <p class="text-xl font-bold">{{ $serviceDurationText ?? '0Y 0M 0D' }}</p>
-                            <p class="text-sm text-gray-500">Years</p>
+                    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Employee ID</p>
+                            <p class="mt-2 text-lg font-bold text-slate-900">{{ $employeeId }}</p>
                         </div>
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <p class="text-xl font-bold">{{ number_format((float) ($attendanceRatePercent ?? 0), 1) }}%</p>
-                            <p class="text-sm text-gray-500">Attendance</p>
+                        <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Email</p>
+                            <p class="mt-2 break-words text-lg font-bold text-slate-900">{{ $email }}</p>
                         </div>
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <p class="text-xl font-bold">{{ rtrim(rtrim(number_format((float) ($leaveDaysUsed ?? 0), 1, '.', ''), '0'), '.') }}</p>
-                            <p class="text-sm text-gray-500">Leave Days</p>
+                        <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Phone</p>
+                            <p class="mt-2 text-lg font-bold text-slate-900">{{ $phone !== '' ? $phone : 'N/A' }}</p>
                         </div>
-                        <div class="bg-gray-50 p-4 rounded-lg">
-                            <p class="text-xl font-bold {{ $employmentStatusClass ?? 'text-emerald-600' }}">{{ $employmentStatus ?? 'Active' }}</p>
-                            <p class="text-sm text-gray-500">Status</p>
+                        <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 md:col-span-2">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Address</p>
+                            <p class="mt-2 text-lg font-bold text-slate-900">{{ $address !== '' ? $address : 'N/A' }}</p>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Info Cards -->
-                <div class="grid grid-cols-2 gap-6">
-                    <!-- Personal Info -->
-                    <div class="bg-white rounded-xl shadow p-6">
-                        <h3 class="font-semibold mb-4">Personal Information</h3>
-
-                        <p class="text-xs text-gray-500">EMPLOYEE ID</p>
-                        <p class="font-medium mb-3">{{ $emp->employee->employee_id }}</p>
-
-                        <p class="text-xs text-gray-500">EMAIL</p>
-                        <p class="font-medium mb-3">{{ $emp->email }}</p>
-
-                        <p class="text-xs text-gray-500">PHONE</p>
-                        <p class="font-medium mb-3">{{ $emp->employee->contact_number }}</p>
-
-                        <p class="text-xs text-gray-500">ADDRESS</p>
-                        <p class="font-medium">{{ $emp->employee->address}}</p>
-                    </div>
-
-                    <!-- Employment Info -->
-                    <div class="bg-white rounded-xl shadow p-6">
-                        <h3 class="font-semibold mb-4">Employment Details</h3>
-
-                        <p class="text-xs text-gray-500">POSITION</p>
-                        <p class="font-medium mb-3">{{ $emp->employee->position}}</p>
-
-                        <p class="text-xs text-gray-500">DEPARTMENT</p>
-                        <p class="font-medium mb-3">{{ $emp->employee->department }}</p>
-
-                        <p class="text-xs text-gray-500">JOIN DATE</p>
-                        <p class="font-medium mb-3">{{ $emp->employee->formatted_employement_date ?? $emp->applicant?->formatted_date_hired ?? '-' }}</p>
-
-                        <p class="text-xs text-gray-500">AGE</p>
-                        <p class="font-medium mb-3">{{ $ageDisplay ?? 'N/A' }}</p>
-
-                        <p class="text-xs text-gray-500">REPORTING MANAGER</p>
-                        <p class="font-medium">Michael Chen</p>
                     </div>
                 </div>
 
-            </div>
+                <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                    <div class="mb-6 flex items-center gap-3">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                            <i class="fa fa-briefcase"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Work Profile</p>
+                            <h3 class="mt-1 text-xl font-black text-slate-900">Employment Details</h3>
+                        </div>
+                    </div>
 
+                    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Position</p>
+                            <p class="mt-2 text-lg font-bold text-slate-900">{{ $position }}</p>
+                        </div>
+                        <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Department</p>
+                            <p class="mt-2 text-lg font-bold text-slate-900">{{ $department }}</p>
+                        </div>
+                        <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Join Date</p>
+                            <p class="mt-2 text-lg font-bold text-slate-900">{{ $joinDate }}</p>
+                        </div>
+                        <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Age</p>
+                            <p class="mt-2 text-lg font-bold text-slate-900">{{ $ageDisplay ?? 'N/A' }}</p>
+                        </div>
+                        <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4 md:col-span-2">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Reporting Manager</p>
+                            <p class="mt-2 text-lg font-bold text-slate-900">Michael Chen</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
     </main>
 </div>
 
@@ -135,6 +259,3 @@
 
 </body>
 </html>
-
-
-

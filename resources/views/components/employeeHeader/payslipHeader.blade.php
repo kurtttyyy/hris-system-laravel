@@ -1,35 +1,38 @@
-<header class="bg-white border-b border-gray-200 sticky top-0 z-40 px-8 py-6 flex items-center justify-between">
-    <div>
-        <h2 class="text-3xl font-bold text-gray-800">Payslips</h2>
-        <p class="text-gray-500">View and download your salary information</p>
-    </div>
+<header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 px-4 py-4 backdrop-blur-xl md:px-8 md:py-5">
+    <div class="flex items-center justify-between gap-4 rounded-[1.75rem] border border-emerald-100 bg-gradient-to-r from-white via-emerald-50 to-white px-5 py-5 shadow-sm">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Payroll Workspace</p>
+            <h2 class="mt-2 text-3xl font-black tracking-tight text-slate-900">Payslips</h2>
+            <p class="mt-1 text-sm text-slate-500">View and download your salary information</p>
+        </div>
 
-    <div class="flex items-center gap-2">
-        <button class="relative p-3.5 text-gray-600 hover:bg-gray-100 rounded-lg">
-            <span class="absolute top-1 right-1 flex items-center justify-center text-xs font-bold text-white bg-red-600 rounded-full w-5 h-5">
-                3
-            </span>
-            <i class="fa fa-bell fa-2x"></i>
-        </button>
-
-        <div class="relative group">
-            <button class="p-2.5 text-gray-600 hover:bg-gray-100 rounded-full">
-                <i class="fa fa-user fa-2x"></i>
+        <div class="flex items-center gap-2">
+            <button class="relative rounded-2xl border border-emerald-100 bg-white p-3.5 text-emerald-700 transition hover:bg-emerald-50">
+                <span class="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">
+                    3
+                </span>
+                <i class="fa fa-bell fa-lg"></i>
             </button>
 
-            <div class="absolute right-0 mt-3 w-48 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <a href="{{ route('employee.employeeProfile') }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-100">
-                    <i class="fa fa-user"></i>
-                    My Profile
-                </a>
+            <div class="relative group">
+                <button class="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-100 bg-white text-emerald-700 transition hover:bg-emerald-50">
+                    <i class="fa fa-user text-lg"></i>
+                </button>
 
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50">
-                        <i class="fa fa-sign-out"></i>
-                        Logout
-                    </button>
-                </form>
+                <div class="absolute right-0 z-50 mt-3 invisible w-48 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg opacity-0 transition-all duration-200 group-hover:visible group-hover:opacity-100">
+                    <a href="{{ route('employee.employeeProfile') }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-100">
+                        <i class="fa fa-user"></i>
+                        My Profile
+                    </a>
+
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50">
+                            <i class="fa fa-sign-out"></i>
+                            Logout
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

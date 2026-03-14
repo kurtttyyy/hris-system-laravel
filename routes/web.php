@@ -52,6 +52,9 @@ Route::controller(EmployeePageController::class)->group(function () {
 Route::controller(EmployeeStoreController::class)->group(function () {
     //POST
     Route::post('upload/documents', 'upload_store')->name('employee.upload_documents');
+    Route::post('employee/document/folder', 'create_folder')->name('employee.document.folder.store');
+    Route::post('employee/document/folder/{folderKey}/remove', 'remove_folder')->name('employee.document.folder.remove');
+    Route::post('employee/document/{id}/move', 'move_document')->name('employee.document.move');
     Route::post('employee/document/{id}/remove', 'remove_document')->name('employee.remove_document');
     Route::post('employee/leave/application', 'leave_application_store')->name('employee.leaveApplication.store');
     Route::post('employee/resignation/store', 'store_resignation')->name('employee.storeResignation');
@@ -127,6 +130,7 @@ Route::controller(AdministratorStoreController::class)->group(function () {
 
     //DELETE
     Route::post('system/delete/position/{id}', 'destroy_position')->name('admin.destroyPosition');
+    Route::post('system/reopen/position/{id}', 'restore_position')->name('admin.restorePosition');
     Route::post('system/delete/interview/{id}', 'destroy_interview')->name('admin.interviewCancel');
     Route::post('system/delete/employee/{id}', 'destroy_employee')->name('admin.destroyEmployee');
 });

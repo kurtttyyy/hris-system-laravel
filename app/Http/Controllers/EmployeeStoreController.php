@@ -10,14 +10,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class EmployeeStoreController extends Controller
 {
+    private const FOLDER_TYPE = '__FOLDER__';
+
     public function upload_store(Request $request){
         Log::info($request->all());
         $attrs = $request->validate([
             'document_name' => 'required|string|max:255',
-            'uploadFile' => 'required|file|mimes:pdf,xlsx,doc,docx|max:5120',
+            'folder_key' => 'nullable|string|max:120',
+            'uploadFile' => 'required|file|max:5120',
         ]);
 
         $user = Auth::id();
@@ -35,18 +39,57 @@ class EmployeeStoreController extends Controller
             return back()->withErrors(['uploadFile' => 'Invalid file upload.']);
         }
 
+        $documentName = trim((string) ($attrs['document_name'] ?? ''));
+        $isProfilePhoto = strtoupper($documentName) === 'PROFILE_PHOTO';
+        $allowedExtensions = $isProfilePhoto
+            ? ['jpg', 'jpeg', 'png', 'gif', 'webp']
+            : ['pdf', 'xlsx', 'doc', 'docx'];
+        $fileExtension = strtolower((string) $file->getClientOriginalExtension());
+
+        if (!in_array($fileExtension, $allowedExtensions, true)) {
+            return back()->withErrors([
+                'uploadFile' => $isProfilePhoto
+                    ? 'Profile photo must be a JPG, JPEG, PNG, GIF, or WEBP file.'
+                    : 'Document must be a PDF, XLSX, DOC, or DOCX file.',
+            ])->withInput();
+        }
+
         $originalName = $file->getClientOriginalName();
         $mimeType     = $file->getMimeType();
         $size         = $file->getSize();
 
         $fileName = time() . '_' . $originalName;
+        $folderKey = trim((string) ($attrs['folder_key'] ?? ''));
+        $folders = $this->folderOptionsForApplicant((int) $applicant->id);
+        if ($folderKey !== '' && !array_key_exists($folderKey, $folders)) {
+            return back()->withErrors(['folder_key' => 'Selected folder does not exist.'])->withInput();
+        }
+        if ($isProfilePhoto) {
+            $folderKey = '';
+            ApplicantDocument::query()
+                ->where('applicant_id', $applicant->id)
+                ->whereRaw("UPPER(TRIM(COALESCE(type, ''))) = 'PROFILE_PHOTO'")
+                ->get()
+                ->each(function ($document) {
+                    $relativePath = ltrim((string) ($document->filepath ?? ''), '/');
+                    if ($relativePath !== '' && Storage::disk('public')->exists($relativePath)) {
+                        Storage::disk('public')->delete($relativePath);
+                    }
+
+                    $document->delete();
+                });
+        }
 
         // Store file
-        $filePath = $file->storeAs('uploads', $fileName, 'public');
+        $filePath = $file->storeAs(
+            $this->employeeUploadDirectory((int) $applicant->id, $folderKey),
+            $fileName,
+            'public'
+        );
 
         ApplicantDocument::create([
             'applicant_id' => $applicant->id,
-            'type'         => $attrs['document_name'],
+            'type'         => $documentName,
             'filename'     => $originalName,
             'filepath'     => $filePath, // already "uploads/filename"
             'mime_type'    => $mimeType,
@@ -59,7 +102,45 @@ class EmployeeStoreController extends Controller
             (string) pathinfo((string) $originalName, PATHINFO_FILENAME)
         );
 
-        return back()->with('success', 'Document uploaded successfully.');
+        return back()->with('success', $isProfilePhoto ? 'Profile photo updated successfully.' : 'Document uploaded successfully.');
+    }
+
+    public function create_folder(Request $request)
+    {
+        $attrs = $request->validate([
+            'folder_name' => 'required|string|max:80',
+        ]);
+
+        $userId = Auth::id();
+        $applicant = Applicant::where('user_id', $userId)
+            ->where('application_status', 'Hired')
+            ->first();
+
+        if (!$applicant) {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['folder_name' => 'No hired applicant record found.']);
+        }
+
+        $folderName = trim((string) $attrs['folder_name']);
+        $folderKey = $this->normalizeFolderKey($folderName);
+        if ($folderKey === '') {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['folder_name' => 'Folder name is invalid.'])->withInput();
+        }
+
+        $existingFolders = $this->folderOptionsForApplicant((int) $applicant->id);
+        if (array_key_exists($folderKey, $existingFolders)) {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['folder_name' => 'That folder already exists.'])->withInput();
+        }
+
+        ApplicantDocument::create([
+            'applicant_id' => $applicant->id,
+            'type' => self::FOLDER_TYPE,
+            'filename' => $folderName,
+            'filepath' => 'system/folders/'.$folderKey,
+            'mime_type' => 'inode/directory',
+            'size' => 0,
+        ]);
+
+        return redirect()->back()->withFragment('document-folder-area')->with('success', 'Folder created successfully.');
     }
 
     public function remove_document($id)
@@ -70,7 +151,7 @@ class EmployeeStoreController extends Controller
             ->first();
 
         if (!$applicant) {
-            return redirect()->back()->withErrors(['documents' => 'No hired applicant record found.']);
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'No hired applicant record found.']);
         }
 
         $document = ApplicantDocument::where('id', $id)
@@ -78,7 +159,7 @@ class EmployeeStoreController extends Controller
             ->first();
 
         if (!$document) {
-            return redirect()->back()->withErrors(['documents' => 'Document not found or unauthorized.']);
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'Document not found or unauthorized.']);
         }
 
         $relativePath = ltrim((string) ($document->filepath ?? ''), '/');
@@ -88,7 +169,183 @@ class EmployeeStoreController extends Controller
 
         $document->delete();
 
-        return redirect()->back()->with('success', 'Document removed successfully.');
+        return redirect()->back()->withFragment('document-folder-area')->with('success', 'Document removed successfully.');
+    }
+
+    public function move_document(Request $request, $id)
+    {
+        $attrs = $request->validate([
+            'folder_key' => 'nullable|string|max:120',
+        ]);
+
+        $userId = Auth::id();
+        $applicant = Applicant::where('user_id', $userId)
+            ->where('application_status', 'Hired')
+            ->first();
+
+        if (!$applicant) {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'No hired applicant record found.']);
+        }
+
+        $document = ApplicantDocument::query()
+            ->where('id', $id)
+            ->where('applicant_id', $applicant->id)
+            ->where('type', '!=', self::FOLDER_TYPE)
+            ->first();
+
+        if (!$document) {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'Document not found or unauthorized.']);
+        }
+
+        $folderKey = trim((string) ($attrs['folder_key'] ?? ''));
+        $folders = $this->folderOptionsForApplicant((int) $applicant->id);
+        if ($folderKey !== '' && !array_key_exists($folderKey, $folders)) {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'Selected folder does not exist.']);
+        }
+
+        $currentRelativePath = ltrim((string) ($document->filepath ?? ''), '/');
+        if ($currentRelativePath === '') {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'Document path is invalid.']);
+        }
+
+        $disk = Storage::disk('public');
+        if (!$disk->exists($currentRelativePath)) {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'File not found in storage.']);
+        }
+
+        $currentFolderKey = $this->folderKeyFromPath($currentRelativePath);
+        $targetFolderKey = $folderKey === '' ? '' : $this->normalizeFolderKey($folderKey);
+        if ($currentFolderKey === $targetFolderKey) {
+            return redirect()->back()->withFragment('document-folder-area')->with('success', 'Document is already in that folder.');
+        }
+
+        $targetDirectory = trim($this->employeeUploadDirectory((int) $applicant->id, $targetFolderKey), '/');
+        $baseFileName = basename($currentRelativePath);
+        $targetRelativePath = $targetDirectory.'/'.$baseFileName;
+        if ($disk->exists($targetRelativePath)) {
+            $targetRelativePath = $targetDirectory.'/'.time().'_'.$baseFileName;
+        }
+
+        if (!$disk->move($currentRelativePath, $targetRelativePath)) {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'Unable to move file right now.']);
+        }
+
+        $document->filepath = $targetRelativePath;
+        $document->save();
+
+        $targetLabel = $targetFolderKey === '' ? 'Unfiled' : ($folders[$targetFolderKey] ?? 'selected folder');
+
+        return redirect()->back()->withFragment('document-folder-area')->with('success', 'Document moved to '.$targetLabel.'.');
+    }
+
+    public function remove_folder(string $folderKey)
+    {
+        $userId = Auth::id();
+        $applicant = Applicant::where('user_id', $userId)
+            ->where('application_status', 'Hired')
+            ->first();
+
+        if (!$applicant) {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'No hired applicant record found.']);
+        }
+
+        $normalizedFolderKey = $this->normalizeFolderKey($folderKey);
+        if ($normalizedFolderKey === '') {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'Folder not found.']);
+        }
+
+        $folderRecord = ApplicantDocument::query()
+            ->where('applicant_id', $applicant->id)
+            ->where('type', self::FOLDER_TYPE)
+            ->get()
+            ->first(function (ApplicantDocument $folder) use ($normalizedFolderKey) {
+                return $this->folderKeyFromPath((string) $folder->filepath) === $normalizedFolderKey;
+            });
+
+        if (!$folderRecord) {
+            return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'Folder not found.']);
+        }
+
+        $folderPrefix = trim($this->employeeUploadDirectory((int) $applicant->id, $normalizedFolderKey), '/').'/';
+        $documentsInFolder = ApplicantDocument::query()
+            ->where('applicant_id', $applicant->id)
+            ->where('type', '!=', self::FOLDER_TYPE)
+            ->get()
+            ->filter(function (ApplicantDocument $document) use ($folderPrefix) {
+                $relativePath = trim(str_replace('\\', '/', (string) ($document->filepath ?? '')), '/');
+
+                return str_starts_with($relativePath, $folderPrefix);
+            });
+
+        foreach ($documentsInFolder as $document) {
+            $relativePath = ltrim((string) ($document->filepath ?? ''), '/');
+            if ($relativePath !== '' && Storage::disk('public')->exists($relativePath)) {
+                Storage::disk('public')->delete($relativePath);
+            }
+
+            $document->delete();
+        }
+
+        $folderRecord->delete();
+
+        return redirect()->to(route('employee.employeeDocument').'#document-folder-area')->with(
+            'success',
+            'Folder removed successfully.'.($documentsInFolder->isNotEmpty() ? ' Files inside it were also deleted.' : '')
+        );
+    }
+
+    private function folderOptionsForApplicant(int $applicantId): array
+    {
+        return ApplicantDocument::query()
+            ->where('applicant_id', $applicantId)
+            ->where('type', self::FOLDER_TYPE)
+            ->orderBy('filename')
+            ->get(['filename', 'filepath'])
+            ->mapWithKeys(function (ApplicantDocument $folder) {
+                $key = $this->folderKeyFromPath((string) $folder->filepath);
+                if ($key === '') {
+                    $key = $this->normalizeFolderKey((string) $folder->filename);
+                }
+
+                return $key === ''
+                    ? []
+                    : [$key => trim((string) $folder->filename)];
+            })
+            ->all();
+    }
+
+    private function folderKeyFromPath(string $path): string
+    {
+        $normalized = trim(str_replace('\\', '/', $path), '/');
+        if (str_starts_with($normalized, 'system/folders/')) {
+            return trim((string) Str::after($normalized, 'system/folders/'));
+        }
+        if (preg_match('#^uploads/applicant-documents/\d+/([^/]+)/#', $normalized, $matches)) {
+            $folderKey = trim((string) ($matches[1] ?? ''));
+            return $folderKey === 'unfiled' ? '' : $folderKey;
+        }
+
+        return '';
+    }
+
+    private function normalizeFolderKey(string $value): string
+    {
+        return trim((string) Str::of($value)
+            ->lower()
+            ->squish()
+            ->replaceMatches('/[^a-z0-9]+/', '-')
+            ->trim('-')
+            ->substr(0, 60));
+    }
+
+    private function employeeUploadDirectory(int $applicantId, string $folderKey = ''): string
+    {
+        $basePath = 'uploads/applicant-documents/'.$applicantId;
+        if ($folderKey === '') {
+            return $basePath.'/unfiled';
+        }
+
+        return $basePath.'/'.$folderKey;
     }
 
     public function leave_application_store(Request $request)

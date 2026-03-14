@@ -202,7 +202,7 @@
         </div>
 
         <div class="text-center mt-3">
-            <a href="#" id="applyJobBtn" class="btn btn-success w-100">
+            <a href="javascript:void(0)" id="applyJobBtn" class="btn btn-success w-100">
                 Apply Now
             </a>
             <p class="apply-subtext">Takes less than 3 minutes</p>

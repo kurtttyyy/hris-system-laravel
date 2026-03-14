@@ -34,7 +34,7 @@
     <!-- Dashboard Content -->
     <div class="p-8 space-y-6">
               <!-- Back -->
-      <a href="#" class="text-sm text-slate-500 flex items-center gap-2 mb-4">
+      <a href="{{ route('admin.adminInterview') }}" class="text-sm text-slate-500 flex items-center gap-2 mb-4">
         ← Back to Interviews
       </a>
 

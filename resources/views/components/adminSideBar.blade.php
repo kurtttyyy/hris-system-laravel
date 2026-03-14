@@ -154,15 +154,17 @@
       </div>
     </details>
 
-    <!-- Reports -->
-    <a href="{{ route('admin.adminReports') }}"
-       class="flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
-       {{ request()->routeIs('admin.adminReports')
-        ? 'bg-green-600 text-white'
-        : 'text-white hover:bg-green-600/30' }}">
-      <i class="fa-solid fa-chart-line"></i>
-      <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Reports</span>
-    </a>
+    @if (false)
+      <!-- Reports hidden temporarily -->
+      <a href="{{ route('admin.adminReports') }}"
+         class="flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
+         {{ request()->routeIs('admin.adminReports')
+          ? 'bg-green-600 text-white'
+          : 'text-white hover:bg-green-600/30' }}">
+        <i class="fa-solid fa-chart-line"></i>
+        <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Reports</span>
+      </a>
+    @endif
 
     <!-- See More -->
     <details class="space-y-1 more-menu">

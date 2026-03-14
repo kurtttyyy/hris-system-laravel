@@ -3,12 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PeopleHub – HR Dashboard</title>
+  <title>PeopleHub - HR Dashboard</title>
 
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 
   <style>
@@ -17,144 +14,348 @@
         aside ~ main { margin-left: 16rem; }
   </style>
 </head>
-<body class="bg-slate-100">
+<body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f1f5f9_45%,#eefbf6_100%)]">
+
+@php
+    $departmentOptions = collect($openPosition ?? [])
+        ->map(fn ($open) => trim((string) ($open->department ?? '')))
+        ->filter(fn ($value) => $value !== '')
+        ->unique()
+        ->sort()
+        ->values();
+
+    $employmentOptions = collect($openPosition ?? [])
+        ->map(fn ($open) => trim((string) ($open->employment ?? '')))
+        ->filter(fn ($value) => $value !== '')
+        ->unique()
+        ->sort()
+        ->values();
+
+    $jobTypeOptions = collect($openPosition ?? [])
+        ->map(fn ($open) => trim((string) ($open->job_type ?? '')))
+        ->filter(fn ($value) => $value !== '')
+        ->unique()
+        ->sort()
+        ->values();
+@endphp
 
 <div class="flex min-h-screen">
-
-  <!-- Sidebar -->
     @include('components.adminSideBar')
 
+    <main class="flex-1 ml-16 transition-all duration-300">
+        @include('components.adminHeader.positionHeader')
 
-    <!-- Main Content -->
-  <main class="flex-1 ml-16 transition-all duration-300">
-    <!-- Header -->
-     @include('components.adminHeader.positionHeader')
+        <div class="space-y-6 p-4 pt-20 md:p-8">
+            @if (session('error'))
+                <div class="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800 shadow-sm">
+                    {{ session('error') }}
+                </div>
+            @endif
 
-    <!-- Dashboard Content -->
-    <div class="p-4 md:p-8 space-y-6 pt-20">
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+                @php
+                    $activePositionCount = collect($openPosition ?? [])->whereNull('deleted_at')->count();
+                    $closedPositionCount = collect($openPosition ?? [])->filter(fn ($position) => !is_null($position->deleted_at))->count();
+                @endphp
+                <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Open Positions</p>
+                            <p class="mt-3 text-4xl font-black tracking-tight text-slate-900">{{ $activePositionCount }}</p>
+                            <p class="mt-1 text-sm text-slate-500">Roles currently available for applicants</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
+                                <i class="fa-solid fa-briefcase"></i>
+                            </div>
+                            <span class="mt-3 inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">Active</span>
+                        </div>
+                    </div>
+                </div>
 
-<!-- Page Actions Only -->
-<div class="flex items-center justify-between">
-    <!-- Empty placeholder to keep alignment -->
-    <div></div>
+                <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Total Views</p>
+                            <p class="mt-3 text-4xl font-black tracking-tight text-slate-900">{{ $logs }}</p>
+                            <p class="mt-1 text-sm text-slate-500">Audience engagement across posted roles</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+                                <i class="fa-regular fa-eye"></i>
+                            </div>
+                            <span class="mt-3 inline-flex rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700">+24%</span>
+                        </div>
+                    </div>
+                </div>
 
-    <div class="flex items-center gap-4">
-        <div class="relative">
-            <i class="fa fa-search absolute left-3 top-3 text-slate-400 text-sm"></i>
-            <input
-                type="text"
-                placeholder="Search applicants..."
-                class="pl-9 pr-4 py-2 border rounded-lg text-sm
-                       focus:ring-2 focus:ring-indigo-500 outline-none"
-            />
-        </div>
+                <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">New Applications</p>
+                            <p class="mt-3 text-4xl font-black tracking-tight text-slate-900">{{ $applicantCounts }}</p>
+                            <p class="mt-1 text-sm text-slate-500">Applicants flowing into the hiring board</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                                <i class="fa-solid fa-user-plus"></i>
+                            </div>
+                            <span class="mt-3 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">This Week</span>
+                        </div>
+                    </div>
+                </div>
 
-        <button
-            onclick="window.location.href='/system/create/position'"
-            class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
-        >
-            + Add Position
-        </button>
-    </div>
-</div>
-
-
-<!-- Stats -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-        <div class="flex justify-between items-center">
-            <span class="text-sm text-slate-500">Open Positions</span>
-            <span class="text-xs bg-indigo-100 text-indigo-600 px-2 py-1 rounded-full">Active</span>
-        </div>
-        <p class="text-3xl font-bold mt-4">{{ $positionCounts }}</p>
-    </div>
-
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-        <div class="flex justify-between items-center">
-            <span class="text-sm text-slate-500">Total Views</span>
-            <span class="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">+24%</span>
-        </div>
-        <p class="text-3xl font-bold mt-4">{{ $logs }}</p>
-    </div>
-
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-        <div class="flex justify-between items-center">
-            <span class="text-sm text-slate-500">New Applications</span>
-            <span class="text-xs bg-green-100 text-green-600 px-2 py-1 rounded-full">This Week</span>
-        </div>
-        <p class="text-3xl font-bold mt-4">{{ $applicantCounts }}</p>
-    </div>
-
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-        <div class="flex justify-between items-center">
-            <span class="text-sm text-slate-500">Days to Fill</span>
-            <span class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full">Avg</span>
-        </div>
-        <p class="text-3xl font-bold mt-4">14</p>
-    </div>
-</div>
-
-<!-- Job Cards -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    @foreach($openPosition as $open)
-    <!-- Frontend Job -->
-    <div class="bg-white rounded-xl p-6 shadow-sm">
-        <div class="flex justify-between items-start">
-            <div>
-                <h3 class="text-lg font-semibold">{{ $open->title}}</h3>
-                <p class="text-sm text-slate-500">{{ $open->department }}
-                    • {{ $open->employment}} • {{ $open->job_type }}</p>
+                <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Closed Positions</p>
+                            <p class="mt-3 text-4xl font-black tracking-tight text-slate-900">{{ $closedPositionCount }}</p>
+                            <p class="mt-1 text-sm text-slate-500">Positions removed from the applicant-facing board</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                                <i class="fa-solid fa-ban"></i>
+                            </div>
+                            <span class="mt-3 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">Archived</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <span class="text-xs bg-green-100 text-green-600 px-3 py-1 rounded-full">Active</span>
-        </div>
 
+            <div class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+                <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                    <div>
+                        <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                            Role Filters
+                        </div>
+                        <h2 class="mt-3 text-2xl font-black tracking-tight text-slate-900">Position Board</h2>
+                        <p class="mt-1 text-sm text-slate-500">Filter by department, employment setup, or job type to focus the hiring board.</p>
+                    </div>
+
+                    <div class="grid gap-3 sm:grid-cols-2 xl:min-w-[760px] xl:grid-cols-4">
+                        <label class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                            <i class="fa-solid fa-building text-slate-400"></i>
+                            <select id="departmentFilter" class="w-full bg-transparent text-slate-700 outline-none">
+                                <option value="">All Departments</option>
+                                @foreach ($departmentOptions as $departmentOption)
+                                    <option value="{{ strtolower($departmentOption) }}">{{ $departmentOption }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <label class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                            <i class="fa-solid fa-briefcase text-slate-400"></i>
+                            <select id="employmentFilter" class="w-full bg-transparent text-slate-700 outline-none">
+                                <option value="">All Employment</option>
+                                @foreach ($employmentOptions as $employmentOption)
+                                    <option value="{{ strtolower($employmentOption) }}">{{ $employmentOption }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <label class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                            <i class="fa-solid fa-layer-group text-slate-400"></i>
+                            <select id="jobTypeFilter" class="w-full bg-transparent text-slate-700 outline-none">
+                                <option value="">All Job Types</option>
+                                @foreach ($jobTypeOptions as $jobTypeOption)
+                                    <option value="{{ strtolower($jobTypeOption) }}">{{ $jobTypeOption }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <button id="resetPositionFilters" type="button" class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900">
+                            <i class="fa-solid fa-rotate-left text-xs"></i>
+                            Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="positionEmptyState" class="hidden rounded-[2rem] border border-dashed border-slate-300 bg-white/70 p-10 text-center shadow-sm">
+                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                    <i class="fa-solid fa-briefcase text-xl"></i>
+                </div>
+                <h3 class="mt-4 text-xl font-bold text-slate-900">No positions matched</h3>
+                <p class="mt-2 text-sm text-slate-500">Try adjusting your search or filter selections to see more roles.</p>
+            </div>
+
+            <div id="positionCardsGrid" class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                @foreach ($openPosition as $open)
                     @php
-                        $lines = preg_split("/\r\n|\n|\r/", $open->job_description);
+                        $lines = preg_split("/\r\n|\n|\r/", $open->job_description ?? '');
+                        $descriptionPreview = collect(array_slice($lines, 0, 3))
+                            ->map(fn ($line) => \Illuminate\Support\Str::limit(ltrim($line, "-* "), 150, '...'))
+                            ->filter(fn ($line) => trim((string) $line) !== '')
+                            ->values();
                     @endphp
 
-                    <ul class="text-slate-600 text-sm mt-4">
-                        @foreach (array_slice($lines, 0, 3) as $line)
-                            <li>
-                                {{
-                                    Str::limit(
-                                        ltrim($line, "•- "),
-                                        150,
-                                        '......'
-                                    )
-                                }}
-                            </li>
-                        @endforeach
-                    </ul>
+                    <article
+                        class="position-card group relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/95 p-6 shadow-[0_20px_48px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_55px_rgba(15,23,42,0.12)] {{ $open->deleted_at ? 'opacity-90' : '' }}"
+                        data-search="{{ strtolower(trim(($open->title ?? '') . ' ' . ($open->department ?? '') . ' ' . ($open->employment ?? '') . ' ' . ($open->job_type ?? '') . ' ' . ($open->skills ?? '') . ' ' . ($open->location ?? ''))) }}"
+                        data-department="{{ strtolower(trim((string) ($open->department ?? ''))) }}"
+                        data-employment="{{ strtolower(trim((string) ($open->employment ?? ''))) }}"
+                        data-job-type="{{ strtolower(trim((string) ($open->job_type ?? ''))) }}"
+                    >
+                        <div class="absolute inset-x-6 top-0 h-1 rounded-full {{ $open->deleted_at ? 'bg-[linear-gradient(90deg,#f59e0b,#ef4444)]' : 'bg-[linear-gradient(90deg,#0ea5e9,#10b981)]' }} opacity-80"></div>
 
-        <div class="flex gap-2 mt-4 flex-wrap">
-            @foreach (explode(',', $open->skills) as $skill)
-                <span class="px-3 py-1 text-xs bg-indigo-100 text-indigo-600 rounded-full">
-                    {{ trim($skill) }}
-                </span>
-            @endforeach
-        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] {{ $open->deleted_at ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700' }}">
+                                        {{ $open->deleted_at ? 'Closed' : 'Active' }}
+                                    </span>
+                                    @if (!$open->deleted_at && ($open->applicants_count ?? 0) >= 5)
+                                        <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700">High Demand</span>
+                                    @endif
+                                </div>
 
+                                <h3 class="mt-4 text-2xl font-black tracking-tight text-slate-900">{{ $open->title }}</h3>
+                                <p class="mt-2 text-sm text-slate-500">{{ $open->department }} | {{ $open->employment }} | {{ $open->job_type }}</p>
+                            </div>
 
-        <div class="flex justify-between items-center mt-6">
-            <span class="text-xs text-slate-500">
-                <i class="fa fa-users mr-1"></i> {{ $open->applicants_count }} Applicants • Posted {{ $open->created_at->format('m/d/y') }}
-            </span>
+                            <div class="flex h-14 w-14 items-center justify-center rounded-[1.35rem] {{ $open->deleted_at ? 'bg-rose-100 text-rose-600 group-hover:bg-rose-600' : 'bg-sky-100 text-sky-600 group-hover:bg-sky-600' }} transition group-hover:text-white">
+                                <i class="fa-solid fa-briefcase text-lg"></i>
+                            </div>
+                        </div>
 
-            <div class="flex gap-2">
-                <button onclick="window.location.href='{{ route('admin.adminShowPosition', $open->id) }}'" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">View Details</button>
-                <button onclick="window.location.href='{{ route('admin.adminEditPosition', $open->id) }}'" class="border px-4 py-2 rounded-lg text-sm">Edit</button>
+                        <div class="mt-5 flex flex-wrap gap-2">
+                            @if (!empty($open->location))
+                                <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                                    <i class="fa-solid fa-location-dot text-sky-500"></i>
+                                    {{ $open->location }}
+                                </span>
+                            @endif
+                            <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                                <i class="fa-regular fa-calendar text-emerald-500"></i>
+                                Posted {{ optional($open->created_at)->format('m/d/y') }}
+                            </span>
+                            <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                                <i class="fa-solid fa-users text-indigo-500"></i>
+                                {{ $open->applicants_count }} Applicants
+                            </span>
+                        </div>
+
+                        <div class="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50/70 p-4">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Role Snapshot</p>
+                            <ul class="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                                @forelse ($descriptionPreview as $previewLine)
+                                    <li class="flex gap-2">
+                                        <span class="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-sky-500"></span>
+                                        <span>{{ $previewLine }}</span>
+                                    </li>
+                                @empty
+                                    <li class="text-slate-400">No description preview available.</li>
+                                @endforelse
+                            </ul>
+                        </div>
+
+                        <div class="mt-5 flex flex-wrap gap-2">
+                            @foreach (collect(explode(',', (string) ($open->skills ?? '')))->map(fn ($skill) => trim($skill))->filter() as $skill)
+                                <span class="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">{{ $skill }}</span>
+                            @endforeach
+                        </div>
+
+                        <div class="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="text-sm text-slate-500">
+                                <p class="font-medium text-slate-700">{{ $open->department }}</p>
+                                <p>{{ $open->deleted_at ? 'No longer visible on the applicant page' : 'Hiring pipeline ready for review' }}</p>
+                            </div>
+
+                            <div class="flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onclick="window.location.href='{{ route('admin.adminShowPosition', $open->id) }}'"
+                                    class="inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                                >
+                                    <i class="fa-regular fa-eye text-xs"></i>
+                                    View Details
+                                </button>
+                                @if ($open->deleted_at)
+                                    <form action="{{ route('admin.restorePosition', $open->id) }}" method="POST">
+                                        @csrf
+                                        <button
+                                            type="submit"
+                                            class="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                                        >
+                                            <i class="fa-solid fa-rotate-left text-xs"></i>
+                                            Reopen
+                                        </button>
+                                    </form>
+                                @else
+                                    <button
+                                        type="button"
+                                        onclick="window.location.href='{{ route('admin.adminEditPosition', $open->id) }}'"
+                                        class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                                    >
+                                        <i class="fa-regular fa-pen-to-square text-xs"></i>
+                                        Edit
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    </article>
+                @endforeach
             </div>
         </div>
-    </div>
-    @endforeach
-</div>
-
-
-    </div>
-  </main>
+    </main>
 </div>
 
 </body>
+
+<script>
+  (function () {
+    const searchInput = document.getElementById('positionSearchInput');
+    const departmentFilter = document.getElementById('departmentFilter');
+    const employmentFilter = document.getElementById('employmentFilter');
+    const jobTypeFilter = document.getElementById('jobTypeFilter');
+    const resetButton = document.getElementById('resetPositionFilters');
+    const cards = Array.from(document.querySelectorAll('.position-card'));
+    const emptyState = document.getElementById('positionEmptyState');
+
+    function normalize(value) {
+      return (value || '').toString().trim().toLowerCase();
+    }
+
+    function applyFilters() {
+      const searchTerm = normalize(searchInput?.value);
+      const department = normalize(departmentFilter?.value);
+      const employment = normalize(employmentFilter?.value);
+      const jobType = normalize(jobTypeFilter?.value);
+
+      let visibleCount = 0;
+
+      cards.forEach(card => {
+        const matchesSearch = !searchTerm || normalize(card.dataset.search).includes(searchTerm);
+        const matchesDepartment = !department || normalize(card.dataset.department) === department;
+        const matchesEmployment = !employment || normalize(card.dataset.employment) === employment;
+        const matchesJobType = !jobType || normalize(card.dataset.jobType) === jobType;
+
+        const isVisible = matchesSearch && matchesDepartment && matchesEmployment && matchesJobType;
+        card.classList.toggle('hidden', !isVisible);
+
+        if (isVisible) {
+          visibleCount += 1;
+        }
+      });
+
+      emptyState.classList.toggle('hidden', visibleCount !== 0);
+    }
+
+    searchInput?.addEventListener('input', applyFilters);
+    departmentFilter?.addEventListener('change', applyFilters);
+    employmentFilter?.addEventListener('change', applyFilters);
+    jobTypeFilter?.addEventListener('change', applyFilters);
+    resetButton?.addEventListener('click', () => {
+      searchInput.value = '';
+      departmentFilter.value = '';
+      employmentFilter.value = '';
+      jobTypeFilter.value = '';
+      applyFilters();
+    });
+
+    applyFilters();
+  })();
+</script>
 
 <script>
   const sidebar = document.querySelector('aside');
@@ -171,6 +372,3 @@
   }
 </script>
 </html>
-
-
-

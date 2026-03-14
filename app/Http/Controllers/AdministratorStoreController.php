@@ -3270,6 +3270,16 @@ class AdministratorStoreController extends Controller
 
     }
 
+    public function restore_position($id){
+        $position = OpenPosition::withTrashed()->findOrFail($id);
+
+        if ($position->trashed()) {
+            $position->restore();
+        }
+
+        return redirect()->route('admin.adminPosition')->with('success', 'Position reopened successfully.');
+    }
+
     public function destroy_interview($id){
         $delete = Interviewer::where('applicant_id', $id)->first();
         $delete->delete();

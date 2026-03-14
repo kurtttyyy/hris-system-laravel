@@ -3,12 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PeopleHub – Job Details</title>
+  <title>PeopleHub - Edit Position</title>
 
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 
   <style>
@@ -18,307 +15,317 @@
   </style>
 </head>
 
-<body class="bg-slate-100">
-        <div class="flex min-h-screen">
+<body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f1f5f9_45%,#eefbf6_100%)]">
+@php
+    $experienceLevel = strtolower(trim((string) old('experience_level', $open->experience_level)));
+    $skillsPreview = collect(explode(',', (string) old('skills', $open->skills)))
+        ->map(fn ($skill) => trim($skill))
+        ->filter(fn ($skill) => $skill !== '')
+        ->values();
+    $roleInitials = collect(explode(' ', trim((string) old('title', $open->title))))
+        ->filter()
+        ->take(2)
+        ->map(fn ($part) => strtoupper(substr($part, 0, 1)))
+        ->implode('');
+@endphp
 
-        <!-- Sidebar -->
-            @include('components.adminSideBar')
+<div class="flex min-h-screen">
+    @include('components.adminSideBar')
 
-        <!-- Main Content -->
-  <main class="flex-1 ml-16 transition-all duration-300">
-            <!-- Dashboard Content -->
-            <div class="p-8 space-y-6">
-
-
-        <!-- Card -->
-        <form class="space-y-6" action="{{ route('admin.updatePosition', $open->id) }}" method="POST">
-            @csrf
-        <div class="bg-white rounded-xl shadow-sm p-8 max-w-6xl mx-auto">
-
-            @if ($errors->any())
-            <div class="mb-6 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                {{ $errors->first() }}
-            </div>
-            @endif
-
-            <!-- Header -->
-            <div class="flex justify-between items-center mb-8">
-            <h1 class="text-2xl font-bold text-slate-800">
-                Edit Job Posting
-            </h1>
-
-            <div class="flex gap-3">
-            <a href="{{ route('admin.adminShowPosition', $open->id) }}"
-                class="px-5 py-2 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 inline-block text-center">
-                Cancel
+    <main class="flex-1 ml-16 transition-all duration-300">
+        <div class="space-y-6 p-4 pt-10 md:p-8">
+            <a href="{{ route('admin.adminShowPosition', $open->id) }}" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900">
+                <i class="fa-solid fa-arrow-left text-xs"></i>
+                Back to Position
             </a>
 
+            <form class="space-y-6" action="{{ route('admin.updatePosition', $open->id) }}" method="POST">
+                @csrf
 
-                <button type = "submit"
-                class="px-5 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
-                Save Changes
-                </button>
-            </div>
-            </div>
+                @if ($errors->any())
+                    <div class="rounded-[1.5rem] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800 shadow-sm">
+                        {{ $errors->first() }}
+                    </div>
+                @endif
 
-            <!-- Section -->
-            <h2 class="text-lg font-semibold text-slate-800 mb-6">
-            Basic Information
-            </h2>
-
-            <!-- Job Title -->
-            <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">
-                Job Title
-                </label>
-                <input type="text" name = "title"
-                    value="{{ $open->title }}"
-                    class="w-full rounded-lg border border-slate-300 px-4 py-3
-                    focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-            </div>
-
-            <!-- Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                <!-- College Name -->
-                <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">
-                    College Name
-                </label>
-                <input type="text" name ="collage_name"
-                        value="{{ $open->collage_name }}"
-                        class="w-full rounded-lg border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
-                </div>
-
-                <!-- Department -->
-                <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">
-                    Department
-                </label>
-                <input type="text" name="department"
-                        value="{{ old('department', $open->department) }}"
-                        class="w-full rounded-lg border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
-                </div>
-
-                <!-- Employment Type -->
-                <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">
-                    Employment Type
-                </label>
-                <select name="employment"
-                    class="w-full rounded-lg border border-slate-300 px-4 py-3">
-                    <option value="">Select employment type</option>
-                    <option value="Full-Time"
-                        {{ old('employment', $open->employment) == 'Full-Time' ? 'selected' : '' }}>
-                        Full-Time
-                    </option>
-                    <option value="Part-Time"
-                        {{ old('employment', $open->employment) == 'Part-Time' ? 'selected' : '' }}>
-                        Part-Time
-                    </option>
-                    <option value="Contract"
-                        {{ old('employment', $open->employment) == 'Contract' ? 'selected' : '' }}>
-                        Contract
-                    </option>
-                </select>
-
-                </div>
-
-                <!-- Job Type -->
-                <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">
-                    Job Type
-                </label>
-                <select name="job_type"
-                    class="w-full rounded-lg border border-slate-300 px-4 py-3">
-                    <option value="">Select job type</option>
-                    <option value="Teaching"
-                        {{ old('job_type', $open->job_type) == 'Teaching' ? 'selected' : '' }}>
-                        Teaching
-                    </option>
-                    <option value="Non-Teaching"
-                        {{ old('job_type', $open->job_type) == 'Non-Teaching' ? 'selected' : '' }}>
-                        Non-Teaching
-                    </option>
-                </select>
-                </div>
-
-                <!-- Location -->
-                <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">
-                    Location
-                </label>
-                <input type="text" name ="location"
-                        value="{{ $open->location }}"
-                        class="w-full rounded-lg border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
-                </div>
-
-                <!-- Experience Level -->
-                <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">
-                    Experience Level
-                </label>
-                @php
-                    $experienceLevel = strtolower(trim((string) old('experience_level', $open->experience_level)));
-                @endphp
-                <select
-                    name="experience_level"
-                    class="w-full rounded-lg border border-slate-300 px-4 py-3
-                        focus:ring-2 focus:ring-indigo-500">
-                    <option value="">Select experience level</option>
-                    <option value="Senior"
-                        {{ in_array($experienceLevel, ['senior', 'senior level'], true) ? 'selected' : '' }}>
-                        Senior
-                    </option>
-                    <option value="Mid"
-                        {{ in_array($experienceLevel, ['mid', 'mid level'], true) ? 'selected' : '' }}>
-                        Mid
-                    </option>
-                    <option value="Junior"
-                        {{ in_array($experienceLevel, ['junior', 'junior level'], true) ? 'selected' : '' }}>
-                        Junior
-                    </option>
-                </select>
-
-                </div>
-            </div>
-
-            <!-- Job Description -->
-            <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">
-                Job Description
-                </label>
-                <textarea rows="5" name ="job_description"
-                    class="w-full rounded-lg border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
-                    {{ old('job_description', $open->job_description) }}
-                </textarea>
-            </div>
-                <div class="mb-8">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Summary
-                </label>
-                <div class="w-full rounded-lg border border-gray-300 bg-white p-4 text-gray-800">
-                    <textarea rows="5" name ="passionate"
-                        class="w-full rounded-lg border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
-                        {{ old('passionate', $open->passionate) }}
-                    </textarea>
-                </div>
-            </div>
-
-            <!-- Key Responsibilities -->
-            <div class="mb-8">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Key Responsibilities
-                </label>
-                <div class="w-full rounded-lg border border-gray-300 bg-white p-4">
-                    <textarea rows="5" name ="responsibilities"
-                        class="w-full rounded-lg border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
-                         {{ old('responsibilities', $open->responsibilities) }}
-                    </textarea>
-                </div>
-            </div>
-
-            <!-- Requirements -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Requirements
-                </label>
-                <div class="w-full rounded-lg border border-gray-300 bg-white p-4">
-                    <textarea rows="5" name ="requirements"
-                        class="w-full rounded-lg border border-slate-300 px-4 py-3 focus:ring-2 focus:ring-indigo-500">
-                        {{ old('requirements', $open->requirements) }}
-                    </textarea>
-                </div>
-            </div>
-
-                <!-- Required Skills -->
-            <div class="mb-10">
-                <h2 class="text-lg font-semibold text-gray-900 mb-2">
-                    Required Skills
-                </h2>
-
-                <label class="block text-sm font-medium text-gray-600 mb-2">
-                    Skills (comma separated)
-                </label>
-
-                <input
-                    type="text" name ="skills"
-                    value="{{ $open->skills }}"
-                    class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800
-                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-            </div>
-
-            <!-- Posting Dates -->
-            <div>
-                <h2 class="text-lg font-semibold text-gray-900 mb-6">
-                    Posting Dates
-                </h2>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Posted Date -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-2">
-                            Posted Date
-                        </label>
-
-                        <div class="relative">
-                            <input
-                                type="date"
-                                name="one"
-                                 value="{{ old('one', $open->one ? \Carbon\Carbon::parse($open->one)->format('Y-m-d') : '') }}"
-                                class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 pr-10 text-gray-800
-                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-
-
-                            <!-- Calendar Icon -->
-                            <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
-                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
+                <section class="relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_24px_55px_rgba(15,23,42,0.08)] backdrop-blur">
+                    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(16,185,129,0.1),_transparent_28%),linear-gradient(135deg,_rgba(248,250,252,0.96),_rgba(255,255,255,0.92))]"></div>
+                    <div class="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-[linear-gradient(135deg,#0ea5e9,#2563eb)] text-xl font-black text-white shadow-lg">
+                                {{ $roleInitials !== '' ? $roleInitials : 'JP' }}
                             </div>
+
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="rounded-full bg-sky-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-700">Position Editor</span>
+                                    <span class="rounded-full border border-slate-200 bg-white/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">{{ old('job_type', $open->job_type) ?: 'Job Type' }}</span>
+                                </div>
+
+                                <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">Edit Job Posting</h1>
+                                <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
+                                    Refine the role details, update the hiring brief, and keep the position listing polished before applicants see the changes.
+                                </p>
+
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-1.5 text-xs font-medium text-slate-600">
+                                        <i class="fa-solid fa-building text-sky-500"></i>
+                                        {{ old('department', $open->department) ?: 'Department' }}
+                                    </span>
+                                    <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-1.5 text-xs font-medium text-slate-600">
+                                        <i class="fa-solid fa-briefcase text-emerald-500"></i>
+                                        {{ old('employment', $open->employment) ?: 'Employment' }}
+                                    </span>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-3">
+                            <a href="{{ route('admin.adminShowPosition', $open->id) }}" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900">
+                                <i class="fa-solid fa-xmark text-xs"></i>
+                                Cancel
+                            </a>
+                            <button type="submit" class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+                                <i class="fa-solid fa-floppy-disk text-xs"></i>
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_360px]">
+                    <div class="space-y-6">
+                        <section class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
+                                    <i class="fa-solid fa-circle-info"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Core Setup</p>
+                                    <h2 class="text-xl font-black tracking-tight text-slate-900">Basic Information</h2>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 space-y-5">
+                                <div>
+                                    <label class="mb-2 block text-sm font-semibold text-slate-700">Job Title</label>
+                                    <input type="text" name="title" value="{{ old('title', $open->title) }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                                    <div>
+                                        <label class="mb-2 block text-sm font-semibold text-slate-700">College Name</label>
+                                        <input type="text" name="collage_name" value="{{ old('collage_name', $open->collage_name) }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">
+                                    </div>
+
+                                    <div>
+                                        <label class="mb-2 block text-sm font-semibold text-slate-700">Department</label>
+                                        <input type="text" name="department" value="{{ old('department', $open->department) }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">
+                                    </div>
+
+                                    <div>
+                                        <label class="mb-2 block text-sm font-semibold text-slate-700">Employment Type</label>
+                                        <select name="employment" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">
+                                            <option value="">Select employment type</option>
+                                            <option value="Full-Time" {{ old('employment', $open->employment) == 'Full-Time' ? 'selected' : '' }}>Full-Time</option>
+                                            <option value="Part-Time" {{ old('employment', $open->employment) == 'Part-Time' ? 'selected' : '' }}>Part-Time</option>
+                                            <option value="Contract" {{ old('employment', $open->employment) == 'Contract' ? 'selected' : '' }}>Contract</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label class="mb-2 block text-sm font-semibold text-slate-700">Job Type</label>
+                                        <select name="job_type" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">
+                                            <option value="">Select job type</option>
+                                            <option value="Teaching" {{ old('job_type', $open->job_type) == 'Teaching' ? 'selected' : '' }}>Teaching</option>
+                                            <option value="Non-Teaching" {{ old('job_type', $open->job_type) == 'Non-Teaching' ? 'selected' : '' }}>Non-Teaching</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label class="mb-2 block text-sm font-semibold text-slate-700">Location</label>
+                                        <input type="text" name="location" value="{{ old('location', $open->location) }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">
+                                    </div>
+
+                                    <div>
+                                        <label class="mb-2 block text-sm font-semibold text-slate-700">Experience Level</label>
+                                        <select name="experience_level" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">
+                                            <option value="">Select experience level</option>
+                                            <option value="Senior" {{ in_array($experienceLevel, ['senior', 'senior level'], true) ? 'selected' : '' }}>Senior</option>
+                                            <option value="Mid" {{ in_array($experienceLevel, ['mid', 'mid level'], true) ? 'selected' : '' }}>Mid</option>
+                                            <option value="Junior" {{ in_array($experienceLevel, ['junior', 'junior level'], true) ? 'selected' : '' }}>Junior</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+                                    <i class="fa-regular fa-file-lines"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Role Story</p>
+                                    <h2 class="text-xl font-black tracking-tight text-slate-900">Role Overview</h2>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 space-y-5">
+                                <div>
+                                    <label class="mb-2 block text-sm font-semibold text-slate-700">Job Description</label>
+                                    <textarea rows="6" name="job_description" class="w-full rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">{{ old('job_description', $open->job_description) }}</textarea>
+                                </div>
+
+                                <div>
+                                    <label class="mb-2 block text-sm font-semibold text-slate-700">Summary</label>
+                                    <textarea rows="5" name="passionate" class="w-full rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">{{ old('passionate', $open->passionate) }}</textarea>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                                    <i class="fa-solid fa-list-check"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Role Expectations</p>
+                                    <h2 class="text-xl font-black tracking-tight text-slate-900">Responsibilities and Requirements</h2>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 grid gap-5">
+                                <div>
+                                    <label class="mb-2 block text-sm font-semibold text-slate-700">Key Responsibilities</label>
+                                    <textarea rows="6" name="responsibilities" class="w-full rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">{{ old('responsibilities', $open->responsibilities) }}</textarea>
+                                </div>
+
+                                <div>
+                                    <label class="mb-2 block text-sm font-semibold text-slate-700">Requirements</label>
+                                    <textarea rows="6" name="requirements" class="w-full rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">{{ old('requirements', $open->requirements) }}</textarea>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                                    <i class="fa-solid fa-calendar-days"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Timeline</p>
+                                    <h2 class="text-xl font-black tracking-tight text-slate-900">Posting Schedule</h2>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+                                <div>
+                                    <label class="mb-2 block text-sm font-semibold text-slate-700">Posted Date</label>
+                                    <input type="date" name="one" value="{{ old('one', $open->one ? \Carbon\Carbon::parse($open->one)->format('Y-m-d') : '') }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">
+                                </div>
+
+                                <div>
+                                    <label class="mb-2 block text-sm font-semibold text-slate-700">Closing Date</label>
+                                    <input type="date" name="two" value="{{ old('two', $open->two ? \Carbon\Carbon::parse($open->two)->format('Y-m-d') : '') }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">
+                                </div>
+                            </div>
+                        </section>
+
+                        <div class="flex flex-wrap justify-end gap-3">
+                            <a href="{{ route('admin.adminShowPosition', $open->id) }}" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900">
+                                <i class="fa-solid fa-xmark text-xs"></i>
+                                Cancel
+                            </a>
+                            <button type="submit" class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+                                <i class="fa-solid fa-floppy-disk text-xs"></i>
+                                Save Changes
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Closing Date -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-2">
-                            Closing Date
-                        </label>
-
-                        <div class="relative">
-                            <input
-                                type="date"
-                                name="two"
-                                 value="{{ old('two', $open->two ? \Carbon\Carbon::parse($open->two)->format('Y-m-d') : '') }}"
-                                class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 pr-10 text-gray-800
-                                    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            />
-
-
-                            <!-- Calendar Icon -->
-                            <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
-                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
+                    <div class="space-y-6 xl:sticky xl:top-8 xl:self-start">
+                        <section class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+                                    <i class="fa-solid fa-table-columns"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Live Snapshot</p>
+                                    <h3 class="text-xl font-black tracking-tight text-slate-900">Position Summary</h3>
+                                </div>
                             </div>
-                        </div>
+
+                            <div class="mt-5 space-y-4">
+                                <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
+                                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Role</p>
+                                    <p class="mt-2 text-sm font-semibold text-slate-900">{{ old('title', $open->title) ?: 'Untitled Position' }}</p>
+                                </div>
+                                <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
+                                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Department</p>
+                                    <p class="mt-2 text-sm font-semibold text-slate-900">{{ old('department', $open->department) ?: 'Not specified' }}</p>
+                                </div>
+                                <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
+                                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Employment</p>
+                                    <p class="mt-2 text-sm font-semibold text-slate-900">{{ old('employment', $open->employment) ?: 'Not specified' }}</p>
+                                </div>
+                                <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
+                                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Experience Level</p>
+                                    <p class="mt-2 text-sm font-semibold text-slate-900">{{ old('experience_level', $open->experience_level) ?: 'Not specified' }}</p>
+                                </div>
+                                <div class="rounded-[1.25rem] border border-slate-200 bg-slate-50/70 p-4">
+                                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Location</p>
+                                    <p class="mt-2 text-sm font-semibold text-slate-900">{{ old('location', $open->location) ?: 'Not specified' }}</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+                                    <i class="fa-solid fa-sparkles"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Skill Preview</p>
+                                    <h3 class="text-xl font-black tracking-tight text-slate-900">Required Skills</h3>
+                                </div>
+                            </div>
+
+                            <div class="mt-5">
+                                <label class="mb-2 block text-sm font-semibold text-slate-700">Skills (comma separated)</label>
+                                <input type="text" name="skills" value="{{ old('skills', $open->skills) }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    @forelse ($skillsPreview as $skill)
+                                        <span class="rounded-full bg-indigo-100 px-3 py-1.5 text-xs font-semibold text-indigo-700">{{ $skill }}</span>
+                                    @empty
+                                        <p class="text-sm text-slate-400">No skills added yet.</p>
+                                    @endforelse
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                                    <i class="fa-solid fa-gift"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Offer Package</p>
+                                    <h3 class="text-xl font-black tracking-tight text-slate-900">Benefits and Perks</h3>
+                                </div>
+                            </div>
+
+                            <div class="mt-5">
+                                <textarea rows="6" name="benifits" class="w-full rounded-[1.5rem] border border-slate-200 bg-slate-50 px-4 py-4 text-slate-800 outline-none transition focus:border-sky-300 focus:bg-white focus:ring-2 focus:ring-sky-100">{{ old('benifits', $open->benifits) }}</textarea>
+                            </div>
+                        </section>
                     </div>
                 </div>
-            </div>
-
-
+            </form>
         </div>
-        </form>
-
-            </div>
-        </main>
-        </div>
+    </main>
+</div>
 
 </body>
 
@@ -337,5 +344,3 @@
   }
 </script>
 </html>
-
-

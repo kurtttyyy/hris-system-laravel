@@ -362,10 +362,10 @@
     NC HR Form No. 16a – Employees Profile Rev. 01
   </div>
 
-  <div class="border-t border-dashed border-black my-5"></div>
+  <div class="border-t border-dashed border-black my-3"></div>
 
   <!-- EMPLOYEE DETAILS -->
-  <div class="row font-semibold bg-transparent mt-6">Employee ID Information – Office of EDP / NCIS. Official employee identification record.</div>
+  <div class="row font-semibold bg-transparent mt-2">Employee ID Information – Office of EDP / NCIS. Official employee identification record.</div>
 
   <div class="row">
     <span class="label">Full Name:</span>
@@ -766,8 +766,8 @@
 
   .row {
     border-bottom: 1px solid #000000;
-    padding: 6px 8px;
-    height: 30px;
+    padding: 8px 8px;
+    min-height: 36px;
   }
   .row:last-child {
     border-bottom: none;
@@ -1312,7 +1312,7 @@ async function downloadProfileDOCX() {
   const postMainSpacer = Math.max(140, 1220 - exportTighten);
   const disclaimerToFooterGap = Math.max(80, 420 - Math.floor(exportTighten * 0.25));
   const formNoTopGap = Math.max(120, 500 - Math.floor(exportTighten * 0.2));
-  const dashedLineTopGap = Math.max(320, 1750 - exportTighten);
+  const dashedLineTopGap = Math.max(200, 1600 - exportTighten);
 
   const degreeTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },

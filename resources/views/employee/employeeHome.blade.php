@@ -7,246 +7,262 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
-        body {
-            transition: margin-left 0.3s ease;
-        }
-        
-        main {
-            transition: margin-left 0.3s ease;
-        }
-        
-        aside:not(:hover) ~ main {
-            margin-left: 4rem; /* w-16 when collapsed */
-        }
-        
-        aside:hover ~ main {
-            margin-left: 14rem; /* w-56 when expanded */
-        }
+        body { transition: margin-left 0.3s ease; }
+        main { transition: margin-left 0.3s ease; }
+        aside:not(:hover) ~ main { margin-left: 4rem; }
+        aside:hover ~ main { margin-left: 14rem; }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-slate-100">
 
 <div class="flex min-h-screen">
-    <!-- Sidebar -->
     @include('components.employeeSideBar')
 
-    <!-- Main Content -->
     <main class="flex-1 ml-16 transition-all duration-300">
-        <!-- Top Header -->
-    @include('components.employeeHeader.dashboardHeader', ['name' => 'Kurt', 'notifications' => 5])
+        @include('components.employeeHeader.dashboardHeader')
 
-
-<div class="p-4 md:p-8 space-y-8 pt-20">
-    <!-- Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="relative bg-white rounded-2xl p-6 border border-gray-200">
-            <span class="absolute top-9 right-4 bg-blue-500/20 text-black text-sm font-semibold px-2 py-1 rounded-lg backdrop-blur-sm">
-                {{ (int) ($combinedLeavePercentUsed ?? 0) }}% Used
-            </span>
-
-            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <i class="fa fa-calendar fa-2x"></i>
-            </div>
-            <h3 class="text-4xl font-bold text-gray-900 mb-1 mt-7">
-                {{ rtrim(rtrim(number_format((float) ($combinedLeaveAvailable ?? 0), 1, '.', ''), '0'), '.') }} Days
-            </h3>
-            <p class="text-gray-600 text-sm mb-4">Leave Balance</p>
-            <p class="text-gray-500 text-xs">
-                Vacation:
-                {{ rtrim(rtrim(number_format((float) ($vacationCardAvailable ?? 0), 1, '.', ''), '0'), '.') }}
-                / {{ rtrim(rtrim(number_format((float) ($annualLimit ?? 0), 1, '.', ''), '0'), '.') }}
-            </p>
-            <p class="text-gray-500 text-xs">
-                Sick:
-                {{ rtrim(rtrim(number_format((float) ($sickCardAvailable ?? 0), 1, '.', ''), '0'), '.') }}
-                / {{ rtrim(rtrim(number_format((float) ($sickLimit ?? 0), 1, '.', ''), '0'), '.') }}
-            </p>
-
-            <div class="flex items-center gap-2 mt-4">
-                <div class="flex-1 bg-gray-200 rounded-full h-2.5">
-                    <div class="bg-blue-500 h-2.5 rounded-full" style="width: {{ (int) ($combinedLeavePercentUsed ?? 0) }}%;"></div>
-                </div>
-                <span class="text-sm font-semibold text-gray-700">{{ (int) ($combinedLeavePercentUsed ?? 0) }}%</span>
-            </div>
-        </div>
-
-
-    <!-- Attendance Card -->
-        <div class="relative bg-white rounded-2xl p-6 border border-gray-200">
-            <span class="absolute top-9 right-4 bg-green-500/20 text-green-900 text-sm font-semibold px-2 py-1 rounded-lg backdrop-blur-sm">
-                {{ $attendanceStatusLabel ?? 'No Data' }}
-            </span>
-
-            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <i class="fa fa-clock-o fa-2x"></i>
-            </div>
-            <h3 class="text-4xl font-bold text-gray-900 mb-1 mt-7">
-                {{ number_format((float) ($attendanceRatePercent ?? 0), 1) }}%
-            </h3>
-            <p class="text-gray-600 text-sm mb-1">Attendance Rate</p>
-            <p class="text-gray-500 text-xs mt-4">
-                {{ $attendanceMonthLabel ?? now()->format('F Y') }} {{ (int) ($attendancePresentDays ?? 0) }}/{{ (int) ($attendanceTotalDays ?? 0) }} days
-            </p>
-        </div>
-
-
-        <!-- Events Card -->
-        <div class="relative bg-white rounded-2xl p-6 border border-gray-200">
-            <span id="month-events-badge" class="absolute top-9 right-4 bg-purple-500/20 text-purple-900 text-sm font-semibold px-2 py-1 rounded-lg backdrop-blur-sm">
-                0 Events
-            </span>
-
-            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <i class="fa fa-calendar-o fa-2x"></i>
-            </div>
-            <h3 class="text-4xl font-bold text-gray-900 mb-1 mt-7">This Month</h3>
-            <p class="text-gray-600 text-sm mb-1">Upcoming Events</p>
-            <p id="month-events-caption" class="text-gray-500 text-xs mt-4">{{ now()->format('F Y') }}</p>
-        </div>
-
-        <!-- Salary Card -->
-        <div class="relative bg-white rounded-2xl p-6 border border-gray-200">
-            <span class="absolute top-9 right-4 bg-yellow-500/20 text-yellow-900 text-sm font-semibold px-2 py-1 rounded-lg backdrop-blur-sm">
-                Paid
-            </span>
-
-            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <i class="fa fa-credit-card fa-2x"></i>
-            </div>
-            <h3 class="text-4xl font-bold text-gray-900 mb-1 mt-7">₱5,250</h3>
-            <p class="text-gray-600 text-sm mb-1">Last Salary</p>
-            <p class="text-gray-500 text-xs mt-4">Next Payment: Jan 31, 2025</p>
-        </div>
-
-</div>
-
-
-<div class="p-4 md:p-8 space-y-6 bg-white rounded-2xl border border-gray-200 mx-4 md:mx-0">
-    <!-- Quick Actions Container -->
-    <div>
-        <h3 class="text-xl font-bold text-gray-900 mb-4">Quick Actions</h3>
-
-        <!-- Quick Actions Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <a href="{{ route('employee.employeeLeave') }}" class="bg-white rounded-2xl border-2 border-gray-200 p-6 flex flex-col items-center justify-center gap-2 hover:shadow-md cursor-pointer">
-                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center border-2 border-blue-500">
-                    <i class="fa fa-calendar-check-o fa-2x"></i>
-                </div>
-                <p class="font-medium text-gray-700">Apply Leave</p>
-            </a>
-
-            <a href="{{ route('employee.employeeDocument') }}" class="bg-white rounded-2xl border-2 border-gray-200 p-6 flex flex-col items-center justify-center gap-2 hover:shadow-md cursor-pointer">
-                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center border-2 border-green-500">
-                    <i class="fa fa-clock-o fa-2x"></i>
-                </div>
-                <p class="font-medium text-gray-700">Documents</p>
-            </a>
-
-            <a href="{{ route('employee.employeePayslip') }}" class="bg-white rounded-2xl border-2 border-gray-200 p-6 flex flex-col items-center justify-center gap-2 hover:shadow-md cursor-pointer">
-                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center border-2 border-purple-500">
-                    <i class="fa fa-money fa-2x"></i>
-                </div>
-                <p class="font-medium text-gray-700">View Payslip</p>
-            </a>
-
-            <a href="{{ route('employee.employeeCommunication') }}" class="bg-white rounded-2xl border-2 border-gray-200 p-6 flex flex-col items-center justify-center gap-2 hover:shadow-md cursor-pointer">
-                <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center border-2 border-yellow-500">
-                    <i class="fa fa-users fa-2x"></i>
-                </div>
-                <p class="font-medium text-gray-700">Team Directory</p>
-            </a>
-        </div>
-    </div>
-</div>
-
-
-    <!-- Attendance + Upcoming Events Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 px-4 md:px-0">
-        <!-- This Week's Attendance -->
-        <div class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-bold text-gray-900">This Week's Attendance</h3>
-                <span class="text-sm text-gray-500 font-medium">{{ $weeklyAttendanceRangeLabel ?? '-' }}</span>
-            </div>
-
-            <div class="space-y-6 max-h-96 overflow-y-auto pr-2">
-                @forelse (($weeklyAttendanceRows ?? []) as $weeklyRow)
-                    <div>
-                        <div class="grid grid-cols-12 items-start gap-4">
-                            <div class="col-span-2 mt-5 ml-8 relative w-12 h-12 text-green-600">
-                                <i class="fa fa-calendar-o fa-4x w-full h-full mt-[0px]"></i>
-                                <div class="absolute inset-0 flex flex-col items-center justify-center text-xs font-bold mt-8 ml-2">
-                                    <span>{{ $weeklyRow['day_short'] ?? '-' }}</span>
-                                    <span>{{ $weeklyRow['day_number'] ?? '-' }}</span>
-                                </div>
+        <div class="space-y-8 p-4 pt-20 md:p-8">
+            <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-2xl md:p-8">
+                <div class="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl"></div>
+                <div class="absolute bottom-0 right-20 h-24 w-24 rounded-full bg-emerald-300/10 blur-2xl"></div>
+                <div class="relative grid gap-6 lg:grid-cols-[1.7fr_1fr] lg:items-end">
+                    <div class="space-y-4">
+                        <div class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-100">
+                            Employee Workspace
+                        </div>
+                        <div>
+                            <h1 class="max-w-2xl text-3xl font-black leading-tight md:text-5xl">Your workday at a glance.</h1>
+                            <p class="mt-3 max-w-2xl text-sm leading-6 text-emerald-50 md:text-base">
+                                Track attendance, monitor leave balances, and jump into the tasks you use most without digging through menus.
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap gap-3 text-sm">
+                            <div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+                                <p class="text-xs uppercase tracking-wide text-emerald-100">Month</p>
+                                <p class="mt-1 font-semibold">{{ now()->format('F Y') }}</p>
                             </div>
-
-                            <div class="col-span-10 bg-gray-50 border border-gray-200 rounded-xl p-4 mr-2">
-                                <div class="flex items-center justify-between mb-3">
-                                    <p class="text-xs text-gray-500">{{ $weeklyRow['date_label'] ?? '-' }}</p>
-                                    <span class="px-2 py-1 rounded-lg text-xs font-medium {{ $weeklyRow['status_class'] ?? 'bg-slate-100 text-slate-600' }}">
-                                        {{ $weeklyRow['status'] ?? 'No Data' }}
-                                    </span>
-                                </div>
-
-                                <div class="grid grid-cols-12 items-center gap-4">
-                                    <div class="col-span-6 space-y-2">
-                                        <div class="flex items-center gap-3">
-                                            <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
-                                            <p class="text-sm text-gray-700">{{ $weeklyRow['morning_range'] ?? 'No Log' }}</p>
-                                        </div>
-                                        <div class="flex items-center gap-3">
-                                            <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
-                                            <p class="text-sm text-gray-700">{{ $weeklyRow['afternoon_range'] ?? 'No Log' }}</p>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-span-6 space-y-2 text-right">
-                                        <p class="text-xs text-gray-500">{{ $weeklyRow['morning_hours'] ?? '0 hrs worked' }}</p>
-                                        <p class="text-xs text-gray-500">{{ $weeklyRow['afternoon_hours'] ?? '0 hrs worked' }}</p>
-                                    </div>
-                                </div>
+                            <div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+                                <p class="text-xs uppercase tracking-wide text-emerald-100">Attendance</p>
+                                <p class="mt-1 font-semibold">{{ $attendanceStatusLabel ?? 'No Data' }}</p>
+                            </div>
+                            <div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+                                <p class="text-xs uppercase tracking-wide text-emerald-100">Available Leave</p>
+                                <p class="mt-1 font-semibold">{{ rtrim(rtrim(number_format((float) ($combinedLeaveAvailable ?? 0), 1, '.', ''), '0'), '.') }} Days</p>
                             </div>
                         </div>
                     </div>
-                @empty
-                    <p class="text-sm text-gray-500">No attendance records for this week.</p>
-                @endforelse
-            </div>
 
+                    <div class="rounded-[1.75rem] border border-white/15 bg-white/10 p-5 backdrop-blur-sm">
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">Focus Panel</p>
+                        <div class="mt-5 space-y-4">
+                            <div>
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="text-emerald-50">Leave usage</span>
+                                    <span class="font-semibold">{{ (int) ($combinedLeavePercentUsed ?? 0) }}%</span>
+                                </div>
+                                <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-white/15">
+                                    <div class="h-full rounded-full bg-emerald-300" style="width: {{ (int) ($combinedLeavePercentUsed ?? 0) }}%;"></div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="rounded-2xl bg-white/10 p-4">
+                                    <p class="text-xs uppercase tracking-wide text-emerald-100">Vacation</p>
+                                    <p class="mt-2 text-xl font-bold">{{ rtrim(rtrim(number_format((float) ($vacationCardAvailable ?? 0), 1, '.', ''), '0'), '.') }}</p>
+                                </div>
+                                <div class="rounded-2xl bg-white/10 p-4">
+                                    <p class="text-xs uppercase tracking-wide text-emerald-100">Sick</p>
+                                    <p class="mt-2 text-xl font-bold">{{ rtrim(rtrim(number_format((float) ($sickCardAvailable ?? 0), 1, '.', ''), '0'), '.') }}</p>
+                                </div>
+                            </div>
+                            <p class="text-xs leading-5 text-emerald-50">
+                                Keep your records updated to avoid delays in payroll, leave approvals, and required document submissions.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+                <article class="rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/25">
+                            <i class="fa fa-calendar fa-2x"></i>
+                        </div>
+                        <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">{{ (int) ($combinedLeavePercentUsed ?? 0) }}% Used</span>
+                    </div>
+                    <h3 class="mt-8 text-4xl font-black text-slate-900">{{ rtrim(rtrim(number_format((float) ($combinedLeaveAvailable ?? 0), 1, '.', ''), '0'), '.') }}</h3>
+                    <p class="mt-1 text-sm font-medium text-slate-600">Leave Balance</p>
+                    <div class="mt-5 space-y-2 text-xs text-slate-500">
+                        <p>Vacation: {{ rtrim(rtrim(number_format((float) ($vacationCardAvailable ?? 0), 1, '.', ''), '0'), '.') }} / {{ rtrim(rtrim(number_format((float) ($annualLimit ?? 0), 1, '.', ''), '0'), '.') }}</p>
+                        <p>Sick: {{ rtrim(rtrim(number_format((float) ($sickCardAvailable ?? 0), 1, '.', ''), '0'), '.') }} / {{ rtrim(rtrim(number_format((float) ($sickLimit ?? 0), 1, '.', ''), '0'), '.') }}</p>
+                    </div>
+                    <div class="mt-5 h-2.5 overflow-hidden rounded-full bg-blue-100">
+                        <div class="h-full rounded-full bg-blue-500" style="width: {{ (int) ($combinedLeavePercentUsed ?? 0) }}%;"></div>
+                    </div>
+                </article>
+
+                <article class="rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/25">
+                            <i class="fa fa-clock-o fa-2x"></i>
+                        </div>
+                        <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">{{ $attendanceStatusLabel ?? 'No Data' }}</span>
+                    </div>
+                    <h3 class="mt-8 text-4xl font-black text-slate-900">{{ number_format((float) ($attendanceRatePercent ?? 0), 1) }}%</h3>
+                    <p class="mt-1 text-sm font-medium text-slate-600">Attendance Rate</p>
+                    <p class="mt-5 text-xs leading-5 text-slate-500">{{ $attendanceMonthLabel ?? now()->format('F Y') }} • {{ (int) ($attendancePresentDays ?? 0) }}/{{ (int) ($attendanceTotalDays ?? 0) }} days present</p>
+                </article>
+
+                <article class="rounded-[1.75rem] border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-6 shadow-sm">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-500/25">
+                            <i class="fa fa-calendar-o fa-2x"></i>
+                        </div>
+                        <span id="month-events-badge" class="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">0 Events</span>
+                    </div>
+                    <h3 class="mt-8 text-3xl font-black text-slate-900">Monthly Pulse</h3>
+                    <p class="mt-1 text-sm font-medium text-slate-600">Upcoming Events</p>
+                    <p id="month-events-caption" class="mt-5 text-xs leading-5 text-slate-500">{{ now()->format('F Y') }}</p>
+                </article>
+
+                <article class="rounded-[1.75rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/25">
+                            <i class="fa fa-credit-card fa-2x"></i>
+                        </div>
+                        <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Salary</span>
+                    </div>
+                    <h3 class="mt-8 text-3xl font-black text-slate-900">Payment Hub</h3>
+                    <p class="mt-1 text-sm font-medium text-slate-600">Payslip and salary access</p>
+                    <p class="mt-5 text-xs leading-5 text-slate-500">Use the payslip section to review your latest payroll records.</p>
+                </article>
+            </section>
+
+            <section class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+                <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Quick Actions</p>
+                        <h3 class="mt-2 text-2xl font-black text-slate-900">Jump back into the work that matters.</h3>
+                    </div>
+                    <p class="text-sm text-slate-500">Your most-used employee tools in one row.</p>
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                    <a href="{{ route('employee.employeeLeave') }}" class="group rounded-[1.5rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
+                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/20">
+                            <i class="fa fa-calendar-check-o fa-2x"></i>
+                        </div>
+                        <h4 class="mt-5 text-lg font-bold text-slate-900">Apply Leave</h4>
+                        <p class="mt-2 text-sm leading-6 text-slate-500">Submit requests, review balances, and monitor approvals from one place.</p>
+                    </a>
+
+                    <a href="{{ route('employee.employeeDocument') }}" class="group rounded-[1.5rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
+                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                            <i class="fa fa-folder-open fa-2x"></i>
+                        </div>
+                        <h4 class="mt-5 text-lg font-bold text-slate-900">Documents</h4>
+                        <p class="mt-2 text-sm leading-6 text-slate-500">Manage 201 file uploads, organize folders, and keep requirements complete.</p>
+                    </a>
+
+                    <a href="{{ route('employee.employeePayslip') }}" class="group rounded-[1.5rem] border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
+                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-500/20">
+                            <i class="fa fa-money fa-2x"></i>
+                        </div>
+                        <h4 class="mt-5 text-lg font-bold text-slate-900">View Payslip</h4>
+                        <p class="mt-2 text-sm leading-6 text-slate-500">Check payment history, salary details, and downloadable payroll records.</p>
+                    </a>
+
+                    <a href="{{ route('employee.employeeCommunication') }}" class="group rounded-[1.5rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
+                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20">
+                            <i class="fa fa-users fa-2x"></i>
+                        </div>
+                        <h4 class="mt-5 text-lg font-bold text-slate-900">Team Directory</h4>
+                        <p class="mt-2 text-sm leading-6 text-slate-500">Find contacts, connect with teams, and reach out faster when you need support.</p>
+                    </a>
+                </div>
+            </section>
+
+            <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <div class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-900">This Week's Attendance</h3>
+                        <span class="text-sm text-gray-500 font-medium">{{ $weeklyAttendanceRangeLabel ?? '-' }}</span>
+                    </div>
+
+                    <div class="space-y-6 max-h-96 overflow-y-auto pr-2">
+                        @forelse (($weeklyAttendanceRows ?? []) as $weeklyRow)
+                            <div>
+                                <div class="grid grid-cols-12 items-start gap-4">
+                                    <div class="col-span-2 mt-5 ml-8 relative w-12 h-12 text-green-600">
+                                        <i class="fa fa-calendar-o fa-4x w-full h-full mt-[0px]"></i>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center text-xs font-bold mt-8 ml-2">
+                                            <span>{{ $weeklyRow['day_short'] ?? '-' }}</span>
+                                            <span>{{ $weeklyRow['day_number'] ?? '-' }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-span-10 bg-gray-50 border border-gray-200 rounded-xl p-4 mr-2">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <p class="text-xs text-gray-500">{{ $weeklyRow['date_label'] ?? '-' }}</p>
+                                            <span class="px-2 py-1 rounded-lg text-xs font-medium {{ $weeklyRow['status_class'] ?? 'bg-slate-100 text-slate-600' }}">
+                                                {{ $weeklyRow['status'] ?? 'No Data' }}
+                                            </span>
+                                        </div>
+
+                                        <div class="grid grid-cols-12 items-center gap-4">
+                                            <div class="col-span-6 space-y-2">
+                                                <div class="flex items-center gap-3">
+                                                    <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                                                    <p class="text-sm text-gray-700">{{ $weeklyRow['morning_range'] ?? 'No Log' }}</p>
+                                                </div>
+                                                <div class="flex items-center gap-3">
+                                                    <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                                                    <p class="text-sm text-gray-700">{{ $weeklyRow['afternoon_range'] ?? 'No Log' }}</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="col-span-6 space-y-2 text-right">
+                                                <p class="text-xs text-gray-500">{{ $weeklyRow['morning_hours'] ?? '0 hrs worked' }}</p>
+                                                <p class="text-xs text-gray-500">{{ $weeklyRow['afternoon_hours'] ?? '0 hrs worked' }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="text-sm text-gray-500">No attendance records for this week.</p>
+                        @endforelse
+                    </div>
+                </div>
+
+                <div class="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+                    <div class="mb-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-700">Events</p>
+                            <h3 class="mt-1 text-xl font-black text-slate-900">Upcoming Events</h3>
+                        </div>
+                        <span id="upcoming-events-range" class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">{{ now()->format('F Y') }}</span>
+                    </div>
+
+                    <ul id="upcoming-events-list" class="space-y-4 max-h-96 overflow-y-auto pr-2">
+                        <li class="text-sm text-gray-500">Loading events...</li>
+                    </ul>
+                </div>
+            </section>
         </div>
-
-
-<!-- Upcoming Events -->
-<div class="bg-white border border-gray-200 rounded-2xl p-4 md:p-6">
-    <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-bold text-gray-900">Upcoming Events</h3>
-        <span id="upcoming-events-range" class="text-sm text-gray-500 font-medium">{{ now()->format('F Y') }}</span>
-    </div>
-
-    <ul id="upcoming-events-list" class="space-y-4 max-h-96 overflow-y-auto pr-2">
-        <li class="text-sm text-gray-500">Loading events...</li>
-    </ul>
-</div>
-
-
-    </div>
-</div>
-
     </main>
 </div>
 
 <script>
-    // Handle sidebar state changes and adjust layout
     const sidebar = document.querySelector('aside');
     const main = document.querySelector('main');
-    
+
     if (sidebar && main) {
         sidebar.addEventListener('mouseenter', function() {
             main.classList.remove('ml-16');
             main.classList.add('ml-56');
         });
-        
+
         sidebar.addEventListener('mouseleave', function() {
             main.classList.remove('ml-56');
             main.classList.add('ml-16');
@@ -260,7 +276,7 @@
 
         const now = new Date();
         const year = now.getFullYear();
-        const month = now.getMonth(); // 0-based
+        const month = now.getMonth();
         const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         captionEl.textContent = monthLabel;
 
@@ -346,7 +362,6 @@
             if (monthDay.startsWith(monthDayPrefix) && Array.isArray(values)) totalEvents += values.length;
         });
 
-        // Include official holidays like adminCalendar does, excluding hidden official holidays.
         fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/US`)
             .then((response) => (response.ok ? response.json() : []))
             .then((holidays) => {
@@ -461,14 +476,14 @@
             const allEvents = [...monthEvents, ...officialHolidayEvents]
                 .sort((a, b) => {
                     if (a.isEnded !== b.isEnded) {
-                        return a.isEnded ? 1 : -1; // upcoming first
+                        return a.isEnded ? 1 : -1;
                     }
-                    return b.ts - a.ts || a.title.localeCompare(b.title); // higher day/date first
+                    return b.ts - a.ts || a.title.localeCompare(b.title);
                 })
                 .slice(0, 12);
 
             if (!allEvents.length) {
-                listEl.innerHTML = '<li class=\"text-sm text-gray-500\">No upcoming events this month.</li>';
+                listEl.innerHTML = '<li class="text-sm text-gray-500">No upcoming events this month.</li>';
                 return;
             }
 
@@ -495,16 +510,16 @@
                     exam_day: 'bg-emerald-100 text-emerald-600 border-emerald-500',
                 };
                 const iconClasses = iconClassByType[event.type] || 'bg-orange-100 text-orange-500 border-orange-500';
-                return `<li class=\"bg-white rounded-xl border-2 border-gray-200 p-4 hover:shadow-sm transition-shadow flex items-center gap-4\">
-                    <span class=\"w-8 h-8 ${iconClasses} flex items-center justify-center rounded border-2\">
-                        <i class=\"fa fa-calendar\"></i>
+                return `<li class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex items-center gap-4">
+                    <span class="w-10 h-10 ${iconClasses} flex items-center justify-center rounded-xl border">
+                        <i class="fa fa-calendar"></i>
                     </span>
-                    <div class=\"flex flex-col flex-1\">
-                        <div class=\"flex items-center justify-between gap-2\">
-                            <p class=\"font-semibold text-gray-900\">${event.title}</p>
-                            <span class=\"px-2 py-0.5 rounded text-xs font-medium ${statusClass}\">${statusText}</span>
+                    <div class="flex flex-col flex-1">
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="font-semibold text-gray-900">${event.title}</p>
+                            <span class="px-2 py-0.5 rounded text-xs font-medium ${statusClass}">${statusText}</span>
                         </div>
-                        <p class=\"text-sm text-gray-600\">${label}${relativeLabel ? ` • ${relativeLabel}` : ''}</p>
+                        <p class="text-sm text-gray-600">${label}${relativeLabel ? ` • ${relativeLabel}` : ''}</p>
                     </div>
                 </li>`;
             }).join('');
@@ -543,5 +558,3 @@
 
 </body>
 </html>
-
-
