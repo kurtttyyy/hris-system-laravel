@@ -1,8 +1,16 @@
-<header class="bg-white border-b border-gray-200 sticky top-0 z-40 px-4 md:px-8 py-4 md:py-6 flex items-center justify-between backdrop-blur-sm">
-    <div>
-        <h2 class="text-3xl font-bold text-gray-900">HRIS Reports</h2>
-        <p class="text-gray-600 mt-1">Real-time Analytics</p>
-        <p class="text-xs text-slate-500 mt-1">{{ now()->format('l, F j, Y') }}</p>
-    </div>
+@include('components.adminHeader.scrollBehavior')
 
+<header data-admin-scroll-header class="sticky top-0 z-40 px-4 py-4 md:px-8 md:py-5">
+    <div data-admin-scroll-card class="relative overflow-hidden rounded-[2rem] border border-emerald-950/70 bg-[linear-gradient(135deg,_#03131d_0%,_#052f2a_42%,_#116149_100%)] px-5 py-5 shadow-[0_24px_60px_rgba(3,19,29,0.34)] backdrop-blur-xl md:px-7 md:py-6">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(110,231,183,0.14),_transparent_32%)]"></div>
+        <div class="relative">
+            <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50">
+                <span class="h-2 w-2 rounded-full bg-cyan-300"></span>
+                Insights Hub
+            </div>
+            <h2 class="mt-4 text-3xl font-bold text-white">HRIS Reports</h2>
+            <p class="mt-1 text-emerald-50/85">Real-time Analytics</p>
+            <p class="mt-3 inline-flex rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs font-medium text-emerald-50/80">{{ now()->format('l, F j, Y') }}</p>
+        </div>
+    </div>
 </header>

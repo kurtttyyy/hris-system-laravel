@@ -18,13 +18,14 @@
 
   <main class="flex-1 ml-16 transition-all duration-300">
     <div class="space-y-6 p-4 pt-10 md:p-8">
-      <section class="relative overflow-hidden rounded-[2rem] border border-white/80 bg-[linear-gradient(135deg,rgba(15,23,42,0.95),rgba(30,41,59,0.92),rgba(14,165,233,0.78))] px-6 py-7 text-white shadow-[0_25px_70px_rgba(15,23,42,0.16)] md:px-8">
-        <div class="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-white/10 blur-2xl"></div>
+      <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/70 bg-[linear-gradient(135deg,_#03131d_0%,_#052f2a_42%,_#116149_100%)] px-6 py-7 text-white shadow-[0_24px_60px_rgba(3,19,29,0.34)] md:px-8">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(110,231,183,0.14),_transparent_32%)]"></div>
+        <div class="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-cyan-300/10 blur-2xl"></div>
         <div class="absolute bottom-0 right-24 h-28 w-28 rounded-full bg-emerald-300/20 blur-2xl"></div>
 
         <div class="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div class="max-w-3xl">
-            <div class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-100">
+            <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-50">
               Exit Workflow
             </div>
             <h1 class="mt-4 text-3xl font-black tracking-tight md:text-4xl">Resignation management with better visibility, faster decisions, and cleaner records.</h1>
@@ -33,16 +34,16 @@
             </p>
           </div>
 
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div class="rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-4 backdrop-blur">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-200">Today</p>
+            <div class="grid gap-3 sm:grid-cols-2">
+            <div class="rounded-[1.5rem] border border-white/10 bg-white/8 px-5 py-4 backdrop-blur">
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-50/75">Today</p>
               <p class="mt-2 text-lg font-bold">{{ now()->format('F j, Y') }}</p>
-              <p class="text-sm text-slate-200">{{ now()->format('l') }}</p>
+              <p class="text-sm text-emerald-50/80">{{ now()->format('l') }}</p>
             </div>
-            <div class="rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-4 backdrop-blur">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-200">Pending Queue</p>
+            <div class="rounded-[1.5rem] border border-white/10 bg-white/8 px-5 py-4 backdrop-blur">
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-50/75">Pending Queue</p>
               <p class="mt-2 text-2xl font-black">{{ $pendingResignations->count() }}</p>
-              <p class="text-sm text-slate-200">Requests waiting for review</p>
+              <p class="text-sm text-emerald-50/80">Requests waiting for review</p>
             </div>
           </div>
         </div>

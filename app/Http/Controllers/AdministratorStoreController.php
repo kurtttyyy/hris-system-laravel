@@ -385,35 +385,7 @@ class AdministratorStoreController extends Controller
             'uploaded_at' => Carbon::now('Asia/Manila'),
         ]);
 
-        try {
-            $absolutePath = Storage::disk('public')->path($attendanceUpload->file_path);
-            $extension = pathinfo($attendanceUpload->file_path, PATHINFO_EXTENSION);
-            $rows = $this->extractRowsFromExcel($absolutePath, $extension);
-            $fallbackAttendanceDate = optional($attendanceUpload->uploaded_at)->format('Y-m-d');
-            $records = $this->buildAttendanceRecords($rows, $attendanceUpload->id, $fallbackAttendanceDate);
-
-            $processedRows = 0;
-            DB::transaction(function () use ($attendanceUpload, $records, &$processedRows) {
-                AttendanceRecord::where('attendance_upload_id', $attendanceUpload->id)->delete();
-
-                if (!empty($records)) {
-                    AttendanceRecord::insert($records);
-                    $this->syncAttendanceRecordJobTypesForUpload($attendanceUpload->id);
-                }
-
-                $processedRows = count($records);
-                $attendanceUpload->update([
-                    'status' => 'Processed',
-                    'processed_rows' => $processedRows,
-                ]);
-            });
-
-            return back()->with('success', "Excel uploaded and scanned successfully. {$processedRows} attendance row(s) saved.");
-        } catch (\Throwable $e) {
-            Log::error('Attendance upload auto-scan failed: '.$e->getMessage());
-
-            return back()->with('success', 'Excel file uploaded successfully. Click Scan to process and save to database.');
-        }
+        return back()->with('success', 'Excel file uploaded successfully. Select the file and click Scan to process it.');
     }
 
     public function store_payslip_file(Request $request)

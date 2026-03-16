@@ -31,36 +31,37 @@
     @endphp
 
     <div class="p-4 md:p-8 pt-10 space-y-6">
-      <section class="relative overflow-hidden rounded-[2rem] border border-sky-100/80 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(99,102,241,0.08),rgba(255,255,255,0.96))] px-6 py-6 shadow-[0_28px_60px_rgba(37,99,235,0.10)] md:px-8">
-        <div class="absolute -left-8 top-6 h-24 w-24 rounded-full bg-sky-300/25 blur-3xl"></div>
-        <div class="absolute right-0 top-0 h-32 w-32 translate-x-10 -translate-y-8 rounded-full bg-indigo-300/25 blur-3xl"></div>
+      <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/70 bg-[linear-gradient(135deg,_#03131d_0%,_#052f2a_42%,_#116149_100%)] px-6 py-6 shadow-[0_24px_60px_rgba(3,19,29,0.34)] md:px-8">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(110,231,183,0.14),_transparent_32%)]"></div>
+        <div class="absolute -left-8 top-6 h-24 w-24 rounded-full bg-cyan-300/10 blur-3xl"></div>
+        <div class="absolute right-0 top-0 h-32 w-32 translate-x-10 -translate-y-8 rounded-full bg-emerald-300/20 blur-3xl"></div>
         <div class="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div class="max-w-3xl">
-            <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-700">
-              <span class="h-2 w-2 rounded-full bg-sky-500"></span>
+            <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-50">
+              <span class="h-2 w-2 rounded-full bg-cyan-300"></span>
               Payroll Center
             </div>
-            <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">Payslip Operations</h1>
-            <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
+            <h1 class="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl">Payslip Operations</h1>
+            <p class="mt-2 max-w-2xl text-sm leading-6 text-emerald-50/85 md:text-base">
               Upload payroll files, scan them into preview-ready records, and move from raw spreadsheet to payslip review in one workspace.
             </p>
-            <div class="mt-4 flex flex-wrap gap-3 text-xs font-medium text-slate-500">
-              <span class="rounded-full border border-slate-200 bg-white/85 px-3 py-1.5">{{ now()->format('l, F j, Y') }}</span>
-              <span class="rounded-full border border-slate-200 bg-white/85 px-3 py-1.5">{{ $uploadedCount }} uploaded file(s)</span>
-              <span class="rounded-full border border-slate-200 bg-white/85 px-3 py-1.5">{{ $scannedCount }} scanned</span>
+            <div class="mt-4 flex flex-wrap gap-3 text-xs font-medium text-emerald-50/80">
+              <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1.5">{{ now()->format('l, F j, Y') }}</span>
+              <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1.5">{{ $uploadedCount }} uploaded file(s)</span>
+              <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1.5">{{ $scannedCount }} scanned</span>
             </div>
           </div>
 
           <div class="grid gap-3 sm:grid-cols-2 xl:min-w-[420px]">
-            <div class="rounded-2xl border border-white/80 bg-white/80 px-4 py-4 shadow-sm">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Latest Upload</p>
-              <p class="mt-2 text-sm font-semibold text-slate-800">{{ $latestUpload?->original_name ?? 'No file yet' }}</p>
-              <p class="mt-1 text-xs text-slate-500">{{ optional($latestUpload?->uploaded_at)->format('M d, Y h:i A') ?? 'Waiting for first upload' }}</p>
+            <div class="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 shadow-sm backdrop-blur">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-50/70">Latest Upload</p>
+              <p class="mt-2 text-sm font-semibold text-white">{{ $latestUpload?->original_name ?? 'No file yet' }}</p>
+              <p class="mt-1 text-xs text-emerald-50/75">{{ optional($latestUpload?->uploaded_at)->format('M d, Y h:i A') ?? 'Waiting for first upload' }}</p>
             </div>
-            <div class="rounded-2xl border border-slate-900/90 bg-slate-900 px-4 py-4 shadow-sm">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Queue Status</p>
+            <div class="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 shadow-sm backdrop-blur">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-50/70">Queue Status</p>
               <p class="mt-2 text-sm font-semibold text-white">{{ $pendingCount }} pending scan</p>
-              <p class="mt-1 text-xs text-slate-400">Scan reads and saves file data for payslip view.</p>
+              <p class="mt-1 text-xs text-emerald-50/75">Scan reads and saves file data for payslip view.</p>
             </div>
           </div>
         </div>
@@ -204,6 +205,9 @@
               @php
                 $isScanned = strcasecmp((string) ($file->status ?? ''), 'Scanned') === 0
                   || strcasecmp((string) ($file->status ?? ''), 'Processed') === 0;
+                $statusLabel = $isScanned
+                  ? 'Scanned'
+                  : (trim((string) ($file->status ?? '')) !== '' ? trim((string) $file->status) : 'Uploaded');
                 $progress = $isScanned ? 100 : 0;
               @endphp
               <div class="payslip-file-item group rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] p-4 transition hover:border-sky-200 hover:shadow-md" data-file-id="{{ $file->id }}">
@@ -217,7 +221,7 @@
                     <div>
                       <div class="flex flex-wrap items-center gap-2">
                         <p class="text-sm font-semibold text-slate-800">{{ $file->original_name }}</p>
-                        <span class="payslip-scan-status rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{{ $file->status }}</span>
+                        <span class="payslip-scan-status rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{{ $statusLabel }}</span>
                       </div>
                       <p class="mt-1 text-xs text-slate-500">Stored file ready for payroll scan and preview generation.</p>
                     </div>

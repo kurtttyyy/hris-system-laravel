@@ -22,13 +22,13 @@
     }
 
     .admin-header-shell.is-scrolled {
-        background-color: rgba(248, 250, 252, 0.85);
-        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+        background-color: rgba(3, 19, 29, 0.22);
+        box-shadow: 0 16px 34px rgba(3, 19, 29, 0.18);
     }
 
     .admin-header-shell.is-scrolled .admin-header-card {
         transform: scale(0.985);
-        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+        box-shadow: 0 16px 40px rgba(3, 19, 29, 0.24);
     }
 
     .admin-header-shell.is-scrolled .admin-header-subtitle,
@@ -38,19 +38,22 @@
     }
 </style>
 
-<header id="admin-dashboard-header" class="admin-header-shell sticky top-0 z-40 px-4 py-4 md:px-8 md:py-5">
-    <div class="admin-header-card flex flex-col gap-5 rounded-[1.75rem] border border-slate-200/80 bg-white/85 px-5 py-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between md:px-7">
-        <div class="min-w-0">
-            <div class="admin-header-meta inline-flex items-center gap-2 rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">
+@include('components.adminHeader.scrollBehavior')
+
+<header id="admin-dashboard-header" data-admin-scroll-header class="admin-header-shell sticky top-0 z-40 px-4 py-4 md:px-8 md:py-5">
+    <div data-admin-scroll-card class="admin-header-card relative overflow-hidden flex flex-col gap-5 rounded-[1.75rem] border border-emerald-950/70 bg-[linear-gradient(135deg,_#03131d_0%,_#052f2a_42%,_#116149_100%)] px-5 py-5 shadow-[0_24px_60px_rgba(3,19,29,0.34)] backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between md:px-7">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(110,231,183,0.14),_transparent_32%)]"></div>
+        <div class="relative min-w-0">
+            <div class="admin-header-meta inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-50">
                 Admin Header
             </div>
-            <h1 class="admin-header-title mt-3 text-3xl font-black tracking-tight text-slate-900">{{ $headerTitle }}</h1>
-            <p class="admin-header-subtitle mt-1 text-sm text-slate-500 md:text-base">{{ $headerSubtitle }}</p>
-            <p class="admin-header-meta mt-1 text-xs font-medium text-slate-400">{{ now()->format('l, F j, Y') }}</p>
+            <h1 class="admin-header-title mt-3 text-3xl font-black tracking-tight text-white">{{ $headerTitle }}</h1>
+            <p class="admin-header-subtitle mt-1 text-sm text-emerald-50/85 md:text-base">{{ $headerSubtitle }}</p>
+            <p class="admin-header-meta mt-3 inline-flex rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-xs font-medium text-emerald-50/80">{{ now()->format('l, F j, Y') }}</p>
         </div>
 
-        <div class="flex flex-col gap-4 xl:min-w-[620px] xl:max-w-[720px] xl:flex-row xl:items-center xl:justify-end">
-            <label class="admin-header-search group relative flex flex-1 items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:border-sky-300 focus-within:bg-white focus-within:shadow-sm">
+        <div class="relative flex flex-col gap-4 xl:min-w-[620px] xl:max-w-[720px] xl:flex-row xl:items-center xl:justify-end">
+            <label class="admin-header-search group relative flex flex-1 items-center rounded-2xl border border-white/10 bg-white px-4 py-3 focus-within:border-emerald-300 focus-within:shadow-sm">
                 <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
                 <input
                     class="w-full bg-transparent pl-3 pr-2 text-sm text-slate-700 outline-none placeholder:text-slate-400"
@@ -59,11 +62,11 @@
             </label>
 
             <div class="flex items-center gap-3">
-                <div class="admin-header-meta hidden items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 sm:inline-flex">
+                <div class="admin-header-meta hidden items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-50 sm:inline-flex">
                     HR Online
                 </div>
 
-                <button class="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-200 hover:text-sky-700">
+                <button class="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-emerald-50 shadow-sm transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/15">
                     <span class="absolute right-0 top-0 flex h-5 min-w-[1.25rem] -translate-y-1/4 translate-x-1/4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
                         3
                     </span>
@@ -71,15 +74,15 @@
                 </button>
 
                 <div class="relative group">
-                    <button class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-200">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-500 text-sm font-bold text-white">
+                    <button class="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/8 px-3 py-2 shadow-sm transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/15">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-300 to-cyan-300 text-sm font-bold text-slate-950">
                             {{ $adminInitials !== '' ? $adminInitials : 'AD' }}
                         </div>
                         <div class="hidden text-left sm:block">
-                            <p class="text-sm font-semibold text-slate-900">{{ $adminName }}</p>
-                            <p class="text-xs text-slate-500">Administrator</p>
+                            <p class="text-sm font-semibold text-white">{{ $adminName }}</p>
+                            <p class="text-xs text-emerald-50/70">Administrator</p>
                         </div>
-                        <i class="fa-solid fa-angle-down text-slate-400"></i>
+                        <i class="fa-solid fa-angle-down text-emerald-50/70"></i>
                     </button>
 
                     <div class="invisible absolute right-0 z-50 mt-3 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100">

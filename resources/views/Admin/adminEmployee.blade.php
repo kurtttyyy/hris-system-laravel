@@ -31,12 +31,13 @@
   @include('components.adminSideBar')
 
   <!-- Main Content -->
-<main class="flex-1 ml-16 transition-all duration-300"
+<main class="min-w-0 flex-1 ml-16 transition-all duration-300"
       x-data="{
         openProfile:false,
         openEditProfile:false,
         modalTarget: '',
         tab:'overview',
+        viewMode:'cards',
         department:'All',
         statusFilter:'All',
         search:'',
@@ -731,7 +732,7 @@
       }"
       x-init="employeeIndex = @js(
         $employee->map(fn($emp) => [
-          'name' => trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '').' '.($emp->last_name ?? '')),
+          'name' => trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', '),
           'department' => trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? ''))),
           'status' => $emp->account_status ?? '',
         ])->values()
@@ -743,6 +744,139 @@
       $resolveDepartment = function ($emp) {
         return trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? '')));
       };
+      $blankTableValue = function ($value) {
+        $text = trim((string) ($value ?? ''));
+        if ($text === '') {
+          return '';
+        }
+
+        $normalized = strtolower($text);
+        if (in_array($normalized, ['n/a', 'na', '-'], true)) {
+          return '';
+        }
+
+        return $text;
+      };
+
+      $employeeTableRecords = $employee->map(function ($emp, $index) use ($resolveDepartment, $blankTableValue) {
+        $classValue = trim((string) (data_get($emp, 'employee.classification') ?: data_get($emp, 'applicant.position.employment') ?: ($emp->classification ?? '')));
+        $employmentCode = match (strtolower($classValue)) {
+          'full-time', 'full time' => 'FT',
+          'part-time', 'part time' => 'PT',
+          default => $classValue,
+        };
+        $jobTypeValue = trim((string) (data_get($emp, 'applicant.position.job_type') ?: data_get($emp, 'employee.job_type') ?: ($emp->job_type ?? '')));
+        $normalizedJobType = strtolower($jobTypeValue);
+        $jobTypeCode = match (true) {
+          in_array(strtoupper($jobTypeValue), ['NT'], true),
+          str_contains($normalizedJobType, 'non-teaching'),
+          str_contains($normalizedJobType, 'non teaching') => 'NT',
+          in_array(strtoupper($jobTypeValue), ['T'], true),
+          str_contains($normalizedJobType, 'teaching'),
+          str_contains($normalizedJobType, 'teacher'),
+          str_contains($normalizedJobType, 'faculty') => 'T',
+          default => $jobTypeValue,
+        };
+        $classDisplay = collect([$employmentCode, $jobTypeCode])->filter(fn ($value) => trim((string) $value) !== '')->implode('/');
+        $birthdayRaw = data_get($emp, 'employee.birthday') ?: ($emp->birthday ?? '');
+        $birthdayDisplay = '';
+        $ageToDate = '';
+        if (!empty($birthdayRaw)) {
+          try {
+            $birthday = \Carbon\Carbon::parse($birthdayRaw);
+            $birthdayDisplay = $birthday->format('F j, Y');
+            $ageToDate = (string) $birthday->age;
+          } catch (\Throwable $e) {
+            $birthdayDisplay = trim((string) $birthdayRaw);
+          }
+        }
+
+        $employmentDateRaw = data_get($emp, 'applicant.date_hired')
+          ?: data_get($emp, 'employee.employement_date')
+          ?: data_get($emp, 'employee.employment_date')
+          ?: ($emp->date_hired ?? '');
+        $employmentDateDisplay = '';
+        $lengthOfService = '';
+        if (!empty($employmentDateRaw)) {
+          try {
+            $employmentDate = \Carbon\Carbon::parse($employmentDateRaw);
+            $employmentDateDisplay = $employmentDate->format('F j, Y');
+            $lengthOfService = $employmentDate->diffForHumans(now(), [
+              'parts' => 3,
+              'short' => false,
+              'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE,
+            ]);
+          } catch (\Throwable $e) {
+            $employmentDateDisplay = trim((string) $employmentDateRaw);
+          }
+        }
+
+        $dateResigned = collect(data_get($emp, 'resignations', []))
+          ->first(function ($row) {
+            return in_array(strtolower(trim((string) ($row->status ?? ''))), ['approved', 'completed'], true);
+          });
+        $dateResignedDisplay = '';
+        if (!empty($dateResigned?->effective_date)) {
+          try {
+            $dateResignedDisplay = \Carbon\Carbon::parse($dateResigned->effective_date)->format('F j, Y');
+          } catch (\Throwable $e) {
+            $dateResignedDisplay = trim((string) $dateResigned->effective_date);
+          }
+        }
+
+        $employmentHistoryDisplay = collect(data_get($emp, 'position_histories', []))
+          ->map(function ($history) {
+            $oldPosition = trim((string) ($history->old_position ?? ''));
+            $newPosition = trim((string) ($history->new_position ?? ''));
+            if ($oldPosition !== '' && $newPosition !== '' && strcasecmp($oldPosition, $newPosition) !== 0) {
+              return $oldPosition.' to '.$newPosition;
+            }
+            return $newPosition !== '' ? $newPosition : $oldPosition;
+          })
+          ->filter()
+          ->implode(' | ');
+
+        return [
+          'no' => $index + 1,
+          'name' => $blankTableValue(trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', ')),
+          'employee_id' => $blankTableValue(data_get($emp, 'employee.employee_id') ?: ($emp->employee_id ?? '')),
+          'account_number' => $blankTableValue(trim((string) (data_get($emp, 'employee.account_number') ?: data_get($emp, 'employee.user_id') ?: ($emp->account_number ?? $emp->id ?? '')))),
+          'sex' => $blankTableValue(trim((string) (data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender') ?: ($emp->gender ?? '')))),
+          'civil_status' => $blankTableValue(trim((string) (data_get($emp, 'employee.civil_status') ?: ($emp->civil_status ?? '')))),
+          'address' => $blankTableValue(trim((string) (data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address') ?: ($emp->address ?? '')))),
+          'contact_number' => $blankTableValue(trim((string) (data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.contact_number') ?: ($emp->contact_number ?? '')))),
+          'date_of_birth' => $blankTableValue($birthdayDisplay),
+          'age_to_date' => $blankTableValue($ageToDate),
+          'employment_date' => $blankTableValue($employmentDateDisplay),
+          'length_of_service' => $blankTableValue($lengthOfService),
+          'position' => $blankTableValue(trim((string) ($emp->job_role ?? data_get($emp, 'applicant.position.title') ?? data_get($emp, 'employee.position') ?? ($emp->position ?? '')))),
+          'department' => $blankTableValue($resolveDepartment($emp)),
+          'class' => $blankTableValue($classDisplay),
+          'rank' => $blankTableValue(trim((string) (data_get($emp, 'employee.rank') ?: ($emp->rank ?? '')))),
+          'grade' => $blankTableValue(trim((string) (data_get($emp, 'employee.grade') ?: ($emp->grade ?? '')))),
+          'sss' => $blankTableValue(trim((string) (data_get($emp, 'government.SSS') ?: ''))),
+          'tin' => $blankTableValue(trim((string) (data_get($emp, 'government.TIN') ?: ''))),
+          'philhealth' => $blankTableValue(trim((string) (data_get($emp, 'government.PhilHealth') ?: ''))),
+          'pagibig_mid' => $blankTableValue(trim((string) (data_get($emp, 'government.MID') ?: ''))),
+          'pagibig_rtn' => $blankTableValue(trim((string) (data_get($emp, 'government.RTN') ?: ''))),
+          'masters_degree' => $blankTableValue(trim((string) (data_get($emp, 'education.master') ?: data_get($emp, 'applicant.master_degree') ?: ''))),
+          'doctorate_degree' => $blankTableValue(trim((string) (data_get($emp, 'education.doctorate') ?: data_get($emp, 'applicant.doctoral_degree') ?: ''))),
+          'eligibility' => $blankTableValue(trim((string) (data_get($emp, 'license.license') ?: ''))),
+          'registration_number' => $blankTableValue(trim((string) (data_get($emp, 'license.registration_number') ?: ''))),
+          'registration_date' => $blankTableValue(!empty(data_get($emp, 'license.registration_date'))
+            ? \Carbon\Carbon::parse(data_get($emp, 'license.registration_date'))->format('F j, Y')
+            : ''),
+          'valid_until' => $blankTableValue(!empty(data_get($emp, 'license.valid_until'))
+            ? \Carbon\Carbon::parse(data_get($emp, 'license.valid_until'))->format('F j, Y')
+            : ''),
+          'rate_per_hour' => $blankTableValue(trim((string) (data_get($emp, 'salary.rate_per_hour') ?: ''))),
+          'basic_salary' => $blankTableValue(trim((string) (data_get($emp, 'salary.salary') ?: ''))),
+          'allowance' => $blankTableValue(trim((string) (data_get($emp, 'salary.cola') ?: ''))),
+          'date_resigned' => $blankTableValue($dateResignedDisplay),
+          'employment_history' => $blankTableValue($employmentHistoryDisplay),
+          'status' => $emp->account_status ?? '',
+        ];
+      })->values();
 
       $departmentOptions = $employee
         ->map(fn($emp) => $resolveDepartment($emp))
@@ -750,11 +884,12 @@
         ->unique(fn($dept) => strtolower($dept))
         ->sort()
         ->values();
+      $tableSummaryEmploymentDate = $employeeTableRecords->first()['employment_date'] ?? 'February 27, 2026';
     @endphp
     @include('components.adminHeader.employeeHeader', ['departmentOptions' => $departmentOptions])
 
     <!-- ================= DASHBOARD CONTENT ================= -->
-<div class="p-4 md:p-8 space-y-6 pt-20">
+<div class="min-w-0 p-4 md:p-8 space-y-6 pt-20">
 
     <!-- TOP BAR -->
 <div class="flex items-center justify-between" style="margin-top: -20px;">
@@ -788,7 +923,7 @@
 
 
     <!-- Employee Cards Grid -->
-    <div class="flex flex-wrap gap-6">
+    <div class="flex flex-wrap gap-6" x-show="viewMode === 'cards'">
 
         @foreach ($employee as $emp)
         @php
@@ -817,7 +952,7 @@
         <div
             class="bg-white rounded-xl shadow-md overflow-hidden w-72"
             x-show="matchesDepartment(@js($resolveDepartment($emp))) &&
-                    matchesSearch(@js(trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '').' '.($emp->last_name ?? ''))) ) &&
+                    matchesSearch(@js(trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', '))) &&
                     matchesStatus(@js($emp->account_status ?? ''))"
         >
             <div class="h-24 flex justify-center items-center" style="background-image: linear-gradient(to right, {{ $headerStart }}, {{ $headerEnd }});">
@@ -836,7 +971,7 @@
             </div>
 
             <div class="p-4 mt-7">
-                <h3 class="font-bold text-gray-800 text-lg text-center">{{$emp->first_name ?? ''}} {{$emp->last_name ?? ''}}</h3>
+                <h3 class="font-bold text-gray-800 text-lg text-center">{{ trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', ') }}</h3>
                 <p class="text-gray-500 text-sm text-center">{{ trim((string) ($emp->job_role ?? '')) !== '' ? $emp->job_role : ($emp->applicant->position->title ?? $emp->employee->position ?? $emp->position ?? '') }}</p>
 
                 <div class="mt-4 space-y-1 text-gray-500 text-sm">
@@ -888,11 +1023,185 @@
     </div>
 
     <div
-      x-show="!hasVisibleEmployees()"
+      x-show="viewMode === 'cards' && !hasVisibleEmployees()"
       class="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg px-4 py-3"
       style="display:none;"
     >
       No employee found for your filter/search.
+    </div>
+
+    <div
+      x-show="viewMode === 'table'"
+      class="w-full max-w-full overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.08)]"
+      style="display:none;"
+    >
+      <div class="border-b border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700">
+        Slide left or right to view all columns.
+      </div>
+      <div class="min-w-0 w-full max-w-full overflow-x-auto overflow-y-auto max-h-[50vh]">
+        <table id="employee-directory-table-export" class="w-max min-w-full border-collapse text-[13px] text-slate-800">
+          <colgroup>
+            <col class="w-14">
+            <col class="w-72">
+            <col class="w-40">
+            <col class="w-36">
+            <col class="w-20">
+            <col class="w-36">
+            <col class="w-[28rem]">
+            <col class="w-56">
+            <col class="w-44">
+            <col class="w-36">
+            <col class="w-44">
+            <col class="w-56">
+            <col class="w-60">
+            <col class="w-52">
+            <col class="w-28">
+            <col class="w-40">
+            <col class="w-24">
+            <col class="w-40">
+            <col class="w-36">
+            <col class="w-40">
+            <col class="w-40">
+            <col class="w-40">
+            <col class="w-56">
+            <col class="w-56">
+            <col class="w-44">
+            <col class="w-40">
+            <col class="w-48">
+            <col class="w-44">
+            <col class="w-40">
+            <col class="w-40">
+            <col class="w-40">
+            <col class="w-56">
+            <col class="w-80">
+          </colgroup>
+          <thead>
+            <tr class="bg-[#66f0cf] text-center text-[12px] font-black uppercase tracking-[0.04em] text-slate-900">
+              <th class="sticky left-0 top-0 z-30 border border-black bg-[#66f0cf] px-2 py-1 shadow-[inset_-1px_0_0_#000]">NO.</th>
+              <th class="sticky left-14 top-0 z-30 border border-black bg-[#66f0cf] px-2 py-1 shadow-[inset_-1px_0_0_#000]">NAME</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">ID Number</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">Account #</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">SEX</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">CIVIL STATUS</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">ADDRESS</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">CONTACT NO.</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">DATE OF BIRTH</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">AGE TO DATE</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">EMPLOYMENT DATE</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">LENGTH OF SERVICE</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">POSITION</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">DEPARTMENT</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">CLASS</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">RANK</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#66f0cf] px-2 py-1">GRADE</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#26a9f3] px-2 py-1 text-white">SSS</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#26a9f3] px-2 py-1 text-white">TIN</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#26a9f3] px-2 py-1 text-white">PHILHEALTH</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#26a9f3] px-2 py-1 text-white">PAG-IBIG MID</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#26a9f3] px-2 py-1 text-white">PAG-IBIG RTN</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#fff200] px-2 py-1">MASTER'S DEGREE</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#fff200] px-2 py-1">DOCTORATE DEGREE</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#fff200] px-2 py-1">ELIGIBILITY</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#fff200] px-2 py-1">Registration No.</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#fff200] px-2 py-1">Registration Date</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#fff200] px-2 py-1">Valid Until</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#39ff14] px-2 py-1">Rate per Hour</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#39ff14] px-2 py-1">Basic Salary</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#39ff14] px-2 py-1">Allowance</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#f79646] px-2 py-1">Date Resigned</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#f79646] px-2 py-1">Employment History</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="text-[13px] font-bold">
+              <td class="sticky left-0 z-20 border border-black bg-white px-2 py-0.5 shadow-[inset_-1px_0_0_#000]"></td>
+              <td class="sticky left-14 z-20 border border-black bg-white px-2 py-0.5 shadow-[inset_-1px_0_0_#000]">Northeastern College, Inc.</td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5 text-center">Villasis, Santiago City</td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td
+                class="border border-black px-2 py-0.5 text-center font-bold outline-none"
+                contenteditable="true"
+                spellcheck="false"
+                data-employment-date-cell
+                data-length-service-target="table-summary-length-of-service"
+                onblur="window.updateEmploymentDateCell(this)"
+                onkeydown="window.handleEmploymentDateCellKeydown(event, this)"
+              >{{ $tableSummaryEmploymentDate }}</td>
+              <td class="border border-black px-2 py-0.5">
+                <div class="font-black text-red-600">&lt;&lt; DO NOT DELETE&gt;&gt;&gt;&gt;</div>
+                <div id="table-summary-length-of-service" class="text-slate-700"></div>
+              </td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5 text-center font-black">2026</td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
+            </tr>
+            @foreach ($employeeTableRecords as $row)
+              <tr
+                x-show="matchesDepartment(@js($row['department'])) && matchesSearch(@js($row['name'])) && matchesStatus(@js($row['status']))"
+                class="bg-white text-[13px]"
+              >
+                <td class="sticky left-0 z-10 border border-black bg-white px-2 py-1 text-center shadow-[inset_-1px_0_0_#000]">{{ $row['no'] }}</td>
+                <td class="sticky left-14 z-10 border border-black bg-white px-2 py-1 shadow-[inset_-1px_0_0_#000]">{{ $row['name'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['employee_id'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['account_number'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['sex'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['civil_status'] }}</td>
+                <td class="border border-black px-2 py-1">{{ $row['address'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['contact_number'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['date_of_birth'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['age_to_date'] }}</td>
+                <td class="border border-black px-2 py-1 text-center" data-row-employment-date>{{ $row['employment_date'] }}</td>
+                <td class="border border-black px-2 py-1" data-row-length-of-service>{{ $row['length_of_service'] }}</td>
+                <td class="border border-black px-2 py-1">{{ $row['position'] }}</td>
+                <td class="border border-black px-2 py-1">{{ $row['department'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['class'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['rank'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['grade'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['sss'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['tin'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['philhealth'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['pagibig_mid'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['pagibig_rtn'] }}</td>
+                <td class="border border-black px-2 py-1">{{ $row['masters_degree'] }}</td>
+                <td class="border border-black px-2 py-1">{{ $row['doctorate_degree'] }}</td>
+                <td class="border border-black px-2 py-1">{{ $row['eligibility'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['registration_number'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['registration_date'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['valid_until'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['rate_per_hour'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['basic_salary'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['allowance'] }}</td>
+                <td class="border border-black px-2 py-1 text-center">{{ $row['date_resigned'] }}</td>
+                <td class="border border-black px-2 py-1">{{ $row['employment_history'] }}</td>
+              </tr>
+            @endforeach
+          </tbody>
+        </table>
+      </div>
     </div>
 
 
@@ -1008,7 +1317,312 @@
 
 </body>
 
+@php
+  $adminEmployeeExcelRecords = $employee->map(function ($emp) use ($blankTableValue) {
+    $classValue = trim((string) (data_get($emp, 'employee.classification') ?: data_get($emp, 'applicant.position.employment') ?: ($emp->classification ?? '')));
+    $employmentCode = match (strtolower($classValue)) {
+      'full-time', 'full time' => 'FT',
+      'part-time', 'part time' => 'PT',
+      default => $classValue,
+    };
+    $jobTypeValue = trim((string) (data_get($emp, 'applicant.position.job_type') ?: data_get($emp, 'employee.job_type') ?: ($emp->job_type ?? '')));
+    $normalizedJobType = strtolower($jobTypeValue);
+    $jobTypeCode = match (true) {
+      in_array(strtoupper($jobTypeValue), ['NT'], true),
+      str_contains($normalizedJobType, 'non-teaching'),
+      str_contains($normalizedJobType, 'non teaching') => 'NT',
+      in_array(strtoupper($jobTypeValue), ['T'], true),
+      str_contains($normalizedJobType, 'teaching'),
+      str_contains($normalizedJobType, 'teacher'),
+      str_contains($normalizedJobType, 'faculty') => 'T',
+      default => $jobTypeValue,
+    };
+    $classDisplay = collect([$employmentCode, $jobTypeCode])->filter(fn ($value) => trim((string) $value) !== '')->implode('/');
+
+    $birthdayRaw = data_get($emp, 'employee.birthday') ?: ($emp->birthday ?? '');
+    $birthdayDisplay = '';
+    $ageToDate = '';
+    if (!empty($birthdayRaw)) {
+      try {
+        $birthday = \Carbon\Carbon::parse($birthdayRaw);
+        $birthdayDisplay = $birthday->format('F j, Y');
+        $ageToDate = (string) $birthday->age;
+      } catch (\Throwable $e) {
+        $birthdayDisplay = trim((string) $birthdayRaw);
+      }
+    }
+
+    $employmentDateRaw = data_get($emp, 'applicant.date_hired')
+      ?: data_get($emp, 'employee.employement_date')
+      ?: data_get($emp, 'employee.employment_date')
+      ?: ($emp->date_hired ?? '');
+    $employmentDateDisplay = '';
+    $lengthOfService = '';
+    if (!empty($employmentDateRaw)) {
+      try {
+        $employmentDate = \Carbon\Carbon::parse($employmentDateRaw);
+        $employmentDateDisplay = $employmentDate->format('F j, Y');
+        $lengthOfService = $employmentDate->diffForHumans(now(), [
+          'parts' => 3,
+          'short' => false,
+          'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE,
+        ]);
+      } catch (\Throwable $e) {
+        $employmentDateDisplay = trim((string) $employmentDateRaw);
+      }
+    }
+
+    $dateResigned = collect(data_get($emp, 'resignations', []))
+      ->first(function ($row) {
+        return in_array(strtolower(trim((string) ($row->status ?? ''))), ['approved', 'completed'], true);
+      });
+    $dateResignedDisplay = '';
+    if (!empty($dateResigned?->effective_date)) {
+      try {
+        $dateResignedDisplay = \Carbon\Carbon::parse($dateResigned->effective_date)->format('F j, Y');
+      } catch (\Throwable $e) {
+        $dateResignedDisplay = trim((string) $dateResigned->effective_date);
+      }
+    }
+
+    $employmentHistoryDisplay = collect(data_get($emp, 'position_histories', []))
+      ->map(function ($history) {
+        $oldPosition = trim((string) ($history->old_position ?? ''));
+        $newPosition = trim((string) ($history->new_position ?? ''));
+        if ($oldPosition !== '' && $newPosition !== '' && strcasecmp($oldPosition, $newPosition) !== 0) {
+          return $oldPosition.' to '.$newPosition;
+        }
+        return $newPosition !== '' ? $newPosition : $oldPosition;
+      })
+      ->filter()
+      ->implode(' | ');
+
+    return [
+      'company' => 'Northeastern College, Inc.',
+      'employee_id' => $blankTableValue(data_get($emp, 'employee.employee_id') ?: ($emp->employee_id ?? '')),
+      'name' => $blankTableValue(trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', ')),
+      'account_number' => $blankTableValue(trim((string) (data_get($emp, 'employee.account_number') ?: data_get($emp, 'employee.user_id') ?: ($emp->account_number ?? $emp->id ?? '')))),
+      'sex' => $blankTableValue(trim((string) (data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender') ?: ($emp->gender ?? '')))),
+      'civil_status' => $blankTableValue(trim((string) (data_get($emp, 'employee.civil_status') ?: ($emp->civil_status ?? '')))),
+      'address' => $blankTableValue(trim((string) (data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address') ?: ($emp->address ?? '')))),
+      'contact_number' => $blankTableValue(trim((string) (data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.contact_number') ?: ($emp->contact_number ?? '')))),
+      'date_of_birth' => $blankTableValue($birthdayDisplay),
+      'age_to_date' => $blankTableValue($ageToDate),
+      'employment_date' => $blankTableValue($employmentDateDisplay),
+      'length_of_service' => $blankTableValue($lengthOfService),
+      'position' => $blankTableValue(trim((string) ($emp->job_role ?? data_get($emp, 'applicant.position.title') ?? data_get($emp, 'employee.position') ?? ($emp->position ?? '')))),
+      'class' => $blankTableValue($classDisplay),
+      'rank' => $blankTableValue(trim((string) (data_get($emp, 'employee.rank') ?: ($emp->rank ?? '')))),
+      'grade' => $blankTableValue(trim((string) (data_get($emp, 'employee.grade') ?: ($emp->grade ?? '')))),
+      'sss' => $blankTableValue(trim((string) (data_get($emp, 'government.SSS') ?: ''))),
+      'tin' => $blankTableValue(trim((string) (data_get($emp, 'government.TIN') ?: ''))),
+      'philhealth' => $blankTableValue(trim((string) (data_get($emp, 'government.PhilHealth') ?: ''))),
+      'pagibig_mid' => $blankTableValue(trim((string) (data_get($emp, 'government.MID') ?: ''))),
+      'pagibig_rtn' => $blankTableValue(trim((string) (data_get($emp, 'government.RTN') ?: ''))),
+      'masters_degree' => $blankTableValue(trim((string) (data_get($emp, 'education.master') ?: data_get($emp, 'applicant.master_degree') ?: ''))),
+      'doctorate_degree' => $blankTableValue(trim((string) (data_get($emp, 'education.doctorate') ?: data_get($emp, 'applicant.doctoral_degree') ?: ''))),
+      'eligibility' => $blankTableValue(trim((string) (data_get($emp, 'license.license') ?: ''))),
+      'registration_number' => $blankTableValue(trim((string) (data_get($emp, 'license.registration_number') ?: ''))),
+      'registration_date' => $blankTableValue(!empty(data_get($emp, 'license.registration_date'))
+        ? \Carbon\Carbon::parse(data_get($emp, 'license.registration_date'))->format('F j, Y')
+        : ''),
+      'valid_until' => $blankTableValue(!empty(data_get($emp, 'license.valid_until'))
+        ? \Carbon\Carbon::parse(data_get($emp, 'license.valid_until'))->format('F j, Y')
+        : ''),
+      'rate_per_hour' => $blankTableValue(trim((string) (data_get($emp, 'salary.rate_per_hour') ?: ''))),
+      'basic_salary' => $blankTableValue(trim((string) (data_get($emp, 'salary.salary') ?: ''))),
+      'allowance' => $blankTableValue(trim((string) (data_get($emp, 'salary.cola') ?: ''))),
+      'date_resigned' => $blankTableValue($dateResignedDisplay),
+      'employment_history' => $blankTableValue($employmentHistoryDisplay),
+      'department' => $blankTableValue(trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? '')))),
+      'status' => $emp->account_status ?? '',
+      'email' => $blankTableValue(trim((string) (data_get($emp, 'applicant.email_address') ?: ($emp->email_address ?? $emp->email ?? '')))),
+    ];
+  })->values();
+@endphp
+
 <script>
+  window.adminEmployeeExcelRecords = @json($adminEmployeeExcelRecords);
+
+  window.exportAdminEmployeesExcel = function exportAdminEmployeesExcel(filters = {}) {
+    const department = (filters.department ?? 'All').toString().trim();
+    const statusFilter = (filters.statusFilter ?? 'All').toString().trim();
+    const sourceTable = document.getElementById('employee-directory-table-export');
+    if (!sourceTable) {
+      window.alert('Table not found for export.');
+      return;
+    }
+
+    const exportTable = sourceTable.cloneNode(true);
+    const sourceRows = Array.from(sourceTable.querySelectorAll('tbody tr'));
+    const exportRows = Array.from(exportTable.querySelectorAll('tbody tr'));
+    exportRows.forEach((row, index) => {
+      const sourceRow = sourceRows[index];
+      if (!sourceRow) return;
+      const isHidden = sourceRow.style.display === 'none';
+      if (isHidden) {
+        row.remove();
+      }
+    });
+    exportTable.querySelectorAll('[contenteditable="true"]').forEach((cell) => {
+      cell.removeAttribute('contenteditable');
+      cell.removeAttribute('spellcheck');
+      cell.removeAttribute('onblur');
+      cell.removeAttribute('onkeydown');
+      cell.removeAttribute('data-employment-date-cell');
+      cell.removeAttribute('data-length-service-target');
+    });
+    exportTable.querySelectorAll('[x-show]').forEach((row) => {
+      row.removeAttribute('x-show');
+    });
+
+    const sourceCells = Array.from(sourceTable.querySelectorAll('th, td'));
+    const exportCells = Array.from(exportTable.querySelectorAll('th, td'));
+    exportCells.forEach((cell, index) => {
+      const sourceCell = sourceCells[index];
+      if (!sourceCell) return;
+
+      const computed = window.getComputedStyle(sourceCell);
+      cell.style.backgroundColor = computed.backgroundColor;
+      cell.style.color = computed.color;
+      cell.style.fontWeight = computed.fontWeight;
+      cell.style.textAlign = computed.textAlign;
+      cell.style.verticalAlign = computed.verticalAlign;
+      cell.style.borderTop = computed.borderTop;
+      cell.style.borderRight = computed.borderRight;
+      cell.style.borderBottom = computed.borderBottom;
+      cell.style.borderLeft = computed.borderLeft;
+    });
+
+    const html = `
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12pt; width: max-content; min-width: 100%; }
+          th, td { border: 1px solid #000; padding: 1px 6px; white-space: nowrap; line-height: 1.1; }
+          .sticky { position: static !important; }
+          .text-red-600 { color: #dc2626 !important; }
+          .font-black, .font-bold { font-weight: 700 !important; }
+          .text-center { text-align: center !important; }
+          .text-white { color: #fff !important; }
+          .bg-white { background: #fff !important; }
+        </style>
+      </head>
+      <body>${exportTable.outerHTML}</body>
+      </html>
+    `;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const statusLabel = statusFilter === 'All' ? 'all' : statusFilter.toLowerCase().replace(/\s+/g, '-');
+    const departmentLabel = department === 'All' ? 'all-departments' : department.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+    link.href = url;
+    link.download = `employees-${statusLabel}-${departmentLabel}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  window.parseTableDate = function parseTableDate(value) {
+    const raw = (value ?? '').toString().trim();
+    if (!raw) return null;
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  window.formatServiceDurationBetween = function formatServiceDurationBetween(startValue, endValue) {
+    const startDate = window.parseTableDate(startValue);
+    const endDate = window.parseTableDate(endValue);
+    if (!startDate || !endDate) {
+      return '';
+    }
+
+    let from = new Date(startDate);
+    let to = new Date(endDate);
+    if (from > to) {
+      [from, to] = [to, from];
+    }
+
+    let years = 0;
+    let months = 0;
+
+    while (true) {
+      const next = new Date(from);
+      next.setFullYear(next.getFullYear() + 1);
+      if (next <= to) {
+        years += 1;
+        from = next;
+      } else {
+        break;
+      }
+    }
+
+    while (true) {
+      const next = new Date(from);
+      next.setMonth(next.getMonth() + 1);
+      if (next <= to) {
+        months += 1;
+        from = next;
+      } else {
+        break;
+      }
+    }
+
+    let remainingMinutes = Math.max(0, Math.floor((to.getTime() - from.getTime()) / 60000));
+    const minutesPerWeek = 7 * 24 * 60;
+    const minutesPerDay = 24 * 60;
+    const minutesPerHour = 60;
+
+    const weeks = Math.floor(remainingMinutes / minutesPerWeek);
+    remainingMinutes -= weeks * minutesPerWeek;
+    const days = Math.floor(remainingMinutes / minutesPerDay);
+    remainingMinutes -= days * minutesPerDay;
+    const hours = Math.floor(remainingMinutes / minutesPerHour);
+    remainingMinutes -= hours * minutesPerHour;
+    const minutes = remainingMinutes;
+
+    const parts = [];
+    if (years > 0) parts.push(`${years} year${years === 1 ? '' : 's'}`);
+    if (months > 0) parts.push(`${months} month${months === 1 ? '' : 's'}`);
+    if (weeks > 0) parts.push(`${weeks} week${weeks === 1 ? '' : 's'}`);
+    if (days > 0) parts.push(`${days} day${days === 1 ? '' : 's'}`);
+    if (hours > 0) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+    if (minutes > 0) parts.push(`${minutes} minute${minutes === 1 ? '' : 's'}`);
+    if (!parts.length) parts.push('0 days');
+
+    return parts.slice(0, 3).join(' ');
+  };
+
+  window.updateEmploymentDateCell = function updateEmploymentDateCell(cell) {
+    if (!cell) return;
+    const targetId = cell.dataset.lengthServiceTarget || '';
+    if (targetId) {
+      const target = document.getElementById(targetId);
+      if (target) {
+        target.textContent = '';
+      }
+    }
+
+    const referenceDate = cell.textContent;
+    const rows = Array.from(document.querySelectorAll('tr'));
+    rows.forEach((row) => {
+      const employmentDateCell = row.querySelector('[data-row-employment-date]');
+      const lengthCell = row.querySelector('[data-row-length-of-service]');
+      if (!employmentDateCell || !lengthCell) return;
+      lengthCell.textContent = window.formatServiceDurationBetween(employmentDateCell.textContent, referenceDate);
+    });
+  };
+
+  window.handleEmploymentDateCellKeydown = function handleEmploymentDateCellKeydown(event, cell) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    cell.blur();
+  };
+
   const sidebar = document.querySelector('aside');
   const main = document.querySelector('main');
   if (sidebar && main) {

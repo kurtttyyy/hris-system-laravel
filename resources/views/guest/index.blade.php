@@ -56,6 +56,7 @@
             </div>
             <div class="modal-body">
                 {{ session('popup_error') }}
+                
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>

@@ -423,6 +423,17 @@
                   trim((string) (optional(optional($admin->applicant)->position)->benifits ?? '')),
                 ])->filter()->values();
 
+                $salaryPerMonth = trim((string) (optional($admin->salary)->salary ?? ''));
+                $salaryPerHour = trim((string) (optional($admin->salary)->rate_per_hour ?? ''));
+                $salaryText = '-';
+                if ($salaryPerHour !== '' && $salaryPerMonth !== '') {
+                  $salaryText = 'Hr: '.$salaryPerHour.' / Mo: '.$salaryPerMonth;
+                } elseif ($salaryPerHour !== '') {
+                  $salaryText = $salaryPerHour.' per hour';
+                } elseif ($salaryPerMonth !== '') {
+                  $salaryText = $salaryPerMonth.' per month';
+                }
+
                 $workPosition = trim((string) (optional($admin->applicant)->work_position ?? ''));
                 $workDuration = trim((string) (optional($admin->applicant)->work_duration ?? ''));
                 if ($workDuration === '' && !empty($rawJoinDate)) {
@@ -510,14 +521,17 @@
                   'first_name' => trim((string) ($admin->first_name ?? '')) !== '' ? trim((string) ($admin->first_name ?? '')) : 'N/A',
                   'last_name' => trim((string) ($admin->last_name ?? '')) !== '' ? trim((string) ($admin->last_name ?? '')) : 'N/A',
                   'gender' => $genderDisplay,
+                  'birthday' => trim((string) (optional($admin->employee)->birthday ?? '')),
                   'hired_date' => $hireDateDisplay,
                   'position' => $positionDisplay,
                   'department' => $departmentDisplay,
                   'full_name' => $fullName !== '' ? $fullName : 'N/A',
                   'age' => $ageDisplay,
                   'rate' => $salaryText !== '' ? $salaryText : 'N/A',
+                  'rate_per_hour' => trim((string) (optional($admin->salary)->rate_per_hour ?? '')) !== '' ? trim((string) (optional($admin->salary)->rate_per_hour ?? '')) : 'N/A',
                   'employment_status' => $employmentStatus,
                   'regularization_date' => $regularizationDateDisplay,
+                  'benefits_text' => $benefits->implode(' | '),
                   'initials' => $initials,
                   'profile_photo_url' => $profilePhotoUrl,
                 ];
@@ -529,6 +543,15 @@
                     tabindex="0"
                     class="matrix-name-button"
                     data-matrix-employee="{{ e(json_encode($matrixEmployeeModalData)) }}"
+                    data-matrix-employee-full-name="{{ e($fullName !== '' ? $fullName : 'N/A') }}"
+                    data-matrix-employee-gender="{{ e($genderDisplay) }}"
+                    data-matrix-employee-age="{{ e($ageDisplay) }}"
+                    data-matrix-employee-birthday="{{ e(trim((string) (optional($admin->employee)->birthday ?? ''))) }}"
+                    data-matrix-employee-rate="{{ e(trim((string) (optional($admin->salary)->rate_per_hour ?? '')) !== '' ? trim((string) (optional($admin->salary)->rate_per_hour ?? '')) : 'N/A') }}"
+                    data-matrix-employee-hired-date="{{ e($hireDateDisplay) }}"
+                    data-matrix-employee-regularization-date="{{ e($regularizationDateDisplay) }}"
+                    data-matrix-employee-position="{{ e($positionDisplay) }}"
+                    data-matrix-employee-employment-status="{{ e($employmentStatus) }}"
                     onclick="openMatrixEmployeeModal({{ \Illuminate\Support\Js::from($matrixEmployeeModalData) }})"
                     onkeydown="handleMatrixNameKeydown(event, this)"
                   >
@@ -861,35 +884,63 @@
       .trim();
   }
 
+  function getMatrixEmployeeAgeValue(ageValue, birthdayValue) {
+    const parseAge = (value) => {
+      const numeric = parseInt(String(value ?? '').replace(/[^\d]/g, ''), 10);
+      return Number.isFinite(numeric) ? numeric : null;
+    };
+    const directAge = parseAge(ageValue);
+    if (directAge !== null) {
+      return String(directAge);
+    }
+
+    const birthday = String(birthdayValue ?? '').trim();
+    if (!birthday) {
+      return 'N/A';
+    }
+
+    const birthDate = new Date(birthday);
+    if (Number.isNaN(birthDate.getTime())) {
+      return 'N/A';
+    }
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDifference = today.getMonth() - birthDate.getMonth();
+    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+      age -= 1;
+    }
+
+    return age >= 0 ? String(age) : 'N/A';
+  }
+
   function collectMatrixEmployeeDetails(sourceTable) {
+    const hasBenefitKeyword = (value, pattern) => pattern.test(String(value || ''));
     return Array.from(sourceTable.querySelectorAll('tbody tr')).map((row, rowIndex) => {
       const trigger = row.querySelector('.matrix-name-button');
-      if (!trigger) {
-        return null;
+      const fallbackName = normalizeExcelCellText(row.cells?.[0] || row);
+      let employee = {};
+      if (trigger) {
+        try {
+          employee = JSON.parse(trigger.dataset.matrixEmployeeEmployee || trigger.dataset.matrixEmployee || '{}') || {};
+        } catch (error) {
+          employee = {};
+        }
       }
 
-      let employee = null;
-      try {
-        employee = JSON.parse(trigger.dataset.matrixEmployeeEmployee || trigger.dataset.matrixEmployee || '{}');
-      } catch (error) {
-        employee = null;
-      }
-
-      if (!employee) {
-        return null;
-      }
-
-      const fullName = [employee.first_name, employee.last_name]
+      const fullName = String(employee.full_name || trigger?.dataset.matrixEmployeeFullName || '').trim() || [employee.first_name, employee.last_name]
         .map((value) => String(value || '').trim())
         .filter(Boolean)
-        .join(' ') || `Employee ${rowIndex + 1}`;
+        .join(' ') || fallbackName || `Employee ${rowIndex + 1}`;
+      const birthday = employee.birthday || trigger?.dataset.matrixEmployeeBirthday || '';
+      const age = getMatrixEmployeeAgeValue(employee.age || trigger?.dataset.matrixEmployeeAge || '', birthday);
 
       const details = [
         ['Employee Name', fullName],
         ['Employee ID', employee.employee_id || 'N/A'],
         ['First Name', employee.first_name || 'N/A'],
         ['Last Name', employee.last_name || 'N/A'],
-        ['Age', employee.age || 'N/A'],
+        ['Age', age],
         ['Gender', employee.gender || 'N/A'],
         ['Hired Date', employee.hired_date || 'N/A'],
         ['Position', employee.position || 'N/A'],
@@ -901,13 +952,16 @@
       return {
         rowIndex,
         fullName,
-        age: employee.age || 'N/A',
-        gender: employee.gender || 'N/A',
-        hiredDate: employee.hired_date || 'N/A',
-        position: employee.position || 'N/A',
-        rate: employee.rate || 'N/A',
-        employmentStatus: employee.employment_status || 'N/A',
-        regularizationDate: employee.regularization_date || '',
+        age,
+        birthday,
+        gender: employee.gender || trigger?.dataset.matrixEmployeeGender || 'N/A',
+        hiredDate: employee.hired_date || trigger?.dataset.matrixEmployeeHiredDate || 'N/A',
+        position: employee.position || trigger?.dataset.matrixEmployeePosition || 'N/A',
+        rate: employee.rate_per_hour || employee.rate || trigger?.dataset.matrixEmployeeRate || 'N/A',
+        employmentStatus: employee.employment_status || trigger?.dataset.matrixEmployeeEmploymentStatus || 'N/A',
+        regularizationDate: employee.regularization_date || trigger?.dataset.matrixEmployeeRegularizationDate || '',
+        spesBeneficiary: hasBenefitKeyword(employee.benefits_text, /\bSPES\b/i),
+        jobStartBeneficiary: hasBenefitKeyword(employee.benefits_text, /\bjob[\s-]*start\b/i),
         details,
       };
     }).filter(Boolean);
@@ -988,11 +1042,11 @@
     };
     const normalizeGender = (value) => String(value ?? '').trim().toUpperCase();
     const summary = {
-      below15: 0,
-      age15to17: 0,
-      age18to24: 0,
-      age25to59: 0,
-      age60to65: 0,
+      below15: { male: 0, female: 0, total: 0 },
+      age15to17: { male: 0, female: 0, total: 0 },
+      age18to24: { male: 0, female: 0, total: 0 },
+      age25to59: { male: 0, female: 0, total: 0 },
+      age60to65: { male: 0, female: 0, total: 0 },
       males: 0,
       females: 0,
       total: employeeDetails.length,
@@ -1001,53 +1055,67 @@
     employeeDetails.forEach((employee) => {
       const age = parseAge(employee.age);
       const gender = normalizeGender(employee.gender);
-      if (gender.startsWith('M')) summary.males += 1;
-      if (gender.startsWith('F')) summary.females += 1;
+      const genderKey = gender.startsWith('M') ? 'male' : (gender.startsWith('F') ? 'female' : null);
+      if (genderKey === 'male') summary.males += 1;
+      if (genderKey === 'female') summary.females += 1;
       if (age === null) return;
-      if (age < 15) summary.below15 += 1;
-      else if (age <= 17) summary.age15to17 += 1;
-      else if (age <= 24) summary.age18to24 += 1;
-      else if (age <= 59) summary.age25to59 += 1;
-      else if (age <= 65) summary.age60to65 += 1;
+      const bucket = age < 15
+        ? summary.below15
+        : age <= 17
+          ? summary.age15to17
+          : age <= 24
+            ? summary.age18to24
+            : age <= 59
+              ? summary.age25to59
+              : age <= 65
+                ? summary.age60to65
+                : null;
+      if (!bucket) return;
+      bucket.total += 1;
+      if (genderKey) bucket[genderKey] += 1;
     });
 
     return summary;
   }
 
-  function buildDoleExcelXml(employeeDetails) {
+  function buildDoleExcelXml(employeeDetails, categoryLabel = '') {
     const profile = getMatrixDoleProfile();
     const summary = getMatrixDoleSummary(employeeDetails);
-    const checkbox = (active) => active ? 'X' : '';
-    const statusValue = (employee, label) => employee.employmentStatus === label ? '/' : '';
+    const checkbox = () => '';
+    const statusMark = (active) => active ? '✓' : '';
+    const statusValue = (employee, label) => statusMark(employee.employmentStatus === label);
+    const dateRegularizedValue = (employee) => employee.employmentStatus === 'Probationary' ? '' : (employee.regularizationDate || '');
+    const dateOfRegularizationValue = (employee) => employee.employmentStatus === 'Probationary' ? (employee.regularizationDate || '') : '';
     const contractorRows = [1, 2, 3].map((index) => `
-      <Row><Cell ss:Index="2" ss:StyleID="doleSectionCell"><Data ss:Type="Number">${index}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="1" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleSectionCell"></Cell></Row>
+      <Row ss:AutoFitHeight="0" ss:Height="20"><Cell ss:Index="3" ss:StyleID="doleSectionCell"><Data ss:Type="Number">${index}</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleSectionCell"></Cell></Row>
     `).join('');
     const principalRows = [1, 2].map((index, rowIndex) => `
-      <Row><Cell ss:Index="2" ss:StyleID="${rowIndex === 1 ? 'doleNote' : 'doleSectionCell'}"><Data ss:Type="String">${rowIndex === 1 ? 'add separate sheet if needed' : ''}</Data></Cell><Cell ss:StyleID="doleSectionCell"><Data ss:Type="Number">${index}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="1" ss:StyleID="doleSectionCell"></Cell></Row>
+      <Row ss:AutoFitHeight="0" ss:Height="20"><Cell ss:Index="2" ss:StyleID="${rowIndex === 1 ? 'doleNote' : 'doleNoteSpacer'}"><Data ss:Type="String">${rowIndex === 1 ? 'add separate sheet if needed' : ''}</Data></Cell><Cell ss:StyleID="doleSectionCell"><Data ss:Type="Number">${index}</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleSectionCell"></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleSectionCell"></Cell></Row>
     `).join('');
     const rows = [
-      '<Row ss:AutoFitHeight="0" ss:Height="24"><Cell ss:MergeAcross="19" ss:StyleID="doleTitle"><Data ss:Type="String">ESTABLISHMENT WORKER&apos;S PROFILE</Data></Cell></Row>',
+      '<Row ss:AutoFitHeight="0" ss:Height="24"><Cell ss:MergeAcross="22" ss:StyleID="doleTitle"><Data ss:Type="String">ESTABLISHMENT WORKER&apos;S PROFILE</Data></Cell></Row>',
+      categoryLabel ? `<Row ss:AutoFitHeight="0" ss:Height="20"><Cell ss:MergeAcross="22" ss:StyleID="doleCategory"><Data ss:Type="String">${escapeExcelXml(categoryLabel)}</Data></Cell></Row>` : '',
       `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Name of Establishment:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValueBold"><Data ss:Type="String">${escapeExcelXml(profile.establishmentName)}</Data></Cell><Cell ss:Index="10" ss:StyleID="doleLabel"><Data ss:Type="String">Kind of Ownership</Data></Cell><Cell ss:Index="15" ss:StyleID="doleMiniHeader"><Data ss:Type="String">Age Group</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">Male</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">Female</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">Total</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">No of Shifts</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">No.of Workers /shifts</Data></Cell></Row>`,
-      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Head Office Address:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValueBold"><Data ss:Type="String">${escapeExcelXml(profile.headOfficeAddress)}</Data></Cell><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Sole Proprietorship')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Sole Proprietorship</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">below 15</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">Schedule</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
-      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Brach Office Address:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValue"><Data ss:Type="String">${escapeExcelXml(profile.branchOfficeAddress)}</Data></Cell><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Partnership')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Partnership</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">15-17 yrs.</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">0</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
-      `<Row><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Corporation')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Corporation</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">18-24 yrs.</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
-      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Principal Product/Main Activity:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValue"><Data ss:Type="String">${escapeExcelXml(profile.principalActivity)}</Data></Cell><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Cooperative')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Cooperative</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">25-59 yrs.</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
-      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Owner/President/CEO:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValueBold"><Data ss:Type="String">${escapeExcelXml(profile.ownerPresident)}</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">60-65 yrs.</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
+      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Head Office Address:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValueBold"><Data ss:Type="String">${escapeExcelXml(profile.headOfficeAddress)}</Data></Cell><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Sole Proprietorship')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Sole Proprietorship</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">below 15</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.below15.male}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.below15.female}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.below15.total}</Data></Cell><Cell ss:StyleID="doleMiniHeader"><Data ss:Type="String">Schedule</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
+      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Brach Office Address:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValue"><Data ss:Type="String">${escapeExcelXml(profile.branchOfficeAddress)}</Data></Cell><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Partnership')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Partnership</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">15-17 yrs.</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age15to17.male}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age15to17.female}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age15to17.total}</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
+      `<Row><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Corporation')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Corporation</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">18-24 yrs.</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age18to24.male}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age18to24.female}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age18to24.total}</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
+      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Principal Product/Main Activity:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValue"><Data ss:Type="String">${escapeExcelXml(profile.principalActivity)}</Data></Cell><Cell ss:Index="10" ss:StyleID="doleCheck"><Data ss:Type="String">${checkbox(profile.ownership === 'Cooperative')}</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleValue"><Data ss:Type="String">Cooperative</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">25-59 yrs.</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age25to59.male}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age25to59.female}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age25to59.total}</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
+      `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Owner/President/CEO:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValueBold"><Data ss:Type="String">${escapeExcelXml(profile.ownerPresident)}</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">60-65 yrs.</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age60to65.male}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age60to65.female}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.age60to65.total}</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
       `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Contact Number:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValue"><Data ss:Type="String">${escapeExcelXml(profile.contactNumber)}</Data></Cell><Cell ss:Index="15" ss:StyleID="doleSectionCell"><Data ss:Type="String">Total</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.males}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.females}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${summary.total}</Data></Cell><Cell ss:StyleID="doleSectionCell"></Cell><Cell ss:StyleID="doleSectionCell"></Cell></Row>`,
       `<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Email Address:</Data></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleValueLink"><Data ss:Type="String">${escapeExcelXml(profile.emailAddress)}</Data></Cell></Row>`,
-      '<Row><Cell ss:Index="2" ss:MergeAcross="1" ss:StyleID="doleLabel"><Data ss:Type="String">Contractors with existing agreements:</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleHeader"><Data ss:Type="String">Name of Contractor/Subcontractor</Data></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleHeader"><Data ss:Type="String">Regstrered Address</Data></Cell><Cell ss:MergeAcross="1" ss:StyleID="doleHeader"><Data ss:Type="String">No. of employees Deployed</Data></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleHeader"><Data ss:Type="String">Service/s being provided by the</Data></Cell></Row>',
+      '<Row><Cell ss:Index="2" ss:StyleID="doleLabel"><Data ss:Type="String">Contractors with existing agreements:</Data></Cell><Cell ss:StyleID="doleHeader"></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleHeader"><Data ss:Type="String">Name of Contractor/Subcontractor</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleHeader"><Data ss:Type="String">Registered Address</Data></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleHeader"><Data ss:Type="String">No. of employees Deployed</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleHeader"><Data ss:Type="String">Service/s being provided by the</Data></Cell></Row>',
       contractorRows,
       '<Row/>',
-      '<Row><Cell ss:Index="3" ss:MergeAcross="3" ss:StyleID="doleHeader"><Data ss:Type="String">Name of Principal Employers</Data></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleHeader"><Data ss:Type="String">Office Address</Data></Cell><Cell ss:MergeAcross="1" ss:StyleID="doleHeader"><Data ss:Type="String">No. of employees Deployed</Data></Cell></Row>',
+      '<Row><Cell ss:Index="3" ss:StyleID="doleHeader"></Cell><Cell ss:MergeAcross="5" ss:StyleID="doleHeader"><Data ss:Type="String">Name of Principal Employers</Data></Cell><Cell ss:MergeAcross="3" ss:StyleID="doleHeader"><Data ss:Type="String">Office Address</Data></Cell><Cell ss:MergeAcross="2" ss:StyleID="doleHeader"><Data ss:Type="String">No. of employees Deployed</Data></Cell></Row>',
       principalRows,
       '<Row/>',
-      '<Row><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">No.</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">NAME OF EMPLYEE</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">GENDER</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">AGE</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">RATE</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">DATE HIRED</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">DATE REGULARIZED</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">POSITION</Data></Cell><Cell ss:MergeAcross="11" ss:StyleID="doleHeader"><Data ss:Type="String">STATUS OF EMPLOYMENT</Data></Cell></Row>',
-      '<Row><Cell ss:Index="9" ss:StyleID="doleStatusHeader"><Data ss:Type="String">Regular</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Probationary</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Fixed term</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Casual</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Regular-Seasonal</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Contract workers</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">PWD</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Foreign National</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Apprent</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Learners</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Trainee (DTS)</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Trainee (DTP)</Data></Cell></Row>',
+      '<Row ss:AutoFitHeight="0" ss:Height="16"><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">No.</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">NAME OF EMPLYEE</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">GENDER</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">AGE</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">RATE</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">DATE HIRED</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">DATE REGULARIZED</Data></Cell><Cell ss:StyleID="doleHeader" ss:MergeDown="1"><Data ss:Type="String">POSITION</Data></Cell><Cell ss:MergeAcross="14" ss:StyleID="doleHeader"><Data ss:Type="String">STATUS OF EMPLOYMENT</Data></Cell></Row>',
+      '<Row><Cell ss:Index="9" ss:StyleID="doleStatusHeader"><Data ss:Type="String">Regular</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Probationary</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Fixed term</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Casual</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Regular-Seasonal</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Contract workers</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">PWD</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Foreign National</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Apprent</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Learners</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Trainee (DTS)</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Trainee (DTP)</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">SPES Beneficiaries</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">Job start Beneficiaries</Data></Cell><Cell ss:StyleID="doleStatusHeader"><Data ss:Type="String">DATE OF REGULARIZATION</Data></Cell></Row>',
     ];
 
     employeeDetails.forEach((employee, index) => {
       rows.push(`
-        <Row><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${index + 1}</Data></Cell><Cell ss:StyleID="doleCell"><Data ss:Type="String">${escapeExcelXml(employee.fullName)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(employee.gender)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(employee.age)}</Data></Cell><Cell ss:StyleID="doleCell"><Data ss:Type="String">${escapeExcelXml(employee.rate)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(employee.hiredDate)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(employee.regularizationDate)}</Data></Cell><Cell ss:StyleID="doleCell"><Data ss:Type="String">${escapeExcelXml(employee.position)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${statusValue(employee, 'Permanent')}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${statusValue(employee, 'Probationary')}</Data></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell></Row>
+        <Row><Cell ss:StyleID="doleCellCenter"><Data ss:Type="Number">${index + 1}</Data></Cell><Cell ss:StyleID="doleCell"><Data ss:Type="String">${escapeExcelXml(employee.fullName)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(employee.gender)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(employee.age)}</Data></Cell><Cell ss:StyleID="doleCell"><Data ss:Type="String">${escapeExcelXml(employee.rate)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(employee.hiredDate)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(dateRegularizedValue(employee))}</Data></Cell><Cell ss:StyleID="doleCell"><Data ss:Type="String">${escapeExcelXml(employee.position)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${statusValue(employee, 'Permanent')}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${statusValue(employee, 'Probationary')}</Data></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${statusMark(employee.spesBeneficiary)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${statusMark(employee.jobStartBeneficiary)}</Data></Cell><Cell ss:StyleID="doleCellCenter"><Data ss:Type="String">${escapeExcelXml(dateOfRegularizationValue(employee))}</Data></Cell></Row>
       `);
     });
 
@@ -1063,6 +1131,7 @@
       '<Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders/><Font ss:FontName="Calibri" ss:Size="10" ss:Color="#111827"/><Interior/><NumberFormat/><Protection/></Style>',
       '<Style ss:ID="doleTitle"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1"/></Style>',
       '<Style ss:ID="doleLabel"><Alignment ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#A8A29E"/></Borders><Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1"/></Style>',
+      '<Style ss:ID="doleCategory"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/></Style>',
       '<Style ss:ID="doleValue"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/></Borders></Style>',
       '<Style ss:ID="doleValueBold"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/></Borders><Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1"/></Style>',
       '<Style ss:ID="doleValueLink"><Alignment ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/></Borders><Font ss:FontName="Calibri" ss:Size="10" ss:Underline="Single" ss:Color="#1D4ED8"/></Style>',
@@ -1071,7 +1140,8 @@
       '<Style ss:ID="doleHeader"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/></Borders><Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1"/><Interior ss:Color="#E7E5E4" ss:Pattern="Solid"/></Style>',
       '<Style ss:ID="doleStatusHeader"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/></Borders><Font ss:FontName="Calibri" ss:Size="8"/></Style>',
       '<Style ss:ID="doleSectionCell"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#111827"/></Borders></Style>',
-      '<Style ss:ID="doleNote"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="10" ss:Italic="1"/></Style>',
+      '<Style ss:ID="doleNoteSpacer"><Alignment ss:Horizontal="Left" ss:Vertical="Center"/><Borders/><Font ss:FontName="Calibri" ss:Size="10" ss:Italic="1"/></Style>',
+      '<Style ss:ID="doleNote"><Alignment ss:Horizontal="Left" ss:Vertical="Center"/><Borders/><Font ss:FontName="Calibri" ss:Size="10" ss:Italic="1"/></Style>',
       '<Style ss:ID="doleCell"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/></Borders></Style>',
       '<Style ss:ID="doleCellCenter"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D6D3D1"/></Borders></Style>',
       '</Styles>',
@@ -1096,6 +1166,9 @@
       '<Column ss:AutoFitWidth="0" ss:Width="45"/>',
       '<Column ss:AutoFitWidth="0" ss:Width="52"/>',
       '<Column ss:AutoFitWidth="0" ss:Width="52"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="60"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="68"/>',
+      '<Column ss:AutoFitWidth="0" ss:Width="92"/>',
       rows.join(''),
       '</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><DisplayGridlines/></WorksheetOptions></Worksheet>',
       '</Workbook>',
@@ -1472,7 +1545,7 @@
     const exportWidths = ['260px', '360px', '200px', '150px', '150px', '150px', '210px'];
     const employeeDetails = collectMatrixEmployeeDetails(table);
     if (String(formatLabel).toUpperCase() === 'DOLE') {
-      const doleXml = buildDoleExcelXml(employeeDetails);
+      const doleXml = buildDoleExcelXml(employeeDetails, title);
       downloadMatrixFile(doleXml, `${tableId}-dole.xls`, 'application/vnd.ms-excel');
       return;
     }

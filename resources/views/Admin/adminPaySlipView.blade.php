@@ -95,32 +95,33 @@
     ])
 
     <div class="container mx-auto max-w-7xl p-4 md:p-8 pt-10 space-y-6">
-      <section class="relative overflow-hidden rounded-[2rem] border border-sky-100/80 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(99,102,241,0.08),rgba(255,255,255,0.96))] px-6 py-6 shadow-[0_28px_60px_rgba(37,99,235,0.10)] md:px-8">
-        <div class="absolute -left-8 top-6 h-24 w-24 rounded-full bg-sky-300/25 blur-3xl"></div>
-        <div class="absolute right-0 top-0 h-32 w-32 translate-x-10 -translate-y-8 rounded-full bg-indigo-300/25 blur-3xl"></div>
+      <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/70 bg-[linear-gradient(135deg,_#03131d_0%,_#052f2a_42%,_#116149_100%)] px-6 py-6 shadow-[0_24px_60px_rgba(3,19,29,0.34)] md:px-8">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(110,231,183,0.14),_transparent_32%)]"></div>
+        <div class="absolute -left-8 top-6 h-24 w-24 rounded-full bg-cyan-300/10 blur-3xl"></div>
+        <div class="absolute right-0 top-0 h-32 w-32 translate-x-10 -translate-y-8 rounded-full bg-emerald-300/20 blur-3xl"></div>
         <div class="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div class="max-w-3xl">
-            <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/80 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-700">
-              <span class="h-2 w-2 rounded-full bg-sky-500"></span>
+            <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-50">
+              <span class="h-2 w-2 rounded-full bg-cyan-300"></span>
               Payroll Review Desk
             </div>
-            <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">{{ $selectedRecord ? $employeeName : 'Payslip File View' }}</h1>
-            <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
+            <h1 class="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl">{{ $selectedRecord ? $employeeName : 'Payslip File View' }}</h1>
+            <p class="mt-2 max-w-2xl text-sm leading-6 text-emerald-50/85 md:text-base">
               {{ $selectedRecord
                   ? 'Inspect the selected employee payroll record, verify earnings and deductions, and review the final net pay in one document-style view.'
                   : 'Select a scanned employee record from the queue to open the payroll preview.' }}
             </p>
-            <div class="mt-4 flex flex-wrap gap-3 text-xs font-medium text-slate-500">
-              <span class="rounded-full border border-slate-200 bg-white/85 px-3 py-1.5">{{ now()->format('l, F j, Y') }}</span>
-              <span class="rounded-full border border-slate-200 bg-white/85 px-3 py-1.5">{{ $scannedCount }} scanned record(s)</span>
+            <div class="mt-4 flex flex-wrap gap-3 text-xs font-medium text-emerald-50/80">
+              <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1.5">{{ now()->format('l, F j, Y') }}</span>
+              <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1.5">{{ $scannedCount }} scanned record(s)</span>
               @if ($selectedRecord)
-                <span class="rounded-full border border-slate-200 bg-white/85 px-3 py-1.5">Pay Date: {{ $payDateText }}</span>
+                <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1.5">Pay Date: {{ $payDateText }}</span>
               @endif
             </div>
           </div>
 
           <div class="flex flex-col gap-3 sm:flex-row">
-            <a href="{{ route('admin.adminPayslip') }}" class="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white/90 px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-sky-200 hover:text-sky-700">
+            <a href="{{ route('admin.adminPayslip') }}" class="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/8 px-5 py-3 text-sm font-semibold text-emerald-50 shadow-sm transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/15">
               <i class="fa-solid fa-arrow-left"></i>
               Back to Payslip Queue
             </a>
