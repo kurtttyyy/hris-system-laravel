@@ -1446,6 +1446,7 @@
       $employeeCategoryTotals = $employee->reduce(function ($carry, $emp) use ($resolveDepartment) {
         $department = strtolower(trim((string) ($resolveDepartment($emp) ?? '')));
         $jobTypeValue = strtolower(trim((string) (data_get($emp, 'applicant.position.job_type') ?: data_get($emp, 'employee.job_type') ?: ($emp->job_type ?? ''))));
+        $classificationValue = strtolower(trim((string) (data_get($emp, 'employee.classification') ?: data_get($emp, 'applicant.position.employment') ?: ($emp->classification ?? ''))));
         $isNonTeaching = str_contains($jobTypeValue, 'non-teaching')
           || str_contains($jobTypeValue, 'non teaching')
           || $jobTypeValue === 'nt';
@@ -1468,6 +1469,11 @@
             || str_contains($department, 'jd')
           ) {
             $carry['law_gsc']++;
+            if (str_contains($classificationValue, 'part-time') || str_contains($classificationValue, 'part time')) {
+              $carry['law_gsc_pt']++;
+            } else {
+              $carry['law_gsc_ft']++;
+            }
           } elseif (str_contains($department, 'bec')) {
             $carry['bec']++;
           } else {
@@ -1484,6 +1490,8 @@
         'college' => 0,
         'bec' => 0,
         'law_gsc' => 0,
+        'law_gsc_ft' => 0,
+        'law_gsc_pt' => 0,
         'grand_total' => 0,
       ]);
       $tableSummaryEmploymentDate = $employeeTableRecords->first()['employment_date'] ?? 'February 27, 2026';
@@ -1641,9 +1649,13 @@
 
         <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
           <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-700">Law / GSC</p>
-          <div class="mt-3 flex items-end justify-between">
+          <div class="mt-3 flex items-end justify-between gap-3">
             <p class="text-3xl font-black text-amber-950">{{ $employeeCategoryTotals['law_gsc'] }}</p>
             <span class="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">JD + Grad</span>
+          </div>
+          <div class="mt-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800">
+            <span class="rounded-full bg-white/80 px-2.5 py-1">FT {{ $employeeCategoryTotals['law_gsc_ft'] }}</span>
+            <span class="rounded-full bg-white/80 px-2.5 py-1">PT {{ $employeeCategoryTotals['law_gsc_pt'] }}</span>
           </div>
         </div>
 
