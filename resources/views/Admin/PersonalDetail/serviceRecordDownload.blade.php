@@ -377,9 +377,10 @@
       })
       ->values();
 
-    $storedRows = $employeeUser->employee?->service_record_rows ?? [];
-    $sourceRows = (is_array($storedRows) && !empty($storedRows))
-      ? $storedRows
+    $persistedServiceRows = $employeeUser->employee?->service_record_rows ?? [];
+    $hasPersistedServiceRows = is_array($persistedServiceRows) && !empty($persistedServiceRows);
+    $sourceRows = $hasPersistedServiceRows
+      ? $persistedServiceRows
       : $historyRows->all();
 
     $previewRows = collect(is_array($sourceRows) ? $sourceRows : [])
@@ -418,7 +419,7 @@
         && strtolower(trim((string) ($row['salary'] ?? ''))) === strtolower(trim((string) ($defaultServiceRow['salary'] ?? '')))
         && strtolower(trim((string) ($row['office'] ?? ''))) === strtolower(trim((string) ($defaultServiceRow['office'] ?? '')));
     });
-    if (!$hasCurrentSnapshot) {
+    if (!$hasPersistedServiceRows && !$hasCurrentSnapshot) {
       $previewRows->push($defaultServiceRow);
     }
 

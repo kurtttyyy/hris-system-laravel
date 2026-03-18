@@ -225,10 +225,11 @@
       ->values();
 
     $rawStoredRows = old('service_rows');
+    $persistedServiceRows = $employeeUser->employee?->service_record_rows ?? [];
+    $hasPersistedServiceRows = is_array($persistedServiceRows) && !empty($persistedServiceRows);
     if ($rawStoredRows === null) {
-      $storedRows = $employeeUser->employee?->service_record_rows ?? [];
-      if (is_array($storedRows) && !empty($storedRows)) {
-        $rawStoredRows = $storedRows;
+      if ($hasPersistedServiceRows) {
+        $rawStoredRows = $persistedServiceRows;
       } else {
         $rawStoredRows = $historyRows->all();
       }
@@ -269,7 +270,7 @@
         && strtolower(trim((string) ($row['salary'] ?? ''))) === strtolower(trim((string) ($defaultServiceRow['salary'] ?? '')))
         && strtolower(trim((string) ($row['office'] ?? ''))) === strtolower(trim((string) ($defaultServiceRow['office'] ?? '')));
     });
-    if (!$hasCurrentSnapshot) {
+    if (!$hasPersistedServiceRows && !$hasCurrentSnapshot) {
       $serviceRows->push($defaultServiceRow);
     }
 

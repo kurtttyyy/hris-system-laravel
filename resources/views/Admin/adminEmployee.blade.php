@@ -30,6 +30,95 @@
   <!-- Sidebar -->
   @include('components.adminSideBar')
 
+  @php
+    $resolveDepartment = function ($emp) {
+      return trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? '')));
+    };
+    $parseLeaveStatusDate = function ($value) {
+      $text = trim((string) ($value ?? ''));
+      if ($text === '') {
+        return null;
+      }
+
+      foreach (['Y-m-d', 'm/d/Y', 'n/j/Y'] as $format) {
+        try {
+          return \Carbon\Carbon::createFromFormat($format, $text)->startOfDay();
+        } catch (\Throwable $e) {
+        }
+      }
+
+      try {
+        return \Carbon\Carbon::parse($text)->startOfDay();
+      } catch (\Throwable $e) {
+        return null;
+      }
+    };
+    $resolveLeaveRange = function ($application) use ($parseLeaveStatusDate) {
+      $inclusiveDates = trim((string) (data_get($application, 'inclusive_dates') ?? ''));
+      $matchedDates = [];
+      if ($inclusiveDates !== '') {
+        preg_match_all('/\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\/\d{1,2}\/\d{4}\b/', $inclusiveDates, $matches);
+        $matchedDates = $matches[0] ?? [];
+      }
+
+      $startDate = isset($matchedDates[0]) ? $parseLeaveStatusDate($matchedDates[0]) : null;
+      $endDate = isset($matchedDates[1]) ? $parseLeaveStatusDate($matchedDates[1]) : null;
+
+      if (!$startDate) {
+        $startDate = $parseLeaveStatusDate(data_get($application, 'filing_date'))
+          ?: $parseLeaveStatusDate(data_get($application, 'created_at'));
+      }
+
+      $days = (float) (data_get($application, 'number_of_working_days') ?? 0);
+      if ($days <= 0) {
+        $days = max(
+          (float) (data_get($application, 'days_with_pay') ?? 0),
+          (float) (data_get($application, 'applied_total') ?? 0)
+        );
+      }
+
+      $rangeDays = max((int) ceil($days), 1);
+      if (!$endDate && $startDate) {
+        $endDate = $startDate->copy()->addDays($rangeDays - 1);
+      }
+
+      if ($startDate && $endDate && $endDate->lt($startDate)) {
+        [$startDate, $endDate] = [$endDate, $startDate];
+      }
+
+      return [$startDate, $endDate];
+    };
+    $resolveDisplayAccountStatus = function ($emp) use ($resolveLeaveRange) {
+      $hasApprovedOrCompletedResignation = collect(data_get($emp, 'resignations', []))
+        ->contains(function ($row) {
+          $status = strtolower(trim((string) (data_get($row, 'status') ?? '')));
+          return in_array($status, ['approved', 'completed'], true);
+        });
+
+      if ($hasApprovedOrCompletedResignation) {
+        return 'Inactive';
+      }
+
+      $today = \Carbon\Carbon::today();
+      $hasApprovedLeaveToday = collect(data_get($emp, 'leave_applications', []))
+        ->contains(function ($row) use ($resolveLeaveRange, $today) {
+          $status = strtolower(trim((string) (data_get($row, 'status') ?? '')));
+          if ($status !== 'approved') {
+            return false;
+          }
+
+          [$startDate, $endDate] = $resolveLeaveRange($row);
+          if (!$startDate || !$endDate) {
+            return false;
+          }
+
+          return $today->betweenIncluded($startDate, $endDate);
+        });
+
+      return $hasApprovedLeaveToday ? 'On Leave' : 'Active';
+    };
+  @endphp
+
   <!-- Main Content -->
 <main class="min-w-0 flex-1 ml-16 transition-all duration-300"
       x-data="{
@@ -38,12 +127,14 @@
         modalTarget: '',
         tab:'overview',
         viewMode:'cards',
+        showDepartmentSummary:false,
         department:'All',
         statusFilter:'All',
         search:'',
         openImageZoom: false,
         zoomImageUrl: '',
         employeeIndex: [],
+        employeeRecords: [],
         normalize(value) {
           return (value ?? '').toString().trim().toLowerCase();
         },
@@ -200,12 +291,6 @@
             if (accountStatus.toLowerCase() === 'inactive') {
               return 'Inactive';
             }
-            if (accountStatus.toLowerCase() === 'on leave') {
-              return 'On Leave';
-            }
-            if (accountStatus.toLowerCase() === 'active') {
-              return 'Active';
-            }
           }
 
           const hasApprovedOrCompletedResignation = (Array.isArray(this.selectedEmployee?.resignations)
@@ -220,15 +305,30 @@
             return 'Inactive';
           }
 
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
           const hasApprovedLeave = (Array.isArray(this.selectedEmployee?.leave_applications)
             ? this.selectedEmployee.leave_applications
             : []
           ).some((row) => {
             const status = (row?.status ?? '').toString().trim().toLowerCase();
-            return status === 'approved';
+            if (status !== 'approved') return false;
+
+            const range = this.leaveDateRange(row);
+            if (!range.start || !range.end) return false;
+
+            return today.getTime() >= range.start.getTime() && today.getTime() <= range.end.getTime();
           });
 
-          return hasApprovedLeave ? 'On Leave' : 'Active';
+          if (hasApprovedLeave) {
+            return 'On Leave';
+          }
+
+          if (accountStatus.toLowerCase() === 'active') {
+            return 'Active';
+          }
+
+          return 'Active';
         },
         effectiveAccountStatusClass() {
           const status = this.effectiveAccountStatus().toLowerCase();
@@ -237,7 +337,7 @@
           return 'bg-red-100/70 text-red-700';
         },
         selectedEmployee: {
-          applicant: { documents: [], required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {} },
+          applicant: { documents: [], all_documents: [], folders: [], selected_folder_key: 'all', unfiled_count: 0, total_documents: 0, required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {} },
           employee: {},
           education: {},
           government: {},
@@ -350,7 +450,7 @@
 
           this.selectedEmployee = {
             ...emp,
-            applicant: { documents: [], required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {}, ...applicantData },
+            applicant: { documents: [], all_documents: [], folders: [], selected_folder_key: 'all', unfiled_count: 0, total_documents: 0, required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {}, ...applicantData },
             employee: employeeData,
             education: educationData,
             government: emp?.government ?? {},
@@ -378,6 +478,11 @@
 
             const payload = await response.json();
             this.selectedEmployee.applicant.documents = payload.documents ?? [];
+            this.selectedEmployee.applicant.all_documents = payload.all_documents ?? payload.documents ?? [];
+            this.selectedEmployee.applicant.folders = payload.folders ?? [];
+            this.selectedEmployee.applicant.unfiled_count = payload.unfiled_count ?? 0;
+            this.selectedEmployee.applicant.total_documents = payload.total_documents ?? ((payload.all_documents ?? payload.documents ?? []).length);
+            this.selectedEmployee.applicant.selected_folder_key = 'all';
             this.selectedEmployee.applicant.required_documents = payload.required_documents ?? [];
             this.selectedEmployee.applicant.required_documents_text = payload.required_documents_text ?? '';
             this.selectedEmployee.applicant.missing_documents = payload.missing_documents ?? [];
@@ -385,6 +490,53 @@
           } catch (error) {
             console.error('Unable to load employee documents.', error);
           }
+        },
+        documentFolderKeyFromPath(path) {
+          const normalized = (path ?? '').toString().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+          const matches = normalized.match(/^uploads\/applicant-documents\/\d+\/([^/]+)\//i);
+          if (!matches) return '';
+          const key = (matches[1] ?? '').toString().trim();
+          return key === '' || key.toLowerCase() === 'unfiled' ? '' : key;
+        },
+        applicantFolders() {
+          return Array.isArray(this.selectedEmployee?.applicant?.folders)
+            ? this.selectedEmployee.applicant.folders
+            : [];
+        },
+        applicantAllDocuments() {
+          return Array.isArray(this.selectedEmployee?.applicant?.all_documents)
+            ? this.selectedEmployee.applicant.all_documents
+            : [];
+        },
+        selectedDocumentFolderKey() {
+          return (this.selectedEmployee?.applicant?.selected_folder_key ?? 'all').toString();
+        },
+        openDocumentFolder(folderKey = 'all') {
+          if (!this.selectedEmployee?.applicant) return;
+          this.selectedEmployee.applicant.selected_folder_key = (folderKey ?? 'all').toString();
+        },
+        selectedDocumentFolderName() {
+          const folderKey = this.selectedDocumentFolderKey();
+          if (folderKey === 'all') return 'Folders';
+          if (folderKey === 'unfiled') return 'Unfiled';
+          const folder = this.applicantFolders().find((item) => (item?.key ?? '').toString() === folderKey);
+          return (folder?.name ?? 'Folder').toString();
+        },
+        displayedApplicantDocuments() {
+          const folderKey = this.selectedDocumentFolderKey();
+          const docs = this.applicantAllDocuments();
+          if (folderKey === 'all') return [];
+          if (folderKey === 'unfiled') {
+            return docs.filter((doc) => this.documentFolderKeyFromPath(doc?.filepath) === '');
+          }
+          return docs.filter((doc) => this.documentFolderKeyFromPath(doc?.filepath) === folderKey);
+        },
+        currentDocumentCount() {
+          const folderKey = this.selectedDocumentFolderKey();
+          if (folderKey === 'all') {
+            return Number.parseInt((this.selectedEmployee?.applicant?.total_documents ?? 0).toString(), 10) || 0;
+          }
+          return this.displayedApplicantDocuments().length;
         },
         removeMissingDocumentNeed(documentName) {
           const applicant = this.selectedEmployee?.applicant;
@@ -498,11 +650,52 @@
         },
         parseDateValue(raw) {
           if (!raw) return null;
-          const datePart = raw.toString().split('T')[0];
-          const [year, month, day] = datePart.split('-').map(Number);
-          if (!year || !month || !day) return null;
-          const date = new Date(year, month - 1, day);
+          const text = raw.toString().trim();
+          const datePart = text.split('T')[0];
+          let date = null;
+
+          if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+            const [year, month, day] = datePart.split('-').map(Number);
+            if (year && month && day) {
+              date = new Date(year, month - 1, day);
+            }
+          } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(datePart)) {
+            const [month, day, year] = datePart.split('/').map(Number);
+            if (year && month && day) {
+              date = new Date(year, month - 1, day);
+            }
+          }
+
+          if (!date) return null;
           return Number.isNaN(date.getTime()) ? null : date;
+        },
+        leaveDateRange(row) {
+          const inclusive = (row?.inclusive_dates ?? '').toString().trim();
+          const matches = inclusive.match(/\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\/\d{1,2}\/\d{4}\b/g) || [];
+          let start = matches[0] ? this.parseDateValue(matches[0]) : null;
+          let end = matches[1] ? this.parseDateValue(matches[1]) : null;
+
+          if (!start) {
+            start = this.parseDateValue(row?.filing_date || row?.created_at);
+          }
+
+          let days = this.numberOrZero(row?.number_of_working_days);
+          if (days <= 0) {
+            days = Math.max(this.numberOrZero(row?.days_with_pay), this.numberOrZero(row?.applied_total), 1);
+          }
+
+          if (!end && start) {
+            end = new Date(start.getTime());
+            end.setDate(end.getDate() + Math.max(Math.ceil(days), 1) - 1);
+          }
+
+          if (start && end && end.getTime() < start.getTime()) {
+            const swap = start;
+            start = end;
+            end = swap;
+          }
+
+          return { start, end };
         },
         formatTimelineDate(raw) {
           const date = this.parseDateValue(raw);
@@ -734,15 +927,98 @@
         $employee->map(fn($emp) => [
           'name' => trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', '),
           'department' => trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? ''))),
-          'status' => $emp->account_status ?? '',
+          'status' => $resolveDisplayAccountStatus($emp),
         ])->values()
-      ); openEmployeeFromQuery()"
+      ); employeeRecords = @js($employee->values()); openEmployeeFromQuery()"
 >
 
     <!-- Header -->
     @php
       $resolveDepartment = function ($emp) {
         return trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? '')));
+      };
+      $parseLeaveStatusDate = function ($value) {
+        $text = trim((string) ($value ?? ''));
+        if ($text === '') {
+          return null;
+        }
+
+        foreach (['Y-m-d', 'm/d/Y', 'n/j/Y'] as $format) {
+          try {
+            return \Carbon\Carbon::createFromFormat($format, $text)->startOfDay();
+          } catch (\Throwable $e) {
+          }
+        }
+
+        try {
+          return \Carbon\Carbon::parse($text)->startOfDay();
+        } catch (\Throwable $e) {
+          return null;
+        }
+      };
+      $resolveLeaveRange = function ($application) use ($parseLeaveStatusDate) {
+        $inclusiveDates = trim((string) (data_get($application, 'inclusive_dates') ?? ''));
+        $matchedDates = [];
+        if ($inclusiveDates !== '') {
+          preg_match_all('/\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\/\d{1,2}\/\d{4}\b/', $inclusiveDates, $matches);
+          $matchedDates = $matches[0] ?? [];
+        }
+
+        $startDate = isset($matchedDates[0]) ? $parseLeaveStatusDate($matchedDates[0]) : null;
+        $endDate = isset($matchedDates[1]) ? $parseLeaveStatusDate($matchedDates[1]) : null;
+
+        if (!$startDate) {
+          $startDate = $parseLeaveStatusDate(data_get($application, 'filing_date'))
+            ?: $parseLeaveStatusDate(data_get($application, 'created_at'));
+        }
+
+        $days = (float) (data_get($application, 'number_of_working_days') ?? 0);
+        if ($days <= 0) {
+          $days = max(
+            (float) (data_get($application, 'days_with_pay') ?? 0),
+            (float) (data_get($application, 'applied_total') ?? 0)
+          );
+        }
+
+        $rangeDays = max((int) ceil($days), 1);
+        if (!$endDate && $startDate) {
+          $endDate = $startDate->copy()->addDays($rangeDays - 1);
+        }
+
+        if ($startDate && $endDate && $endDate->lt($startDate)) {
+          [$startDate, $endDate] = [$endDate, $startDate];
+        }
+
+        return [$startDate, $endDate];
+      };
+      $resolveDisplayAccountStatus = function ($emp) use ($resolveLeaveRange) {
+        $hasApprovedOrCompletedResignation = collect(data_get($emp, 'resignations', []))
+          ->contains(function ($row) {
+            $status = strtolower(trim((string) (data_get($row, 'status') ?? '')));
+            return in_array($status, ['approved', 'completed'], true);
+          });
+
+        if ($hasApprovedOrCompletedResignation) {
+          return 'Inactive';
+        }
+
+        $today = \Carbon\Carbon::today();
+        $hasApprovedLeaveToday = collect(data_get($emp, 'leave_applications', []))
+          ->contains(function ($row) use ($resolveLeaveRange, $today) {
+            $status = strtolower(trim((string) (data_get($row, 'status') ?? '')));
+            if ($status !== 'approved') {
+              return false;
+            }
+
+            [$startDate, $endDate] = $resolveLeaveRange($row);
+            if (!$startDate || !$endDate) {
+              return false;
+            }
+
+            return $today->betweenIncluded($startDate, $endDate);
+          });
+
+        return $hasApprovedLeaveToday ? 'On Leave' : 'Active';
       };
       $blankTableValue = function ($value) {
         $text = trim((string) ($value ?? ''));
@@ -758,12 +1034,17 @@
         return $text;
       };
 
-      $employeeTableRecords = $employee->map(function ($emp, $index) use ($resolveDepartment, $blankTableValue) {
+      $employeeTableRecords = $employee->map(function ($emp, $index) use ($resolveDepartment, $blankTableValue, $resolveDisplayAccountStatus) {
+        $themeSeed = (string) ($emp->id ?? data_get($emp, 'employee.employee_id') ?? $index);
+        $hue = ((int) sprintf('%u', crc32($themeSeed))) % 360;
+        $headerStart = "hsl({$hue}, 78%, 58%)";
+        $headerEndHue = ($hue + 36) % 360;
+        $headerEnd = "hsl({$headerEndHue}, 78%, 46%)";
         $classValue = trim((string) (data_get($emp, 'employee.classification') ?: data_get($emp, 'applicant.position.employment') ?: ($emp->classification ?? '')));
         $employmentCode = match (strtolower($classValue)) {
           'full-time', 'full time' => 'FT',
           'part-time', 'part time' => 'PT',
-          default => $classValue,
+          default => (str_contains(strtolower($classValue), 'part') ? 'PT' : (str_contains(strtolower($classValue), 'full') || str_contains(strtolower($classValue), 'probationary') || str_contains(strtolower($classValue), 'permanent') ? 'FT' : '')),
         };
         $jobTypeValue = trim((string) (data_get($emp, 'applicant.position.job_type') ?: data_get($emp, 'employee.job_type') ?: ($emp->job_type ?? '')));
         $normalizedJobType = strtolower($jobTypeValue);
@@ -849,7 +1130,7 @@
           'age_to_date' => $blankTableValue($ageToDate),
           'employment_date' => $blankTableValue($employmentDateDisplay),
           'length_of_service' => $blankTableValue($lengthOfService),
-          'position' => $blankTableValue(trim((string) ($emp->job_role ?? data_get($emp, 'applicant.position.title') ?? data_get($emp, 'employee.position') ?? ($emp->position ?? '')))),
+          'position' => $blankTableValue(trim((string) ($emp->job_role ?? data_get($emp, 'employee.position') ?? ($emp->position ?? data_get($emp, 'applicant.position.title') ?? '')))),
           'department' => $blankTableValue($resolveDepartment($emp)),
           'class' => $blankTableValue($classDisplay),
           'rank' => $blankTableValue(trim((string) (data_get($emp, 'employee.rank') ?: ($emp->rank ?? '')))),
@@ -859,6 +1140,7 @@
           'philhealth' => $blankTableValue(trim((string) (data_get($emp, 'government.PhilHealth') ?: ''))),
           'pagibig_mid' => $blankTableValue(trim((string) (data_get($emp, 'government.MID') ?: ''))),
           'pagibig_rtn' => $blankTableValue(trim((string) (data_get($emp, 'government.RTN') ?: ''))),
+          'bachelors_degree' => $blankTableValue(trim((string) (data_get($emp, 'education.bachelor') ?: data_get($emp, 'applicant.bachelor_degree') ?: ''))),
           'masters_degree' => $blankTableValue(trim((string) (data_get($emp, 'education.master') ?: data_get($emp, 'applicant.master_degree') ?: ''))),
           'doctorate_degree' => $blankTableValue(trim((string) (data_get($emp, 'education.doctorate') ?: data_get($emp, 'applicant.doctoral_degree') ?: ''))),
           'eligibility' => $blankTableValue(trim((string) (data_get($emp, 'license.license') ?: ''))),
@@ -874,7 +1156,10 @@
           'allowance' => $blankTableValue(trim((string) (data_get($emp, 'salary.cola') ?: ''))),
           'date_resigned' => $blankTableValue($dateResignedDisplay),
           'employment_history' => $blankTableValue($employmentHistoryDisplay),
-          'status' => $emp->account_status ?? '',
+          'status' => $resolveDisplayAccountStatus($emp),
+          'user_id' => (int) ($emp->id ?? 0),
+          'header_start' => $headerStart,
+          'header_end' => $headerEnd,
         ];
       })->values();
 
@@ -884,6 +1169,323 @@
         ->unique(fn($dept) => strtolower($dept))
         ->sort()
         ->values();
+      $departmentStaffingSummary = $employee
+        ->groupBy(fn ($emp) => ($resolveDepartment($emp) !== '' ? $resolveDepartment($emp) : 'Unassigned'))
+        ->map(function ($departmentEmployees, $department) {
+          $employeeFlags = $departmentEmployees->map(function ($emp) {
+            $jobRoleValue = trim((string) ($emp->job_role ?? ''));
+            $positionFieldValue = trim((string) (data_get($emp, 'employee.position') ?? ($emp->position ?? data_get($emp, 'applicant.position.title') ?? '')));
+            $positionTitle = trim((string) ($positionFieldValue !== '' ? $positionFieldValue : $jobRoleValue));
+            $rankValue = trim((string) (data_get($emp, 'employee.rank') ?: ($emp->rank ?? '')));
+            $jobTypeValue = trim((string) (data_get($emp, 'applicant.position.job_type') ?: data_get($emp, 'employee.job_type') ?: ($emp->job_type ?? '')));
+            $classificationValue = trim((string) (data_get($emp, 'employee.classification') ?: data_get($emp, 'applicant.position.employment') ?: ($emp->classification ?? '')));
+            $jobRoleText = strtolower($jobRoleValue);
+            $positionFieldText = strtolower($positionFieldValue);
+            $positionText = strtolower($positionTitle);
+            $rankText = strtolower($rankValue);
+            $jobTypeText = strtolower($jobTypeValue);
+            $classificationText = strtolower($classificationValue);
+            $combinedRoleText = trim($positionText.' '.$rankText);
+            $normalizedRoleText = preg_replace('/[^a-z0-9]+/i', ' ', $combinedRoleText);
+            $normalizedRoleText = trim((string) preg_replace('/\s+/', ' ', (string) $normalizedRoleText));
+            $serviceRecordRows = collect(is_array(data_get($emp, 'employee.service_record_rows')) ? data_get($emp, 'employee.service_record_rows') : []);
+            $isNonTeachingJobType = str_contains($jobTypeText, 'non-teaching')
+              || str_contains($jobTypeText, 'non teaching')
+              || trim($jobTypeText) === 'nt';
+            $isTeachingJobType = !$isNonTeachingJobType && (
+              str_contains($jobTypeText, 'teaching')
+              || str_contains($jobTypeText, 'faculty')
+              || trim($jobTypeText) === 't'
+            );
+
+            $containsRoleKeyword = static function (string $needle) use ($combinedRoleText, $normalizedRoleText): bool {
+              $needle = strtolower(trim($needle));
+              if ($needle === '') {
+                return false;
+              }
+
+              return str_contains($combinedRoleText, $needle) || str_contains($normalizedRoleText, str_replace('&', 'and', $needle));
+            };
+            $containsDeanKeyword = static function (?string $value): bool {
+              $text = strtolower(trim((string) ($value ?? '')));
+              if ($text === '') {
+                return false;
+              }
+
+              $normalized = trim((string) preg_replace('/\s+/', ' ', (string) preg_replace('/[^a-z0-9]+/i', ' ', $text)));
+              return str_contains($text, 'dean') || str_contains($normalized, 'dean');
+            };
+            $latestServiceRecordAction = $serviceRecordRows
+              ->reverse()
+              ->map(function ($row) use ($containsDeanKeyword) {
+                $designation = trim((string) (data_get($row, 'designation') ?? ''));
+                $remarks = trim((string) (data_get($row, 'remarks') ?? ''));
+                $action = null;
+                if (preg_match('/\bpromoted\b/i', $remarks) === 1) {
+                  $action = 'promoted';
+                } elseif (preg_match('/\b(resigned|resign)\b/i', $remarks) === 1) {
+                  $action = 'resigned';
+                }
+
+                return [
+                  'has_content' => $designation !== '' || $remarks !== '',
+                  'matches_dean' => $containsDeanKeyword($designation) || $containsDeanKeyword($remarks),
+                  'action' => $action,
+                ];
+              })
+              ->first(fn ($row) => $row['has_content'] ?? false);
+            $hasActiveDeanServiceRecord = ($latestServiceRecordAction['matches_dean'] ?? false)
+              && (($latestServiceRecordAction['action'] ?? null) !== 'resigned');
+
+            $isCoordinator = str_contains($combinedRoleText, 'coordinator') || str_contains($combinedRoleText, 'coor');
+            $isInstructorLike = str_contains($combinedRoleText, 'instructor')
+              || str_contains($combinedRoleText, 'faculty')
+              || str_contains($combinedRoleText, 'professor')
+              || str_contains($combinedRoleText, 'proffesor')
+              || str_contains($combinedRoleText, 'profesor')
+              || str_contains($combinedRoleText, 'lecturer')
+              || str_contains($combinedRoleText, 'teacher');
+            $isInstructor = $isInstructorLike && !$isNonTeachingJobType;
+            $isVicePresidentRole = preg_match('/\b(v\.?\s*p\.?|vice president)\b/i', $jobRoleValue) === 1;
+            $isTeachingTopHeadRole =
+              $containsRoleKeyword('dean')
+              || $containsRoleKeyword('college dean')
+              || $containsRoleKeyword('executive dean')
+              || $containsRoleKeyword('associate dean')
+              || $containsRoleKeyword('assistant dean')
+              || $containsRoleKeyword('program head')
+              || $containsRoleKeyword('department head')
+              || $containsRoleKeyword('head')
+              || $containsRoleKeyword('chairperson')
+              || $containsRoleKeyword('chairman')
+              || $containsRoleKeyword('department chair')
+              || $containsRoleKeyword('program chair')
+              || str_contains($combinedRoleText, 'chair ')
+              || str_ends_with($combinedRoleText, ' chair');
+            $isTeachingSubordinateRole =
+              $containsRoleKeyword('vice dean')
+              || $containsRoleKeyword('assistant dean')
+              || $containsRoleKeyword('associate dean')
+              || $containsRoleKeyword('coordinator')
+              || $containsRoleKeyword('coor');
+            $isNonTeachingHeadRole =
+              $containsRoleKeyword('dean')
+              || $containsRoleKeyword('legal counsel')
+              || $containsRoleKeyword('director')
+              || preg_match('/\b(o\.?\s*i\.?\s*c\.?|office in ?charge|office incharge)\b/i', $combinedRoleText) === 1
+              || $containsRoleKeyword('school treasurer')
+              || $containsRoleKeyword('school accountant')
+              || $containsRoleKeyword('chief librarian')
+              || $containsRoleKeyword('guidance counselor')
+              || $containsRoleKeyword('guidance counsellor')
+              || $containsRoleKeyword('focal person')
+              || $containsRoleKeyword('coordinator')
+              || $containsRoleKeyword('principal')
+              || $containsRoleKeyword('building property custodian')
+              || $containsRoleKeyword('building and property custodian')
+              || $containsRoleKeyword('building & property custodian')
+              || $containsRoleKeyword('supervisor');
+            $isTeachingTrack = $isInstructor
+              || str_contains($jobTypeText, 'teaching')
+              || str_contains($jobTypeText, 'faculty')
+              || $containsRoleKeyword('dean')
+              || $containsRoleKeyword('college dean')
+              || $containsRoleKeyword('executive dean')
+              || $containsRoleKeyword('associate dean')
+              || $containsRoleKeyword('assistant dean')
+              || $containsRoleKeyword('vice dean')
+              || $containsRoleKeyword('program head')
+              || $containsRoleKeyword('department head')
+              || $containsRoleKeyword('head')
+              || $containsRoleKeyword('chairperson')
+              || $containsRoleKeyword('chairman')
+              || $containsRoleKeyword('department chair')
+              || $containsRoleKeyword('program chair')
+              || str_contains($combinedRoleText, 'chair ')
+              || str_ends_with($combinedRoleText, ' chair');
+            $isDirectLeadershipHead = $jobRoleText === 'president'
+              || $positionFieldText === 'dean'
+              || $isVicePresidentRole
+              || $hasActiveDeanServiceRecord
+              || $isTeachingTopHeadRole
+              || $isNonTeachingHeadRole;
+            $isHead = $isDirectLeadershipHead || (!$isCoordinator && !$isInstructor && (
+              $containsRoleKeyword('head')
+              || $containsRoleKeyword('chief')
+              || $containsRoleKeyword('dean')
+              || $containsRoleKeyword('director')
+              || $containsRoleKeyword('president')
+              || preg_match('/\b(v\.?\s*p\.?|vice president)\b/i', $combinedRoleText) === 1
+              || $containsRoleKeyword('registrar')
+              || $containsRoleKeyword('chairperson')
+              || $containsRoleKeyword('chairman')
+              || str_contains($combinedRoleText, 'chair ')
+              || str_ends_with($combinedRoleText, ' chair')
+              || $containsRoleKeyword('legal counsel')
+              || preg_match('/\b(o\.?\s*i\.?\s*c\.?|office in ?charge|office incharge)\b/i', $combinedRoleText) === 1
+              || $containsRoleKeyword('school treasurer')
+              || $containsRoleKeyword('school accountant')
+              || $containsRoleKeyword('chief librarian')
+              || $containsRoleKeyword('guidance counselor')
+              || $containsRoleKeyword('guidance counsellor')
+              || $containsRoleKeyword('focal person')
+              || $containsRoleKeyword('coordinator')
+              || $containsRoleKeyword('principal')
+              || $containsRoleKeyword('building property custodian')
+              || $containsRoleKeyword('building and property custodian')
+              || $containsRoleKeyword('building & property custodian')
+              || $containsRoleKeyword('manager')
+              || $containsRoleKeyword('supervisor')
+            ));
+
+            return [
+              'classification_text' => $classificationText,
+              'is_coordinator' => $isCoordinator,
+              'is_instructor' => $isInstructor,
+              'is_teaching_track' => $isTeachingTrack,
+              'is_teaching_job_type' => $isTeachingJobType,
+              'is_teaching_top_head' => $isTeachingTopHeadRole || $jobRoleText === 'president' || $isVicePresidentRole,
+              'is_teaching_subordinate' => $isTeachingSubordinateRole,
+              'is_non_teaching_head' => $isNonTeachingHeadRole,
+              'is_head' => $isHead,
+            ];
+          })->values();
+
+          $hasHigherTeachingHeadInDepartment = $employeeFlags->contains(function ($flags) {
+            return ($flags['is_teaching_track'] ?? false) && ($flags['is_teaching_top_head'] ?? false);
+          });
+
+          $summary = [
+            'department' => $department,
+            'heads' => 0,
+            'coordinator' => 0,
+            'staff' => 0,
+            'instructors_ft' => 0,
+            'instructors_pt' => 0,
+            'total' => 0,
+            'is_teaching_department' => $employeeFlags->contains(function ($flags) {
+              return (bool) ($flags['is_teaching_job_type'] ?? false);
+            }),
+          ];
+
+          foreach ($employeeFlags as $flags) {
+            $shouldDowngradeTeachingRoleToCoordinator = $hasHigherTeachingHeadInDepartment
+              && ($flags['is_teaching_track'] ?? false)
+              && ($flags['is_teaching_subordinate'] ?? false)
+              && !($flags['is_non_teaching_head'] ?? false);
+
+            if (($flags['is_head'] ?? false) && !$shouldDowngradeTeachingRoleToCoordinator) {
+              $summary['heads']++;
+            } elseif (($flags['is_coordinator'] ?? false) || $shouldDowngradeTeachingRoleToCoordinator) {
+              $summary['coordinator']++;
+            } elseif ($flags['is_instructor'] ?? false) {
+              if (str_contains($flags['classification_text'] ?? '', 'part-time') || str_contains($flags['classification_text'] ?? '', 'part time')) {
+                $summary['instructors_pt']++;
+              } else {
+                $summary['instructors_ft']++;
+              }
+            } else {
+              $summary['staff']++;
+            }
+
+            $summary['total']++;
+          }
+
+          $summary['is_teaching_department'] = (bool) ($summary['is_teaching_department'] ?? false)
+            || (int) ($summary['instructors_ft'] ?? 0) > 0
+            || (int) ($summary['instructors_pt'] ?? 0) > 0;
+
+          return $summary;
+        })
+        ->sort(function ($a, $b) {
+          $departmentA = strtolower(trim((string) ($a['department'] ?? '')));
+          $departmentB = strtolower(trim((string) ($b['department'] ?? '')));
+
+          $resolveDepartmentPriority = static function (array $row, string $department): int {
+            $isTeachingDepartment = (bool) ($row['is_teaching_department'] ?? false);
+
+            if (!$isTeachingDepartment) {
+              return 0;
+            }
+
+            if (str_contains($department, 'graduate school')) {
+              return 1;
+            }
+
+            if (str_contains($department, 'law') || str_contains($department, 'jd')) {
+              return 2;
+            }
+
+            if (str_contains($department, 'bec')) {
+              return 4;
+            }
+
+            return 3;
+          };
+
+          $priorityA = $resolveDepartmentPriority($a, $departmentA);
+          $priorityB = $resolveDepartmentPriority($b, $departmentB);
+
+          if ($priorityA === $priorityB) {
+            return strnatcasecmp($departmentA, $departmentB);
+          }
+
+          return $priorityA <=> $priorityB;
+        })
+        ->values()
+        ->all();
+      $departmentStaffingSummary = collect($departmentStaffingSummary);
+      $departmentStaffingTotals = [
+        'heads' => $departmentStaffingSummary->sum('heads'),
+        'coordinator' => $departmentStaffingSummary->sum('coordinator'),
+        'staff' => $departmentStaffingSummary->sum('staff'),
+        'instructors_ft' => $departmentStaffingSummary->sum('instructors_ft'),
+        'instructors_pt' => $departmentStaffingSummary->sum('instructors_pt'),
+        'total' => $departmentStaffingSummary->sum('total'),
+      ];
+      $employeeCategoryTotals = $employee->reduce(function ($carry, $emp) use ($resolveDepartment) {
+        $department = strtolower(trim((string) ($resolveDepartment($emp) ?? '')));
+        $jobTypeValue = strtolower(trim((string) (data_get($emp, 'applicant.position.job_type') ?: data_get($emp, 'employee.job_type') ?: ($emp->job_type ?? ''))));
+        $isNonTeaching = str_contains($jobTypeValue, 'non-teaching')
+          || str_contains($jobTypeValue, 'non teaching')
+          || $jobTypeValue === 'nt';
+        $isTeaching = !$isNonTeaching && (
+          str_contains($jobTypeValue, 'teaching')
+          || str_contains($jobTypeValue, 'faculty')
+          || $jobTypeValue === 't'
+        );
+
+        if ($isNonTeaching) {
+          $carry['non_teaching']++;
+        }
+
+        if ($isTeaching) {
+          $carry['teaching']++;
+
+          if (
+            str_contains($department, 'graduate school')
+            || str_contains($department, 'law')
+            || str_contains($department, 'jd')
+          ) {
+            $carry['law_gsc']++;
+          } elseif (str_contains($department, 'bec')) {
+            $carry['bec']++;
+          } else {
+            $carry['college']++;
+          }
+        }
+
+        $carry['grand_total']++;
+
+        return $carry;
+      }, [
+        'non_teaching' => 0,
+        'teaching' => 0,
+        'college' => 0,
+        'bec' => 0,
+        'law_gsc' => 0,
+        'grand_total' => 0,
+      ]);
       $tableSummaryEmploymentDate = $employeeTableRecords->first()['employment_date'] ?? 'February 27, 2026';
     @endphp
     @include('components.adminHeader.employeeHeader', ['departmentOptions' => $departmentOptions])
@@ -892,7 +1494,7 @@
 <div class="min-w-0 p-4 md:p-8 space-y-6 pt-20">
 
     <!-- TOP BAR -->
-<div class="flex items-center justify-between" style="margin-top: -20px;">
+<div class="flex flex-wrap items-center justify-between gap-4">
 
     <!-- Status Legend -->
     <div class="flex items-center gap-6 text-sm text-gray-600">
@@ -922,8 +1524,141 @@
 
 
 
+    <div
+      id="department-staffing-summary"
+      x-show="showDepartmentSummary"
+      style="display:none;"
+      class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.08)]"
+    >
+      <div class="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4">
+        <div>
+          <h3 class="text-lg font-black tracking-tight text-slate-900">Department Staffing Summary</h3>
+          <p class="text-sm text-slate-600">Counts are grouped by department using the current employee records.</p>
+        </div>
+        <div class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+          {{ $departmentStaffingTotals['total'] }} Total Employees
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full border-collapse text-sm text-slate-800">
+          <thead>
+            <tr class="bg-[#eef6f4] text-center text-xs font-black uppercase tracking-[0.08em] text-slate-900">
+              <th rowspan="2" class="border border-slate-300 px-3 py-3">No.</th>
+              <th rowspan="2" class="border border-slate-300 px-4 py-3 text-left">Department</th>
+              <th rowspan="2" class="border border-slate-300 px-3 py-3">Heads</th>
+              <th rowspan="2" class="border border-slate-300 px-3 py-3">Coor</th>
+              <th rowspan="2" class="border border-slate-300 px-3 py-3">Staff</th>
+              <th colspan="2" class="border border-slate-300 px-3 py-3">Instructors</th>
+              <th rowspan="2" class="border border-slate-300 px-3 py-3">Total</th>
+            </tr>
+            <tr class="bg-[#eef6f4] text-center text-xs font-black uppercase tracking-[0.08em] text-slate-900">
+              <th class="border border-slate-300 px-3 py-2">FT</th>
+              <th class="border border-slate-300 px-3 py-2">PT</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse ($departmentStaffingSummary as $summaryRow)
+              <tr class="odd:bg-white even:bg-slate-50/70">
+                <td class="border border-slate-300 px-3 py-2 text-center font-semibold">{{ $loop->iteration }}</td>
+                <td class="border border-slate-300 px-4 py-2 font-semibold uppercase tracking-[0.03em] text-slate-900">{{ $summaryRow['department'] }}</td>
+                <td class="border border-slate-300 px-3 py-2 text-center">{{ $summaryRow['heads'] ?: '-' }}</td>
+                <td class="border border-slate-300 px-3 py-2 text-center">{{ $summaryRow['coordinator'] ?: '-' }}</td>
+                <td class="border border-slate-300 px-3 py-2 text-center">{{ $summaryRow['staff'] ?: '-' }}</td>
+                <td class="border border-slate-300 px-3 py-2 text-center">{{ $summaryRow['instructors_ft'] ?: '-' }}</td>
+                <td class="border border-slate-300 px-3 py-2 text-center">{{ $summaryRow['instructors_pt'] ?: '-' }}</td>
+                <td class="border border-slate-300 px-3 py-2 text-center font-black">{{ $summaryRow['total'] }}</td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="8" class="border border-slate-300 px-4 py-6 text-center text-slate-500">No department summary available.</td>
+              </tr>
+            @endforelse
+          </tbody>
+          <tfoot>
+            <tr class="bg-slate-900 text-center text-sm font-black uppercase tracking-[0.08em] text-white">
+              <td colspan="2" class="border border-slate-300 px-4 py-3">Total</td>
+              <td class="border border-slate-300 px-3 py-3">{{ $departmentStaffingTotals['heads'] ?: '-' }}</td>
+              <td class="border border-slate-300 px-3 py-3">{{ $departmentStaffingTotals['coordinator'] ?: '-' }}</td>
+              <td class="border border-slate-300 px-3 py-3">{{ $departmentStaffingTotals['staff'] ?: '-' }}</td>
+              <td class="border border-slate-300 px-3 py-3">{{ $departmentStaffingTotals['instructors_ft'] ?: '-' }}</td>
+              <td class="border border-slate-300 px-3 py-3">{{ $departmentStaffingTotals['instructors_pt'] ?: '-' }}</td>
+              <td class="border border-slate-300 px-3 py-3">{{ $departmentStaffingTotals['total'] }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div
+      x-show="showDepartmentSummary"
+      class="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white/90 shadow-[0_18px_40px_rgba(15,23,42,0.08)]"
+    >
+      <div class="border-b border-slate-200 bg-[linear-gradient(135deg,rgba(248,250,252,0.96),rgba(240,253,250,0.94))] px-5 py-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="text-[11px] font-black uppercase tracking-[0.28em] text-slate-500">Employee Snapshot</p>
+            <h4 class="mt-1 text-lg font-black tracking-tight text-slate-900">Category Totals</h4>
+          </div>
+          <div class="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-emerald-700">
+            {{ $employeeCategoryTotals['grand_total'] }} Employees
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-[repeat(5,minmax(0,1fr))_1.2fr]">
+        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+          <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Non-Teaching</p>
+          <div class="mt-3 flex items-end justify-between">
+            <p class="text-3xl font-black text-slate-900">{{ $employeeCategoryTotals['non_teaching'] }}</p>
+            <span class="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-700">Staff</span>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-4">
+          <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-sky-600">Teaching</p>
+          <div class="mt-3 flex items-end justify-between">
+            <p class="text-3xl font-black text-sky-950">{{ $employeeCategoryTotals['teaching'] }}</p>
+            <span class="rounded-full bg-sky-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-sky-700">Faculty</span>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4">
+          <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600">College</p>
+          <div class="mt-3 flex items-end justify-between">
+            <p class="text-3xl font-black text-indigo-950">{{ $employeeCategoryTotals['college'] }}</p>
+            <span class="rounded-full bg-indigo-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-indigo-700">Main</span>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-4">
+          <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-teal-600">BEC</p>
+          <div class="mt-3 flex items-end justify-between">
+            <p class="text-3xl font-black text-teal-950">{{ $employeeCategoryTotals['bec'] }}</p>
+            <span class="rounded-full bg-teal-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-teal-700">Basic Ed</span>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+          <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-700">Law / GSC</p>
+          <div class="mt-3 flex items-end justify-between">
+            <p class="text-3xl font-black text-amber-950">{{ $employeeCategoryTotals['law_gsc'] }}</p>
+            <span class="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">JD + Grad</span>
+          </div>
+        </div>
+
+        <div class="rounded-[24px] border border-emerald-200 bg-[linear-gradient(135deg,rgba(236,253,245,1),rgba(209,250,229,0.92))] px-5 py-4 shadow-[0_10px_30px_rgba(16,185,129,0.12)]">
+          <p class="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">Grand Total</p>
+          <div class="mt-3 flex items-end justify-between gap-3">
+            <p class="text-4xl font-black leading-none text-emerald-950">{{ $employeeCategoryTotals['grand_total'] }}</p>
+            <span class="rounded-full bg-white/80 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">All Employees</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Employee Cards Grid -->
-    <div class="flex flex-wrap gap-6" x-show="viewMode === 'cards'">
+    <div class="flex flex-wrap gap-6" x-show="!showDepartmentSummary && viewMode === 'cards'">
 
         @foreach ($employee as $emp)
         @php
@@ -953,7 +1688,7 @@
             class="bg-white rounded-xl shadow-md overflow-hidden w-72"
             x-show="matchesDepartment(@js($resolveDepartment($emp))) &&
                     matchesSearch(@js(trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', '))) &&
-                    matchesStatus(@js($emp->account_status ?? ''))"
+                    matchesStatus(@js($resolveDisplayAccountStatus($emp)))"
         >
             <div class="h-24 flex justify-center items-center" style="background-image: linear-gradient(to right, {{ $headerStart }}, {{ $headerEnd }});">
                 <div class="w-16 h-16 rounded-full text-white flex items-center justify-center text-lg font-bold border-4 border-white mt-24 overflow-hidden" style="background-color: {{ $avatarColor }};">
@@ -972,7 +1707,7 @@
 
             <div class="p-4 mt-7">
                 <h3 class="font-bold text-gray-800 text-lg text-center">{{ trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', ') }}</h3>
-                <p class="text-gray-500 text-sm text-center">{{ trim((string) ($emp->job_role ?? '')) !== '' ? $emp->job_role : ($emp->applicant->position->title ?? $emp->employee->position ?? $emp->position ?? '') }}</p>
+                <p class="text-gray-500 text-sm text-center">{{ trim((string) ($emp->job_role ?? '')) !== '' ? $emp->job_role : ($emp->employee->position ?? $emp->position ?? $emp->applicant->position->title ?? '') }}</p>
 
                 <div class="mt-4 space-y-1 text-gray-500 text-sm">
                     <div class="flex items-center gap-2">
@@ -994,7 +1729,7 @@
                 <div class="flex justify-between items-center">
                     <div class="flex items-center -space-x-">
                         @php
-                          $accountStatus = trim((string) ($emp->account_status ?? 'Active'));
+                          $accountStatus = $resolveDisplayAccountStatus($emp);
                           $normalizedStatus = strtolower($accountStatus);
                           $statusBadgeClass = match ($normalizedStatus) {
                             'active' => 'text-green-700 bg-green-100',
@@ -1003,7 +1738,7 @@
                           };
                         @endphp
                         <span class="px-2 py-1 rounded-full text-xs font-medium z-10 {{ $statusBadgeClass }}">
-                            {{ $emp->account_status ?? 'Active' }}
+                            {{ $accountStatus }}
                         </span>
 
                         <!--<span class="px-2 py-1 text-indigo-700 bg-indigo-100 rounded-full text-xs font-medium">
@@ -1023,7 +1758,7 @@
     </div>
 
     <div
-      x-show="viewMode === 'cards' && !hasVisibleEmployees()"
+      x-show="!showDepartmentSummary && viewMode === 'cards' && !hasVisibleEmployees()"
       class="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg px-4 py-3"
       style="display:none;"
     >
@@ -1031,7 +1766,7 @@
     </div>
 
     <div
-      x-show="viewMode === 'table'"
+      x-show="!showDepartmentSummary && viewMode === 'table'"
       class="w-full max-w-full overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.08)]"
       style="display:none;"
     >
@@ -1043,28 +1778,29 @@
           <colgroup>
             <col class="w-14">
             <col class="w-72">
-            <col class="w-40">
+            <col class="w-56">
             <col class="w-36">
             <col class="w-20">
             <col class="w-36">
             <col class="w-[28rem]">
             <col class="w-56">
-            <col class="w-44">
+            <col class="w-[18rem]">
             <col class="w-36">
             <col class="w-44">
             <col class="w-56">
             <col class="w-60">
-            <col class="w-52">
+            <col class="w-[18rem]">
             <col class="w-28">
-            <col class="w-40">
+            <col class="w-56">
             <col class="w-24">
             <col class="w-40">
             <col class="w-36">
             <col class="w-40">
             <col class="w-40">
             <col class="w-40">
-            <col class="w-56">
-            <col class="w-56">
+            <col class="w-[24rem]">
+            <col class="w-[24rem]">
+            <col class="w-[24rem]">
             <col class="w-44">
             <col class="w-40">
             <col class="w-48">
@@ -1099,6 +1835,7 @@
               <th class="sticky top-0 z-10 border border-black bg-[#26a9f3] px-2 py-1 text-white">PHILHEALTH</th>
               <th class="sticky top-0 z-10 border border-black bg-[#26a9f3] px-2 py-1 text-white">PAG-IBIG MID</th>
               <th class="sticky top-0 z-10 border border-black bg-[#26a9f3] px-2 py-1 text-white">PAG-IBIG RTN</th>
+              <th class="sticky top-0 z-10 border border-black bg-[#fff200] px-2 py-1">BACHELOR'S DEGREE</th>
               <th class="sticky top-0 z-10 border border-black bg-[#fff200] px-2 py-1">MASTER'S DEGREE</th>
               <th class="sticky top-0 z-10 border border-black bg-[#fff200] px-2 py-1">DOCTORATE DEGREE</th>
               <th class="sticky top-0 z-10 border border-black bg-[#fff200] px-2 py-1">ELIGIBILITY</th>
@@ -1153,6 +1890,7 @@
               <td class="border border-black px-2 py-0.5"></td>
               <td class="border border-black px-2 py-0.5"></td>
               <td class="border border-black px-2 py-0.5"></td>
+              <td class="border border-black px-2 py-0.5"></td>
               <td class="border border-black px-2 py-0.5 text-center font-black">2026</td>
               <td class="border border-black px-2 py-0.5"></td>
               <td class="border border-black px-2 py-0.5"></td>
@@ -1165,7 +1903,15 @@
                 class="bg-white text-[13px]"
               >
                 <td class="sticky left-0 z-10 border border-black bg-white px-2 py-1 text-center shadow-[inset_-1px_0_0_#000]">{{ $row['no'] }}</td>
-                <td class="sticky left-14 z-10 border border-black bg-white px-2 py-1 shadow-[inset_-1px_0_0_#000]">{{ $row['name'] }}</td>
+                <td class="sticky left-14 z-10 border border-black bg-white px-2 py-1 shadow-[inset_-1px_0_0_#000]">
+                  <button
+                    type="button"
+                    @click="openEmployeeProfile(employeeRecords.find(emp => Number.parseInt((emp?.id ?? '').toString(), 10) === {{ (int) ($row['user_id'] ?? 0) }}), @js($row['header_start']), @js($row['header_end']))"
+                    class="font-semibold text-sky-700 underline decoration-sky-300 underline-offset-2 transition hover:text-sky-900 hover:decoration-sky-600"
+                  >
+                    {{ $row['name'] }}
+                  </button>
+                </td>
                 <td class="border border-black px-2 py-1 text-center">{{ $row['employee_id'] }}</td>
                 <td class="border border-black px-2 py-1 text-center">{{ $row['account_number'] }}</td>
                 <td class="border border-black px-2 py-1 text-center">{{ $row['sex'] }}</td>
@@ -1186,6 +1932,7 @@
                 <td class="border border-black px-2 py-1 text-center">{{ $row['philhealth'] }}</td>
                 <td class="border border-black px-2 py-1 text-center">{{ $row['pagibig_mid'] }}</td>
                 <td class="border border-black px-2 py-1 text-center">{{ $row['pagibig_rtn'] }}</td>
+                <td class="border border-black px-2 py-1">{{ $row['bachelors_degree'] }}</td>
                 <td class="border border-black px-2 py-1">{{ $row['masters_degree'] }}</td>
                 <td class="border border-black px-2 py-1">{{ $row['doctorate_degree'] }}</td>
                 <td class="border border-black px-2 py-1">{{ $row['eligibility'] }}</td>
@@ -1247,7 +1994,7 @@
               ].filter(Boolean).join(' ') || '-'"
               ></h2>
               <p class="text-sm">
-                <span x-text="selectedEmployee?.job_role ?? selectedEmployee?.employee?.position ?? selectedEmployee?.applicant?.position?.title ?? selectedEmployee?.position ?? '-'"></span><br>
+                <span x-text="selectedEmployee?.job_role ?? selectedEmployee?.employee?.position ?? selectedEmployee?.position ?? selectedEmployee?.applicant?.position?.title ?? '-'"></span><br>
                 <span x-text="selectedEmployee?.employee?.department ?? selectedEmployee?.applicant?.position?.department ?? selectedEmployee?.department ?? '-'"></span>
               </p>
             </div>
@@ -1318,12 +2065,12 @@
 </body>
 
 @php
-  $adminEmployeeExcelRecords = $employee->map(function ($emp) use ($blankTableValue) {
+  $adminEmployeeExcelRecords = $employee->map(function ($emp) use ($blankTableValue, $resolveDisplayAccountStatus) {
     $classValue = trim((string) (data_get($emp, 'employee.classification') ?: data_get($emp, 'applicant.position.employment') ?: ($emp->classification ?? '')));
     $employmentCode = match (strtolower($classValue)) {
       'full-time', 'full time' => 'FT',
       'part-time', 'part time' => 'PT',
-      default => $classValue,
+      default => (str_contains(strtolower($classValue), 'part') ? 'PT' : (str_contains(strtolower($classValue), 'full') || str_contains(strtolower($classValue), 'probationary') || str_contains(strtolower($classValue), 'permanent') ? 'FT' : '')),
     };
     $jobTypeValue = trim((string) (data_get($emp, 'applicant.position.job_type') ?: data_get($emp, 'employee.job_type') ?: ($emp->job_type ?? '')));
     $normalizedJobType = strtolower($jobTypeValue);
@@ -1410,7 +2157,7 @@
       'age_to_date' => $blankTableValue($ageToDate),
       'employment_date' => $blankTableValue($employmentDateDisplay),
       'length_of_service' => $blankTableValue($lengthOfService),
-      'position' => $blankTableValue(trim((string) ($emp->job_role ?? data_get($emp, 'applicant.position.title') ?? data_get($emp, 'employee.position') ?? ($emp->position ?? '')))),
+      'position' => $blankTableValue(trim((string) ($emp->job_role ?? data_get($emp, 'employee.position') ?? ($emp->position ?? data_get($emp, 'applicant.position.title') ?? '')))),
       'class' => $blankTableValue($classDisplay),
       'rank' => $blankTableValue(trim((string) (data_get($emp, 'employee.rank') ?: ($emp->rank ?? '')))),
       'grade' => $blankTableValue(trim((string) (data_get($emp, 'employee.grade') ?: ($emp->grade ?? '')))),
@@ -1419,6 +2166,7 @@
       'philhealth' => $blankTableValue(trim((string) (data_get($emp, 'government.PhilHealth') ?: ''))),
       'pagibig_mid' => $blankTableValue(trim((string) (data_get($emp, 'government.MID') ?: ''))),
       'pagibig_rtn' => $blankTableValue(trim((string) (data_get($emp, 'government.RTN') ?: ''))),
+      'bachelors_degree' => $blankTableValue(trim((string) (data_get($emp, 'education.bachelor') ?: data_get($emp, 'applicant.bachelor_degree') ?: ''))),
       'masters_degree' => $blankTableValue(trim((string) (data_get($emp, 'education.master') ?: data_get($emp, 'applicant.master_degree') ?: ''))),
       'doctorate_degree' => $blankTableValue(trim((string) (data_get($emp, 'education.doctorate') ?: data_get($emp, 'applicant.doctoral_degree') ?: ''))),
       'eligibility' => $blankTableValue(trim((string) (data_get($emp, 'license.license') ?: ''))),
@@ -1435,7 +2183,7 @@
       'date_resigned' => $blankTableValue($dateResignedDisplay),
       'employment_history' => $blankTableValue($employmentHistoryDisplay),
       'department' => $blankTableValue(trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? '')))),
-      'status' => $emp->account_status ?? '',
+      'status' => $resolveDisplayAccountStatus($emp),
       'email' => $blankTableValue(trim((string) (data_get($emp, 'applicant.email_address') ?: ($emp->email_address ?? $emp->email ?? '')))),
     ];
   })->values();
@@ -1483,24 +2231,95 @@
       if (!sourceCell) return;
 
       const computed = window.getComputedStyle(sourceCell);
+      const exportBorder = '0.75px solid #000';
       cell.style.backgroundColor = computed.backgroundColor;
       cell.style.color = computed.color;
       cell.style.fontWeight = computed.fontWeight;
       cell.style.textAlign = computed.textAlign;
       cell.style.verticalAlign = computed.verticalAlign;
-      cell.style.borderTop = computed.borderTop;
-      cell.style.borderRight = computed.borderRight;
-      cell.style.borderBottom = computed.borderBottom;
-      cell.style.borderLeft = computed.borderLeft;
+      cell.style.borderTop = exportBorder;
+      cell.style.borderRight = exportBorder;
+      cell.style.borderBottom = exportBorder;
+      cell.style.borderLeft = exportBorder;
     });
+
+    const exportRowsCollection = Array.from(exportTable.rows || []);
+    const columnCount = Math.max(...exportRowsCollection.map((row) => row.cells?.length || 0), 0);
+    const minimumWidths = {
+      0: 48,
+      1: 300,
+      2: 120,
+      3: 120,
+      4: 72,
+      5: 110,
+      6: 520,
+      7: 140,
+      8: 120,
+      9: 90,
+      10: 130,
+      11: 180,
+      12: 420,
+      13: 520,
+      14: 95,
+      15: 300,
+      16: 85,
+      17: 110,
+      18: 110,
+      19: 120,
+      20: 120,
+      21: 120,
+      22: 360,
+      23: 360,
+      24: 360,
+      25: 320,
+      26: 130,
+      27: 130,
+      28: 130,
+      29: 110,
+      30: 130,
+      31: 110,
+      32: 140,
+      33: 260,
+    };
+
+    const columnWidths = Array.from({ length: columnCount }, (_, columnIndex) => {
+      const textLengths = exportRowsCollection.map((row) => {
+        const cell = row.cells?.[columnIndex];
+        return (cell?.textContent ?? '').replace(/\s+/g, ' ').trim().length;
+      });
+      const maxLength = Math.max(0, ...textLengths);
+      const maxWidth = [1, 6, 12, 13, 15, 22, 23, 24, 25].includes(columnIndex) ? 760 : 320;
+      const computedWidth = Math.min(Math.max((maxLength * 8) + 42, minimumWidths[columnIndex] ?? 96), maxWidth);
+      return computedWidth;
+    });
+
+    exportRowsCollection.forEach((row) => {
+      Array.from(row.cells || []).forEach((cell, columnIndex) => {
+        const width = columnWidths[columnIndex] ?? 96;
+        cell.style.minWidth = `${width}px`;
+        cell.style.width = `${width}px`;
+        cell.style.padding = '4px 10px';
+        cell.style.lineHeight = '1.35';
+      });
+    });
+
+    if (columnWidths.length) {
+      const colgroup = exportTable.ownerDocument.createElement('colgroup');
+      columnWidths.forEach((width) => {
+        const col = exportTable.ownerDocument.createElement('col');
+        col.style.width = `${width}px`;
+        colgroup.appendChild(col);
+      });
+      exportTable.insertBefore(colgroup, exportTable.firstChild);
+    }
 
     const html = `
       <html>
       <head>
         <meta charset="utf-8">
         <style>
-          table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 12pt; width: max-content; min-width: 100%; }
-          th, td { border: 1px solid #000; padding: 1px 6px; white-space: nowrap; line-height: 1.1; }
+          table { border-collapse: collapse; table-layout: auto; font-family: Arial, sans-serif; font-size: 12pt; width: auto; min-width: max-content; }
+          th, td { border: 0.5px solid #000; padding: 4px 10px; white-space: nowrap; line-height: 1.35; }
           .sticky { position: static !important; }
           .text-red-600 { color: #dc2626 !important; }
           .font-black, .font-bold { font-weight: 700 !important; }
@@ -1638,5 +2457,3 @@
 </script>
 
 </html>
-
-

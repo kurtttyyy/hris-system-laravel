@@ -13,9 +13,9 @@
         </div>
     @endif
 
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+    <div class="grid items-start gap-6 xl:grid-cols-[minmax(320px,0.92fr)_minmax(0,1.18fr)]">
         <div class="space-y-6">
-            <form action="{{ route('admin.saveRequiredDocuments') }}" method="POST" class="rounded-[1.5rem] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(255,255,255,0.98))] p-5 shadow-[0_16px_34px_rgba(217,119,6,0.08)]">
+            <form action="{{ route('admin.saveRequiredDocuments') }}" method="POST" class="rounded-[1.65rem] border border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(255,255,255,0.98))] p-5 shadow-[0_18px_42px_rgba(217,119,6,0.10)] ring-1 ring-white/70">
                 @csrf
                 <input type="hidden" name="applicant_id" :value="selectedEmployee?.applicant?.id">
                 <input type="hidden" name="user_id" :value="selectedEmployee?.id">
@@ -45,7 +45,7 @@
                             rows="5"
                             x-model="selectedEmployee.applicant.required_documents_text"
                             placeholder="One per line, e.g.&#10;NBI Clearance&#10;TOR&#10;Medical Certificate"
-                            class="w-full rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                            class="w-full rounded-2xl border border-amber-200 bg-white/95 px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
                         ></textarea>
                         <p class="mt-1 text-xs text-slate-500">Enter one document type per line.</p>
                     </div>
@@ -57,12 +57,12 @@
                             rows="3"
                             x-model="selectedEmployee.applicant.document_notice"
                             placeholder="Example: Please submit missing documents before month end."
-                            class="w-full rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                            class="w-full rounded-2xl border border-amber-200 bg-white/95 px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
                         ></textarea>
                     </div>
                 </div>
 
-                <div x-show="(selectedEmployee?.applicant?.missing_documents ?? []).length" class="mt-5 rounded-2xl border border-rose-200 bg-white p-4">
+                <div x-show="(selectedEmployee?.applicant?.missing_documents ?? []).length" class="mt-5 rounded-[1.25rem] border border-rose-200 bg-white/95 p-4 shadow-sm">
                     <p class="text-sm font-semibold text-rose-700">Missing Documents</p>
                     <div class="mt-3 flex flex-wrap gap-2">
                         <template x-for="requiredDoc in (selectedEmployee?.applicant?.missing_documents ?? [])" :key="requiredDoc">
@@ -94,7 +94,7 @@
                 </div>
             </form>
 
-            <form action="{{ route('admin.addDocument') }}" method="POST" enctype="multipart/form-data" class="rounded-[1.5rem] border border-emerald-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+            <form action="{{ route('admin.addDocument') }}" method="POST" enctype="multipart/form-data" class="rounded-[1.65rem] border border-emerald-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,253,248,0.92))] p-5 shadow-[0_18px_42px_rgba(15,23,42,0.07)] ring-1 ring-white/70">
                 @csrf
 
                 <input type="hidden" name="applicant_id" :value="selectedEmployee?.applicant?.id">
@@ -122,11 +122,11 @@
                         name="document_name"
                         placeholder="e.g. Resume, Offer Letter"
                         required
-                        class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
+                        class="w-full rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-2 focus:ring-emerald-100"
                     >
                 </div>
 
-                <label class="mt-5 block cursor-pointer overflow-hidden rounded-[1.5rem] border-2 border-dashed border-emerald-200 bg-[linear-gradient(180deg,rgba(236,253,245,0.92),rgba(255,255,255,0.98))] px-6 py-10 text-center transition hover:border-emerald-300 hover:bg-emerald-50">
+                <label class="mt-5 block cursor-pointer overflow-hidden rounded-[1.5rem] border-2 border-dashed border-emerald-200 bg-[linear-gradient(180deg,rgba(236,253,245,0.96),rgba(255,255,255,0.98))] px-6 py-10 text-center transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50/90 hover:shadow-[0_18px_30px_rgba(16,185,129,0.08)]">
                     <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-white text-emerald-600 shadow-sm">
                         <i class="fa-solid fa-file-arrow-up text-2xl"></i>
                     </div>
@@ -151,39 +151,108 @@
             </form>
         </div>
 
-        <div class="rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#fbfffd_0%,#f8fafc_100%)] p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div class="rounded-[1.65rem] border border-slate-200/80 bg-[linear-gradient(180deg,#fbfffd_0%,#f8fafc_100%)] p-5 shadow-[0_18px_42px_rgba(15,23,42,0.07)] ring-1 ring-white/80 xl:sticky xl:top-28 xl:self-start">
+            <div class="flex flex-col gap-4 border-b border-slate-200/80 pb-5 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600">
                         Archive
                     </div>
-                    <h3 class="mt-4 text-xl font-black tracking-tight text-slate-900">All documents</h3>
+                    <h3 class="mt-4 text-xl font-black tracking-tight text-slate-900" x-text="selectedDocumentFolderKey() === 'all' ? 'Document folders' : selectedDocumentFolderName()"></h3>
                     <p class="mt-2 text-sm leading-6 text-slate-600">
-                        Review uploaded files, then preview or download them from the employee record.
+                        <span x-show="selectedDocumentFolderKey() === 'all'">Open a folder to review the files saved by the employee.</span>
+                        <span x-show="selectedDocumentFolderKey() !== 'all'">Review uploaded files inside the selected folder, then preview or download them.</span>
                     </p>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-                    <span class="font-semibold text-slate-900" x-text="selectedEmployee?.applicant?.documents?.length ?? 0"></span>
-                    file(s) available
+                <div class="rounded-[1.1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+                    <span class="font-semibold text-slate-900" x-text="currentDocumentCount()"></span>
+                    <span x-text="selectedDocumentFolderKey() === 'all' ? 'file(s) total' : 'file(s) inside'"></span>
                 </div>
             </div>
 
-            <div class="mt-5 max-h-[32rem] space-y-3 overflow-y-auto pr-1">
-                <template x-for="doc in (selectedEmployee?.applicant?.documents ?? [])" :key="doc.id">
-                    <div class="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            <div x-show="selectedDocumentFolderKey() !== 'all'" class="mt-5 flex items-center justify-between gap-3 rounded-[1.1rem] border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
+                <div class="min-w-0">
+                    <p class="font-semibold text-slate-900">Viewing folder</p>
+                    <p class="truncate text-xs text-slate-500" x-text="selectedDocumentFolderName()"></p>
+                </div>
+                <button
+                    type="button"
+                    @click="openDocumentFolder('all')"
+                    class="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+                >
+                    <i class="fa-solid fa-arrow-left"></i>
+                    Back to folders
+                </button>
+            </div>
+
+            <div x-show="selectedDocumentFolderKey() === 'all'" class="mt-5 grid gap-3 sm:grid-cols-2">
+                <button
+                    type="button"
+                    @click="openDocumentFolder('unfiled')"
+                    class="group rounded-[1.25rem] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.96),rgba(255,255,255,1))] p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-[0_14px_28px_rgba(245,158,11,0.10)]"
+                >
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex min-w-0 items-center gap-3">
+                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                                <i class="fa-solid fa-inbox"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold text-slate-900">Unfiled</p>
+                                <p class="mt-1 text-xs text-slate-500">Files not assigned to any folder</p>
+                            </div>
+                        </div>
+                        <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-700 shadow-sm" x-text="selectedEmployee?.applicant?.unfiled_count ?? 0"></span>
+                    </div>
+                </button>
+
+                <template x-for="folder in applicantFolders()" :key="folder.key">
+                    <button
+                        type="button"
+                        @click="openDocumentFolder(folder.key)"
+                        class="group rounded-[1.25rem] border border-sky-200 bg-[linear-gradient(180deg,rgba(240,249,255,0.96),rgba(255,255,255,1))] p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-[0_14px_28px_rgba(14,165,233,0.10)]"
+                    >
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex min-w-0 items-center gap-3">
+                                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+                                    <i class="fa-solid fa-folder"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-bold text-slate-900" x-text="folder.name"></p>
+                                    <p class="mt-1 text-xs text-slate-500">Open this folder to see saved files</p>
+                                </div>
+                            </div>
+                            <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-sky-700 shadow-sm" x-text="folder.count ?? 0"></span>
+                        </div>
+                    </button>
+                </template>
+
+                <div
+                    x-show="(applicantFolders().length === 0) && ((selectedEmployee?.applicant?.unfiled_count ?? 0) === 0)"
+                    class="sm:col-span-2 rounded-[1.25rem] border border-dashed border-slate-300 bg-white px-5 py-10 text-center shadow-sm"
+                >
+                    <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+                        <i class="fa-regular fa-folder-open text-xl"></i>
+                    </div>
+                    <p class="mt-4 text-sm font-semibold text-slate-700">No folders or files yet.</p>
+                    <p class="mt-1 text-xs text-slate-500">Once the employee uploads files into folders, they will appear here.</p>
+                </div>
+            </div>
+
+            <div x-show="selectedDocumentFolderKey() !== 'all'" class="mt-5 max-h-[34rem] space-y-3 overflow-y-auto pr-1">
+                <template x-for="doc in displayedApplicantDocuments()" :key="doc.id">
+                    <div class="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_14px_28px_rgba(15,23,42,0.08)]">
                         <div class="flex items-start justify-between gap-4">
                             <div class="flex min-w-0 items-start gap-4">
-                                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+                                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#ffe4e6,#fff1f2)] text-rose-600">
                                     <i class="fa-solid fa-file-lines"></i>
                                 </div>
                                 <div class="min-w-0">
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <p class="truncate text-sm font-bold text-slate-900" x-text="doc.type"></p>
+                                        <p class="truncate text-sm font-bold leading-5 text-slate-900" x-text="doc.type"></p>
                                         <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
                                             Uploaded
                                         </span>
                                     </div>
-                                    <p class="mt-1 break-all text-xs text-slate-500" x-text="doc.filename"></p>
+                                    <p class="mt-1 break-all text-xs text-slate-500 underline-offset-2" x-text="doc.filename"></p>
                                     <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
                                         <span class="rounded-full bg-slate-100 px-2.5 py-1" x-text="doc.formatted_size ?? doc.size"></span>
                                         <span class="rounded-full bg-slate-100 px-2.5 py-1" x-text="doc.formatted_created_at ?? 'No upload date'"></span>
@@ -193,10 +262,10 @@
 
                             <div class="flex shrink-0 items-center gap-2">
                                 <a
-                                    class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-emerald-200 hover:text-emerald-700"
-                                    :href="`/storage/${doc.filepath}`"
-                                    :download="doc.filename"
-                                    title="Download document"
+                                class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                                :href="`/storage/${doc.filepath}`"
+                                :download="doc.filename"
+                                title="Download document"
                                 >
                                     <i class="fa-solid fa-download"></i>
                                 </a>
@@ -206,14 +275,14 @@
                 </template>
 
                 <div
-                    x-show="!selectedEmployee?.applicant?.documents?.length"
-                    class="rounded-[1.25rem] border border-dashed border-slate-300 bg-white px-5 py-10 text-center"
+                    x-show="displayedApplicantDocuments().length === 0"
+                    class="rounded-[1.25rem] border border-dashed border-slate-300 bg-white px-5 py-10 text-center shadow-sm"
                 >
                     <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
                         <i class="fa-regular fa-folder-open text-xl"></i>
                     </div>
-                    <p class="mt-4 text-sm font-semibold text-slate-700">No documents uploaded.</p>
-                    <p class="mt-1 text-xs text-slate-500">Upload the first file from the panel on the left.</p>
+                    <p class="mt-4 text-sm font-semibold text-slate-700">No files inside this folder.</p>
+                    <p class="mt-1 text-xs text-slate-500">Select another folder or wait for uploaded files to appear here.</p>
                 </div>
             </div>
         </div>

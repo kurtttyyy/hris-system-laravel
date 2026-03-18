@@ -14,6 +14,8 @@ use App\Models\Government;
 use App\Models\Interviewer;
 use App\Models\License;
 use App\Models\LeaveApplication;
+use App\Models\LoadsRecord;
+use App\Models\LoadsUpload;
 use App\Models\OpenPosition;
 use App\Models\PayslipRecord;
 use App\Models\PayslipUpload;
@@ -415,6 +417,99 @@ class AdministratorStoreController extends Controller
         return back()->with('success', 'Payslip file uploaded successfully.');
     }
 
+    public function store_loads_file(Request $request)
+    {
+        $request->validate([
+            'loads_file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        $file = $request->file('loads_file');
+        if (!$file || !$file->isValid()) {
+            return back()->withErrors(['loads_file' => 'Invalid file upload.']);
+        }
+
+        $originalName = $file->getClientOriginalName();
+        $fileName = time().'_'.$originalName;
+        $filePath = $file->storeAs('loads_uploads', $fileName, 'public');
+
+        LoadsUpload::create([
+            'original_name' => $originalName,
+            'file_path' => $filePath,
+            'file_size' => $file->getSize(),
+            'status' => 'Uploaded',
+            'processed_rows' => 0,
+            'uploaded_at' => Carbon::now('Asia/Manila'),
+        ]);
+
+        return back()->with('success', 'Loads file uploaded successfully.');
+    }
+
+    public function delete_loads_file($id)
+    {
+        $loadsFile = LoadsUpload::findOrFail($id);
+
+        if (!empty($loadsFile->file_path) && Storage::disk('public')->exists($loadsFile->file_path)) {
+            Storage::disk('public')->delete($loadsFile->file_path);
+        }
+
+        $loadsFile->delete();
+
+        return back()->with('success', 'Loads file removed successfully.');
+    }
+
+    public function scan_loads_file($id, Request $request)
+    {
+        try {
+            $loadsFile = LoadsUpload::findOrFail($id);
+
+            $attrs = $request->validate([
+                'status' => 'nullable|string',
+            ]);
+
+            $status = trim((string) ($attrs['status'] ?? 'Scanned'));
+            if ($status === '') {
+                $status = 'Scanned';
+            }
+
+            $extension = strtolower((string) pathinfo($loadsFile->file_path, PATHINFO_EXTENSION));
+            if ($extension === 'xls') {
+                throw new \RuntimeException('Scanning .xls files is not supported yet. Please upload .xlsx or .csv.');
+            }
+
+            $absolutePath = Storage::disk('public')->path($loadsFile->file_path);
+            $rows = $this->extractLoadsRowsFromExcel($absolutePath, $extension);
+            $records = $this->buildLoadsRecords($rows, $loadsFile);
+            $processedRows = 0;
+
+            DB::transaction(function () use ($loadsFile, $status, $records, &$processedRows) {
+                if (!empty($records)) {
+                    LoadsRecord::insert($records);
+                }
+
+                $processedRows = count($records);
+                $loadsFile->update([
+                    'status' => $status,
+                    'processed_rows' => $processedRows,
+                ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Loads file scanned successfully.',
+                'status' => $loadsFile->status,
+                'upload_id' => $loadsFile->id,
+                'processed_rows' => $processedRows,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error scanning loads file: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error scanning loads file: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function scan_payslip_file($id, Request $request)
     {
         try {
@@ -488,7 +583,26 @@ class AdministratorStoreController extends Controller
         throw new \RuntimeException('Only .xlsx and .csv files are supported.');
     }
 
-    private function extractRowsFromXlsx(
+    private function extractLoadsRowsFromExcel(string $absolutePath, string $extension): array
+    {
+        $extension = strtolower($extension);
+
+        if ($extension === 'xlsx') {
+            $rows = $this->extractRawRowsFromXlsx($absolutePath);
+        } elseif ($extension === 'csv') {
+            $rows = $this->extractRawRowsFromCsv($absolutePath);
+        } else {
+            throw new \RuntimeException('Only .xlsx and .csv files are supported for loads scanning.');
+        }
+
+        if (count($rows) < 2) {
+            return [];
+        }
+
+        return $this->mapRowsUsingGenericHeader($rows);
+    }
+
+    private function extractRawRowsFromXlsx(
         string $absolutePath,
         ?string $preferredSheetName = null,
         bool $strictPreferredSheet = false
@@ -509,7 +623,6 @@ class AdministratorStoreController extends Controller
                         continue;
                     }
 
-                    // Rich text values are split under r/t nodes.
                     $richText = '';
                     if (isset($item->r)) {
                         foreach ($item->r as $run) {
@@ -587,21 +700,10 @@ class AdministratorStoreController extends Controller
             }
         }
 
-        if (count($rows) < 2) {
-            return [];
-        }
-
-        $mapped = $this->mapRowsUsingDetectedHeader($rows);
-        if (!empty($mapped)) {
-            return $mapped;
-        }
-
-        // Fallback for payslip-style sheets where data is stored as label/value pairs
-        // instead of a strict tabular header row.
-        return $this->extractPayslipRowsFromLabelValueGrid($rows);
+        return $rows;
     }
 
-    private function extractRowsFromCsv(string $absolutePath): array
+    private function extractRawRowsFromCsv(string $absolutePath): array
     {
         if (!is_readable($absolutePath)) {
             return [];
@@ -633,6 +735,101 @@ class AdministratorStoreController extends Controller
         }
 
         fclose($handle);
+
+        return $rows;
+    }
+
+    private function mapRowsUsingGenericHeader(array $rows): array
+    {
+        $headerIndex = null;
+        $sample = array_slice($rows, 0, 15);
+
+        foreach ($sample as $index => $row) {
+            $values = array_values(array_filter(array_map(
+                fn ($value) => trim((string) $value),
+                $row
+            ), fn ($value) => $value !== ''));
+
+            if (count($values) >= 2) {
+                $headerIndex = $index;
+                break;
+            }
+        }
+
+        if ($headerIndex === null) {
+            return [];
+        }
+
+        $headerRow = $rows[$headerIndex];
+        $dataRows = array_slice($rows, $headerIndex + 1);
+        $headers = [];
+        $usedHeaders = [];
+
+        foreach ($headerRow as $column => $headerText) {
+            $headerKey = $this->normalizeHeader((string) $headerText);
+            if ($headerKey === '') {
+                $headerKey = 'column_'.strtolower($column);
+            }
+
+            $headerKey = $this->makeUniqueHeaderKey($headerKey, $usedHeaders);
+            $usedHeaders[$headerKey] = true;
+            $headers[$column] = $headerKey;
+        }
+
+        $mapped = [];
+        foreach ($dataRows as $row) {
+            $item = [];
+            foreach ($headers as $column => $header) {
+                $item[$header] = $row[$column] ?? null;
+            }
+
+            if (!empty(array_filter($item, fn ($value) => $value !== null && $value !== ''))) {
+                $mapped[] = $item;
+            }
+        }
+
+        return $mapped;
+    }
+
+    private function makeUniqueHeaderKey(string $headerKey, array $usedHeaders): string
+    {
+        if (!isset($usedHeaders[$headerKey])) {
+            return $headerKey;
+        }
+
+        $suffix = 2;
+        while (isset($usedHeaders[$headerKey.'_'.$suffix])) {
+            $suffix++;
+        }
+
+        return $headerKey.'_'.$suffix;
+    }
+
+    private function extractRowsFromXlsx(
+        string $absolutePath,
+        ?string $preferredSheetName = null,
+        bool $strictPreferredSheet = false
+    ): array
+    {
+        $rows = $this->extractRawRowsFromXlsx($absolutePath, $preferredSheetName, $strictPreferredSheet);
+
+        if (count($rows) < 2) {
+            return [];
+        }
+
+        $mapped = $this->mapRowsUsingDetectedHeader($rows);
+        if (!empty($mapped)) {
+            return $mapped;
+        }
+
+        // Fallback for payslip-style sheets where data is stored as label/value pairs
+        // instead of a strict tabular header row.
+        return $this->extractPayslipRowsFromLabelValueGrid($rows);
+    }
+
+    private function extractRowsFromCsv(string $absolutePath): array
+    {
+        $rows = $this->extractRawRowsFromCsv($absolutePath);
 
         if (count($rows) < 2) {
             return [];
@@ -917,6 +1114,126 @@ class AdministratorStoreController extends Controller
         }
 
         return $records;
+    }
+
+    private function buildLoadsRecords(array $rows, LoadsUpload $loadsFile): array
+    {
+        $records = [];
+        $now = now();
+        $employeeNameLookup = $this->buildLoadsEmployeeNameLookup();
+
+        foreach ($rows as $row) {
+            if (!is_array($row) || empty(array_filter($row, fn ($value) => $value !== null && $value !== ''))) {
+                continue;
+            }
+
+            $employeeName = $this->pickValue($row, ['employee_name', 'instnm', 'instructor_name', 'faculty_name', 'full_name']);
+            $classCd = $this->pickValue($row, ['class_cd', 'classcd', 'class_code', 'class']);
+            $sectionCd = $this->pickValue($row, ['section_cd', 'sectioncd', 'section_code', 'section']);
+            $code = $this->pickValue($row, ['code', 'subject_code']);
+            $courseNo = $this->pickValue($row, ['course_no', 'courseno', 'course_number', 'course']);
+            $subjectName = $this->pickValue($row, ['subject_name', 'name', 'subject', 'descriptive_title', 'title']);
+            $schedule = $this->pickValue($row, ['schedule', 'schnm', 'day_time', 'time_schedule']);
+            $units = $this->pickValue($row, ['units', 'sizeval', 'total_units']);
+            $lecUnits = $this->pickValue($row, ['lec_units', 'lecunits', 'lecture_units', 'lec']);
+            $labUnits = $this->pickValue($row, ['lab_units', 'labunits', 'laboratory_units', 'lab']);
+            $hours = $this->pickValue($row, ['hours', 'contact_hours', 'hrs']);
+
+            if (
+                !$classCd &&
+                !$sectionCd &&
+                !$code &&
+                !$courseNo &&
+                !$subjectName &&
+                !$schedule &&
+                !$units &&
+                !$lecUnits &&
+                !$labUnits &&
+                !$hours
+            ) {
+                continue;
+            }
+
+            $normalizedEmployeeName = $this->normalizeLoadsEmployeeName($employeeName);
+            if ($normalizedEmployeeName === null || !isset($employeeNameLookup[$normalizedEmployeeName])) {
+                continue;
+            }
+
+            $records[] = [
+                'employee_name' => $employeeName ? trim((string) $employeeName) : null,
+                'class_cd' => $classCd ? trim((string) $classCd) : null,
+                'section_cd' => $sectionCd ? trim((string) $sectionCd) : null,
+                'code' => $code ? trim((string) $code) : null,
+                'course_no' => $courseNo ? trim((string) $courseNo) : null,
+                'subject_name' => $subjectName ? trim((string) $subjectName) : null,
+                'schedule' => $schedule ? trim((string) $schedule) : null,
+                'units' => $units ? trim((string) $units) : null,
+                'lec_units' => $lecUnits ? trim((string) $lecUnits) : null,
+                'lab_units' => $labUnits ? trim((string) $labUnits) : null,
+                'hours' => $hours ? trim((string) $hours) : null,
+                'scanned_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }
+
+        return $records;
+    }
+
+    private function buildLoadsEmployeeNameLookup(): array
+    {
+        $lookup = [];
+
+        User::query()
+            ->select(['first_name', 'middle_name', 'last_name', 'role'])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->chunk(500, function ($users) use (&$lookup) {
+                foreach ($users as $user) {
+                    foreach ($this->buildLoadsEmployeeNameVariants($user->first_name, $user->middle_name, $user->last_name) as $variant) {
+                        $normalized = $this->normalizeLoadsEmployeeName($variant);
+                        if ($normalized !== null) {
+                            $lookup[$normalized] = true;
+                        }
+                    }
+                }
+            });
+
+        return $lookup;
+    }
+
+    private function buildLoadsEmployeeNameVariants($firstName, $middleName, $lastName): array
+    {
+        $first = trim((string) ($firstName ?? ''));
+        $middle = trim((string) ($middleName ?? ''));
+        $last = trim((string) ($lastName ?? ''));
+
+        if ($first === '' && $middle === '' && $last === '') {
+            return [];
+        }
+
+        $middleInitial = $middle !== '' ? strtoupper(substr($middle, 0, 1)) : '';
+        $variants = array_filter([
+            trim(implode(' ', array_filter([$first, $middle, $last]))),
+            trim(implode(' ', array_filter([$first, $last]))),
+            $last !== '' ? trim($last.', '.implode(' ', array_filter([$first, $middle]))) : '',
+            $last !== '' ? trim($last.', '.implode(' ', array_filter([$first, $middleInitial !== '' ? $middleInitial.'.' : '']))) : '',
+            $last !== '' ? trim($last.', '.implode(' ', array_filter([$first, $middleInitial]))) : '',
+        ], fn ($value) => trim((string) $value) !== '');
+
+        return array_values(array_unique($variants));
+    }
+
+    private function normalizeLoadsEmployeeName($value): ?string
+    {
+        $name = trim((string) ($value ?? ''));
+        if ($name === '') {
+            return null;
+        }
+
+        $name = preg_replace('/\s+/', ' ', $name);
+        $name = str_replace(['.', ','], ['', ','], $name);
+
+        return strtolower(trim($name));
     }
 
     private function buildKnownEmployeeIdLookupFromRows(array $rows): array
@@ -1923,6 +2240,30 @@ class AdministratorStoreController extends Controller
             }
             return $text;
         };
+        $parseServiceRemarkAction = static function ($value) use ($normalize): array {
+            $text = $normalize($value);
+            if ($text === null) {
+                return ['action' => null, 'title' => null];
+            }
+
+            $action = null;
+            if (preg_match('/\bpromoted\b/i', $text) === 1) {
+                $action = 'promoted';
+            } elseif (preg_match('/\b(resigned|resign)\b/i', $text) === 1) {
+                $action = 'resigned';
+            }
+
+            if ($action === null) {
+                return ['action' => null, 'title' => null];
+            }
+
+            $title = null;
+            if (preg_match('/\b(?:promoted|resigned|resign)\s+as\s+(.+?)\s*$/i', $text, $matches) === 1) {
+                $title = $normalize($matches[1] ?? null);
+            }
+
+            return ['action' => $action, 'title' => $title];
+        };
 
         $normalizeRow = static function (array $row) use ($normalize): array {
             return [
@@ -1953,35 +2294,91 @@ class AdministratorStoreController extends Controller
 
         $rowCollection = collect($serviceRows);
         $firstRow = $rowCollection->first() ?? [];
-        $latestRow = $rowCollection
+        $latestActionableRow = $rowCollection
             ->reverse()
             ->first(function (array $row) {
                 return filled($row['designation'] ?? null)
                     || filled($row['status'] ?? null)
                     || filled($row['salary'] ?? null)
-                    || filled($row['office'] ?? null);
+                    || filled($row['office'] ?? null)
+                    || filled($row['remarks'] ?? null);
             }) ?? ($firstRow ?? []);
+        $latestCurrentRow = $rowCollection
+            ->reverse()
+            ->first(function (array $row) use ($parseServiceRemarkAction) {
+                $remark = $parseServiceRemarkAction($row['remarks'] ?? null);
+                if (($remark['action'] ?? null) === 'resigned') {
+                    return false;
+                }
+
+                return filled($remark['title'] ?? null)
+                    || filled($row['designation'] ?? null)
+                    || filled($row['status'] ?? null)
+                    || filled($row['salary'] ?? null)
+                    || filled($row['office'] ?? null);
+            }) ?? ($latestActionableRow ?? $firstRow ?? []);
+        $latestRemarkAction = $parseServiceRemarkAction($latestActionableRow['remarks'] ?? null);
+        $currentRemarkAction = $parseServiceRemarkAction($latestCurrentRow['remarks'] ?? null);
+        $latestResolvedTitle = $currentRemarkAction['title']
+            ?? ($latestCurrentRow['designation'] ?? null)
+            ?? ($latestActionableRow['designation'] ?? null);
 
         $effectiveDateHired = $attrs['date_hired'] ?? ($firstRow['from_date'] ?? null);
         $effectivePosition = $attrs['position']
-            ?? ($latestRow['designation'] ?? null)
+            ?? $latestResolvedTitle
             ?? ($firstRow['designation'] ?? null);
         $effectiveDepartment = $attrs['department']
-            ?? ($latestRow['office'] ?? null)
+            ?? ($latestCurrentRow['office'] ?? null)
+            ?? ($latestActionableRow['office'] ?? null)
             ?? ($firstRow['office'] ?? null);
-        $effectiveClassification = $normalizeServiceStatus($latestRow['status'] ?? ($firstRow['status'] ?? null));
-        $effectiveSalary = $normalize($latestRow['salary'] ?? ($firstRow['salary'] ?? null));
+        $effectiveClassification = $normalizeServiceStatus($latestCurrentRow['status'] ?? ($firstRow['status'] ?? null));
+        $effectiveSalary = $normalize($latestCurrentRow['salary'] ?? ($firstRow['salary'] ?? null));
         $effectiveJobRole = null;
         $serviceDesignationText = $normalize($effectivePosition);
         $effectivePositionText = $serviceDesignationText;
         $effectiveDepartmentHead = null;
+        $effectiveAccountStatus = ($latestRemarkAction['action'] ?? null) === 'resigned' ? 'Inactive' : null;
         $designationNormalized = $serviceDesignationText !== null ? strtolower($serviceDesignationText) : null;
+        $isVicePresidentDesignation = $designationNormalized !== null
+            && preg_match('/(^|[^a-z])(vp|v\.p\.|vice president)([^a-z]|$)/i', $serviceDesignationText) === 1;
+        $isTeachingHeadDesignation = $designationNormalized !== null && (
+            str_contains($designationNormalized, 'vice dean')
+            || preg_match('/(^|[^a-z])head([^a-z]|$)/i', $serviceDesignationText) === 1
+        );
+        $isNonTeachingHeadDesignation = $designationNormalized !== null && (
+            str_contains($designationNormalized, 'legal counsel')
+            || str_contains($designationNormalized, 'director')
+            || preg_match('/(^|[^a-z])(oic|o\.i\.c\.|office in charge)([^a-z]|$)/i', $serviceDesignationText) === 1
+            || str_contains($designationNormalized, 'school treasurer')
+            || str_contains($designationNormalized, 'school accountant')
+            || str_contains($designationNormalized, 'chief librarian')
+            || str_contains($designationNormalized, 'guidance counselor')
+            || str_contains($designationNormalized, 'guidance counsellor')
+            || str_contains($designationNormalized, 'focal person')
+            || str_contains($designationNormalized, 'coordinator')
+            || str_contains($designationNormalized, 'principal')
+            || str_contains($designationNormalized, 'building & property custodian')
+            || str_contains($designationNormalized, 'building and property custodian')
+            || str_contains($designationNormalized, 'building property custodian')
+            || str_contains($designationNormalized, 'supervisor')
+        );
         if (in_array($designationNormalized, ['president', 'dean'], true)) {
             $effectiveDepartmentHead = 'Approved';
         }
         if ($designationNormalized === 'president') {
             $effectiveJobRole = 'President';
             $effectivePositionText = 'Dean';
+        }
+        if ($isVicePresidentDesignation) {
+            $effectiveJobRole = $serviceDesignationText;
+            $effectivePositionText = 'Dean';
+            $effectiveDepartmentHead = 'Approved';
+        }
+        if ($isNonTeachingHeadDesignation) {
+            $effectiveDepartmentHead = 'Approved';
+        }
+        if ($isTeachingHeadDesignation) {
+            $effectiveDepartmentHead = 'Approved';
         }
         $hasClassificationSalaryColumn = Schema::hasColumn('employees', 'classification_salary');
 
@@ -1996,6 +2393,7 @@ class AdministratorStoreController extends Controller
             'department' => $normalize($effectiveDepartment) ?? $normalize($user->department),
             'job_role' => $effectiveJobRole ?? $user->job_role,
             'department_head' => $effectiveDepartmentHead ?? $user->department_head,
+            'account_status' => $effectiveAccountStatus ?? $user->account_status,
         ]);
 
         $employee = $existingEmployeeForHistory;
@@ -2007,6 +2405,7 @@ class AdministratorStoreController extends Controller
             'classification' => $normalize($effectiveClassification)
                 ?? ($employee?->classification ?? null),
             'employement_date' => $effectiveDateHired ?? ($employee?->employement_date ?? null),
+            'service_record_rows' => $serviceRows,
         ];
         if ($hasClassificationSalaryColumn) {
             $employeePayload['classification_salary'] = $effectiveSalary
@@ -2029,6 +2428,7 @@ class AdministratorStoreController extends Controller
                 'department' => $employeePayload['department'] ?? '-',
                 'position' => $employeePayload['position'] ?? '-',
                 'classification' => $employeePayload['classification'] ?? 'Probationary',
+                'service_record_rows' => $serviceRows,
             ];
             if ($hasClassificationSalaryColumn) {
                 $employeeCreatePayload['classification_salary'] = $effectiveSalary;
@@ -2145,6 +2545,7 @@ class AdministratorStoreController extends Controller
                 'department' => $effectiveDepartmentText ?? $user->department,
                 'job_role' => $effectiveJobRole ?? $user->job_role,
                 'department_head' => $effectiveDepartmentHead ?? $user->department_head,
+                'account_status' => $effectiveAccountStatus ?? $user->account_status,
             ]);
 
         $employeeSyncPayload = [
@@ -2656,16 +3057,85 @@ class AdministratorStoreController extends Controller
             return 'Inactive';
         }
 
+        $today = Carbon::today();
         $hasApprovedLeave = LeaveApplication::query()
             ->where('user_id', $userId)
             ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
-            ->exists();
+            ->get()
+            ->contains(fn (LeaveApplication $leaveApplication) => $this->isLeaveApplicationActiveOnDate($leaveApplication, $today));
 
         if ($hasApprovedLeave) {
             return 'On Leave';
         }
 
         return 'Active';
+    }
+
+    private function isLeaveApplicationActiveOnDate(LeaveApplication $leaveApplication, ?Carbon $targetDate = null): bool
+    {
+        [$startDate, $endDate] = $this->resolveLeaveApplicationDateRange($leaveApplication);
+        if (!$startDate || !$endDate) {
+            return false;
+        }
+
+        $comparisonDate = ($targetDate ?? Carbon::today())->copy()->startOfDay();
+        return $comparisonDate->betweenIncluded($startDate, $endDate);
+    }
+
+    private function resolveLeaveApplicationDateRange(LeaveApplication $leaveApplication): array
+    {
+        $parseDate = static function ($value): ?Carbon {
+            $text = trim((string) ($value ?? ''));
+            if ($text === '') {
+                return null;
+            }
+
+            foreach (['Y-m-d', 'm/d/Y', 'n/j/Y'] as $format) {
+                try {
+                    return Carbon::createFromFormat($format, $text)->startOfDay();
+                } catch (\Throwable $e) {
+                }
+            }
+
+            try {
+                return Carbon::parse($text)->startOfDay();
+            } catch (\Throwable $e) {
+                return null;
+            }
+        };
+
+        $inclusiveDates = trim((string) ($leaveApplication->inclusive_dates ?? ''));
+        $matchedDates = [];
+        if ($inclusiveDates !== '') {
+            preg_match_all('/\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\/\d{1,2}\/\d{4}\b/', $inclusiveDates, $matches);
+            $matchedDates = $matches[0] ?? [];
+        }
+
+        $startDate = isset($matchedDates[0]) ? $parseDate($matchedDates[0]) : null;
+        $endDate = isset($matchedDates[1]) ? $parseDate($matchedDates[1]) : null;
+
+        if (!$startDate) {
+            $startDate = $parseDate($leaveApplication->filing_date) ?: $parseDate($leaveApplication->created_at);
+        }
+
+        $days = (float) ($leaveApplication->number_of_working_days ?? 0);
+        if ($days <= 0) {
+            $days = max(
+                (float) ($leaveApplication->days_with_pay ?? 0),
+                (float) ($leaveApplication->applied_total ?? 0)
+            );
+        }
+
+        $rangeDays = max((int) ceil($days), 1);
+        if (!$endDate && $startDate) {
+            $endDate = $startDate->copy()->addDays($rangeDays - 1);
+        }
+
+        if ($startDate && $endDate && $endDate->lt($startDate)) {
+            [$startDate, $endDate] = [$endDate, $startDate];
+        }
+
+        return [$startDate, $endDate];
     }
 
     private function canApplyLeaveAttendanceOverride(AttendanceRecord $record): bool

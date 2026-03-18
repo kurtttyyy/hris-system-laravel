@@ -20,13 +20,16 @@
                     </p>
                     <div class="mt-3 flex flex-wrap items-center gap-3 text-xs font-medium text-emerald-50/80">
                         <span class="rounded-full border border-white/10 bg-white/8 px-3 py-1.5">{{ now()->format('l, F j, Y') }}</span>
-                        <span
-                            class="rounded-full border border-white/10 bg-white/8 px-3 py-1.5"
-                            x-text="`${employeeIndex.filter(emp => matchesDepartment(emp.department) && matchesSearch(emp.name) && matchesStatus(emp.status)).length} total records`"
-                        ></span>
                         <button
                             type="button"
-                            @click="viewMode = viewMode === 'table' ? 'cards' : 'table'"
+                            @click="showDepartmentSummary = true; $nextTick(() => document.getElementById('department-staffing-summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))"
+                            class="rounded-full border border-white/10 bg-white/8 px-3 py-1.5 transition hover:border-emerald-300/40 hover:bg-white/15"
+                        >
+                            Total Record
+                        </button>
+                        <button
+                            type="button"
+                            @click="showDepartmentSummary = false; viewMode = viewMode === 'table' ? 'cards' : 'table'"
                             class="rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-emerald-50 transition hover:border-emerald-300/40 hover:bg-white/15"
                             x-text="viewMode === 'table' ? 'View Cards' : 'View Table'"
                         ></button>

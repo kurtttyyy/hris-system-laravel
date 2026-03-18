@@ -33,6 +33,7 @@ class Employee extends Model
         'classification',
         'classification_salary',
         'job_type',
+        'service_record_rows',
         'emergency_contact_name',
         'emergency_contact_relationship',
         'emergency_contact_number',
@@ -41,6 +42,7 @@ class Employee extends Model
     protected $casts = [
         'employement_date' => 'date',
         'birthday' => 'date',
+        'service_record_rows' => 'array',
     ];
 
     protected $appends = [

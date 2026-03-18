@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\AttendanceUpload;
 use App\Models\AttendanceRecord;
 use App\Models\Applicant;
+use App\Models\ApplicantDocument;
 use App\Models\Employee;
 use App\Models\GuestLog;
 use App\Models\Interviewer;
+use App\Models\LoadsRecord;
+use App\Models\LoadsUpload;
 use App\Models\OpenPosition;
 use App\Models\PayslipRecord;
 use App\Models\PayslipUpload;
@@ -20,6 +23,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class AdministratorPageController extends Controller
 {
@@ -1993,6 +1997,28 @@ class AdministratorPageController extends Controller
         return view('Admin.Matrix.adminTeachingMatrix', compact('teachingEmployees'));
     }
 
+    public function display_loads()
+    {
+        $loadsFiles = LoadsUpload::query()
+            ->orderByDesc('uploaded_at')
+            ->orderByDesc('id')
+            ->get();
+
+        $loadsSummary = LoadsRecord::query()
+            ->selectRaw('employee_name')
+            ->selectRaw('COUNT(subject_name) as subject_count')
+            ->selectRaw('SUM(COALESCE(CAST(units as DECIMAL(10,2)), 0)) as total_units')
+            ->selectRaw('SUM(COALESCE(CAST(lec_units as DECIMAL(10,2)), 0)) as total_lec_units')
+            ->selectRaw('SUM(COALESCE(CAST(lab_units as DECIMAL(10,2)), 0)) as total_lab_units')
+            ->whereNotNull('employee_name')
+            ->where('employee_name', '!=', '')
+            ->groupBy('employee_name')
+            ->orderBy('employee_name')
+            ->get();
+
+        return view('Admin.adminLoads', compact('loadsFiles', 'loadsSummary'));
+    }
+
     public function display_applicant(){
         $applicant = Applicant::with(
             'position:id,title,department,employment,collage_name,work_mode,job_description,responsibilities,requirements,experience_level,location,skills,benifits,job_type,one,two,passionate'
@@ -2252,12 +2278,36 @@ class AdministratorPageController extends Controller
                 ])
                 ->where('type', 'not like', $requiredPrefix.'%')
                 ->where('type', '!=', $noticeType)
-                ->where('type', '!=', $folderType)
                 ->orderByDesc('created_at');
             },
         ])->where('role', 'Employee')->findOrFail($id);
 
-        $documents = $employee->applicant?->documents?->values() ?? collect();
+        $storedItems = $employee->applicant?->documents?->values() ?? collect();
+        $folders = $storedItems
+            ->filter(fn (ApplicantDocument $document) => $this->isFolderDocumentRecord($document))
+            ->map(function (ApplicantDocument $document) use ($storedItems) {
+                $folderKey = $this->folderKeyFromFolderRecord($document);
+
+                return [
+                    'key' => $folderKey,
+                    'name' => trim((string) $document->filename),
+                    'count' => $storedItems
+                        ->reject(fn (ApplicantDocument $item) => $this->isFolderDocumentRecord($item))
+                        ->filter(fn (ApplicantDocument $item) => $this->folderKeyFromFileRecord($item) === $folderKey)
+                        ->count(),
+                ];
+            })
+            ->filter(fn (array $folder) => $folder['key'] !== '')
+            ->sortBy('name')
+            ->values();
+
+        $allDocuments = $storedItems
+            ->reject(fn (ApplicantDocument $document) => $this->isFolderDocumentRecord($document))
+            ->values();
+        $documents = $allDocuments;
+        $unfiledCount = $allDocuments
+            ->filter(fn (ApplicantDocument $document) => $this->folderKeyFromFileRecord($document) === '')
+            ->count();
         $applicantId = (int) ($employee->applicant?->id ?? 0);
         $requiredConfig = $this->getRequiredDocumentConfigForApplicant($applicantId);
         $requiredDocuments = collect($requiredConfig['required_documents'] ?? [])
@@ -2285,6 +2335,10 @@ class AdministratorPageController extends Controller
 
         return response()->json([
             'documents' => $documents,
+            'all_documents' => $allDocuments,
+            'folders' => $folders,
+            'unfiled_count' => $unfiledCount,
+            'total_documents' => $allDocuments->count(),
             'required_documents' => $requiredDocuments,
             'required_documents_text' => implode("\n", $requiredDocuments),
             'document_notice' => (string) ($requiredConfig['document_notice'] ?? ''),
@@ -2536,6 +2590,36 @@ class AdministratorPageController extends Controller
         }
 
         return preg_replace('/\s+/', ' ', $normalized);
+    }
+
+    private function isFolderDocumentRecord(ApplicantDocument $document): bool
+    {
+        return trim((string) ($document->type ?? '')) === '__FOLDER__';
+    }
+
+    private function folderKeyFromFolderRecord(ApplicantDocument $document): string
+    {
+        $path = trim(str_replace('\\', '/', (string) ($document->filepath ?? '')), '/');
+        if (str_starts_with($path, 'system/folders/')) {
+            return trim((string) Str::after($path, 'system/folders/'));
+        }
+
+        return '';
+    }
+
+    private function folderKeyFromFileRecord(ApplicantDocument $document): string
+    {
+        $path = trim(str_replace('\\', '/', (string) ($document->filepath ?? '')), '/');
+        if (!preg_match('#^uploads/applicant-documents/\d+/([^/]+)/#', $path, $matches)) {
+            return '';
+        }
+
+        $folderKey = trim((string) ($matches[1] ?? ''));
+        if ($folderKey === '' || $folderKey === 'unfiled') {
+            return '';
+        }
+
+        return $folderKey;
     }
 
 }

@@ -188,6 +188,15 @@
           <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Calendar</span>
         </a>
 
+        <a href="{{ route('admin.adminLoads') }}"
+           class="flex items-center gap-0 group-hover:gap-2 px-4 py-2 rounded-md text-sm justify-center group-hover:justify-start
+           {{ request()->routeIs('admin.adminLoads')
+                ? 'bg-green-600 text-white'
+                : 'text-white hover:bg-green-600/30' }}">
+          <i class="fa-solid fa-book-open-reader"></i>
+          <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Loads</span>
+        </a>
+
         <details class="space-y-1 matrix-menu">
           <summary
             class="w-full flex items-center justify-center group-hover:justify-between px-4 py-2 rounded-md text-sm transition text-white hover:bg-green-600/30 cursor-pointer"

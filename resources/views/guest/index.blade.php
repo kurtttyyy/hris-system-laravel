@@ -155,6 +155,21 @@
 @endif
 
 <style>
+    .careers-page {
+        --careers-ink: #0f172a;
+        --careers-muted: #5b6475;
+        --careers-line: rgba(15, 23, 42, 0.08);
+        --careers-surface: rgba(255, 255, 255, 0.9);
+        --careers-brand: #157347;
+        --careers-brand-strong: #0d5c38;
+        --careers-accent: #f4c542;
+        --careers-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+        background:
+            radial-gradient(circle at top left, rgba(21, 115, 71, 0.12), transparent 28%),
+            radial-gradient(circle at top right, rgba(244, 197, 66, 0.2), transparent 24%),
+            linear-gradient(180deg, #eef7f0 0%, #f8fafc 22%, #ffffff 100%);
+    }
+
     #jobList .hover-card:hover {
         border-color: #22c55e !important;
         box-shadow:
@@ -162,10 +177,501 @@
             0 0 0 6px rgba(34, 197, 94, 0.30),
             0 0 34px rgba(34, 197, 94, 0.42) !important;
     }
+
+    .careers-hero {
+        min-height: 560px;
+        padding: 6rem 0 7rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .careers-hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(115deg, rgba(4, 18, 16, 0.85), rgba(5, 76, 48, 0.6) 45%, rgba(11, 18, 32, 0.78));
+        z-index: 1;
+    }
+
+    .careers-hero::after {
+        content: "";
+        position: absolute;
+        inset: auto auto 2.5rem 6%;
+        width: 16rem;
+        height: 16rem;
+        border-radius: 50%;
+        background: rgba(244, 197, 66, 0.18);
+        filter: blur(40px);
+        z-index: 1;
+    }
+
+    .hero-backdrop {
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 65%),
+            linear-gradient(90deg, rgba(244, 197, 66, 0.1), transparent 40%);
+        z-index: 2;
+        pointer-events: none;
+    }
+
+    .hero-shell {
+        position: relative;
+        z-index: 3;
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 2.25rem;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 2rem;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+        backdrop-filter: blur(10px);
+    }
+
+    .hero-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.55rem 1rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: #fff3c4;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+    }
+
+    .hero-kicker::before {
+        content: "";
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: var(--careers-accent);
+        box-shadow: 0 0 0 6px rgba(244, 197, 66, 0.18);
+    }
+
+    .hero-title {
+        margin-top: 1.35rem;
+        margin-bottom: 1rem;
+        font-size: clamp(2.5rem, 5vw, 4.6rem);
+        line-height: 1.04;
+        font-weight: 800;
+        color: #ffffff;
+        text-shadow: 0 8px 30px rgba(0, 0, 0, 0.28);
+    }
+
+    .hero-highlight {
+        color: #ffe082;
+    }
+
+    .hero-copy {
+        max-width: 640px;
+        margin: 0 auto 1.8rem;
+        font-size: 1.05rem;
+        line-height: 1.8;
+        color: rgba(255, 255, 255, 0.88);
+    }
+
+    .hero-search-card {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 0.9rem;
+        border-radius: 1.5rem;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow: 0 20px 55px rgba(0, 0, 0, 0.18);
+        backdrop-filter: blur(10px);
+    }
+
+    .hero-metrics {
+        margin-top: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.85rem;
+    }
+
+    .hero-metric {
+        padding: 0.8rem 1rem;
+        min-width: 140px;
+        border-radius: 1.15rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #fff;
+        text-align: left;
+    }
+
+    .hero-metric strong {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 1.15rem;
+        font-weight: 800;
+    }
+
+    .hero-metric-rating {
+        position: relative;
+        display: inline-block;
+        font-size: 0.9rem;
+        line-height: 1;
+        letter-spacing: 0.08em;
+    }
+
+    .hero-metric-rating-base {
+        color: rgba(255, 255, 255, 0.28) !important;
+    }
+
+    .hero-metric-rating-fill {
+        position: absolute;
+        inset: 0 auto 0 0;
+        overflow: hidden;
+        color: #facc15 !important;
+        text-shadow: 0 0 10px rgba(250, 204, 21, 0.35);
+        white-space: nowrap;
+    }
+
+    .hero-metric span {
+        display: block;
+        margin-top: 0.15rem;
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 0.82rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .filter-panel {
+        position: relative;
+        z-index: 4;
+        max-width: 1160px;
+        margin: -3.7rem auto 0;
+        padding: 1.4rem;
+        border-radius: 1.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.75);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.94));
+        box-shadow: var(--careers-shadow);
+    }
+
+    .filter-intro {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .filter-intro h2 {
+        margin: 0;
+        color: var(--careers-ink);
+        font-size: 1.35rem;
+        font-weight: 800;
+    }
+
+    .filter-intro p {
+        margin: 0.35rem 0 0;
+        color: var(--careers-muted);
+        font-size: 0.94rem;
+    }
+
+    .filter-chip {
+        padding: 0.55rem 0.95rem;
+        border-radius: 999px;
+        background: #ecfdf3;
+        color: var(--careers-brand-strong);
+        font-size: 0.82rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .filter-field {
+        padding: 1rem;
+        height: 100%;
+        border-radius: 1.2rem;
+        border: 1px solid var(--careers-line);
+        background: linear-gradient(180deg, #ffffff, #f8fbf8);
+    }
+
+    .filter-field .form-label {
+        margin-bottom: 0.5rem;
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--careers-brand-strong);
+    }
+
+    .filter-field .form-select {
+        border-radius: 0.95rem;
+        border-color: rgba(21, 115, 71, 0.16);
+        min-height: 48px;
+    }
+
+    .filter-field .form-select:focus {
+        border-color: #22c55e;
+        box-shadow: 0 0 0 0.2rem rgba(34, 197, 94, 0.18);
+    }
+
+    .stats-shell {
+        max-width: 1160px;
+        margin: 1.5rem auto 0;
+    }
+
+    .stats-shell .stat-card {
+        height: 100%;
+        padding: 1.4rem 1.35rem;
+        border: 1px solid rgba(15, 23, 42, 0.05);
+        border-radius: 1.4rem;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(243, 247, 244, 0.96));
+        box-shadow: 0 18px 38px rgba(15, 23, 42, 0.07);
+        text-align: left;
+    }
+
+    .stats-shell .stat-label {
+        display: block;
+        margin-bottom: 0.7rem;
+        color: var(--careers-muted);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .stats-shell .stat-number {
+        color: var(--careers-ink);
+        font-size: clamp(1.8rem, 3vw, 2.35rem);
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .job-section {
+        max-width: 1160px;
+        margin: 4rem auto 0;
+        padding-bottom: 4rem;
+    }
+
+    .section-heading {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        align-items: end;
+        margin-bottom: 1.75rem;
+    }
+
+    .section-heading h2 {
+        margin: 0;
+        color: var(--careers-ink);
+        font-size: clamp(1.8rem, 3vw, 2.4rem);
+        font-weight: 800;
+    }
+
+    .section-heading p {
+        margin: 0.55rem 0 0;
+        max-width: 580px;
+        color: var(--careers-muted);
+        line-height: 1.7;
+    }
+
+    .section-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.7rem 1rem;
+        border-radius: 999px;
+        background: #ffffff;
+        border: 1px solid var(--careers-line);
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);
+        color: var(--careers-brand-strong);
+        font-weight: 700;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+
+    .job-card {
+        position: relative;
+        height: 100%;
+        padding: 1.45rem;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        border-radius: 1.6rem;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 247, 0.98));
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+        transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+    }
+
+    .job-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 1px;
+        background: linear-gradient(135deg, rgba(21, 115, 71, 0.28), rgba(244, 197, 66, 0.16), rgba(21, 115, 71, 0.08));
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+    }
+
+    .job-card:hover {
+        transform: translateY(-6px);
+    }
+
+    .job-card-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.8rem;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+    .job-card-title {
+        margin: 0;
+        color: var(--careers-ink);
+        font-size: 1.2rem;
+        font-weight: 800;
+    }
+
+    .job-card-dept {
+        margin-top: 0.28rem;
+        color: var(--careers-brand-strong);
+        font-weight: 700;
+    }
+
+    .job-card-copy {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1rem;
+    }
+
+    .job-card-copy li {
+        position: relative;
+        padding-left: 1rem;
+        margin-bottom: 0.7rem;
+        color: var(--careers-muted);
+        line-height: 1.65;
+    }
+
+    .job-card-copy li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.72rem;
+        width: 0.42rem;
+        height: 0.42rem;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--careers-brand), #34d399);
+    }
+
+    .job-meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-bottom: 1.15rem;
+    }
+
+    .job-meta-pill {
+        padding: 0.5rem 0.85rem;
+        border-radius: 999px;
+        background: #f8fafc;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        color: var(--careers-ink);
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+
+    .job-badge-stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-bottom: 1.2rem;
+    }
+
+    .job-badge-stack .badge {
+        padding: 0.55rem 0.8rem;
+        border-radius: 999px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+    }
+
+    .job-card .green-btn {
+        min-height: 48px;
+        border-radius: 1rem !important;
+        background: linear-gradient(135deg, var(--careers-brand) 0%, #22c55e 100%) !important;
+        border: none !important;
+        box-shadow: 0 16px 28px rgba(21, 115, 71, 0.2);
+    }
+
+    .empty-state {
+        border: 1px solid rgba(245, 158, 11, 0.18);
+        border-radius: 1.3rem;
+        background: linear-gradient(180deg, rgba(255, 251, 235, 0.96), rgba(255, 255, 255, 0.96));
+        color: #9a6700;
+        box-shadow: 0 16px 34px rgba(245, 158, 11, 0.08);
+    }
+
+    @media (max-width: 991.98px) {
+        .careers-hero {
+            min-height: 520px;
+            padding: 5rem 0 6rem;
+        }
+
+        .filter-panel {
+            margin-top: -2.8rem;
+        }
+
+        .section-heading,
+        .filter-intro {
+            flex-direction: column;
+            align-items: start;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .hero-shell {
+            padding: 1.5rem;
+            border-radius: 1.5rem;
+        }
+
+        .hero-search-card {
+            padding: 0.7rem;
+            border-radius: 1.2rem;
+        }
+
+        .search-input {
+            flex-direction: column;
+        }
+
+        .search-input .form-control,
+        .search-input .btn-hero {
+            width: 100%;
+            border-radius: 1rem !important;
+        }
+
+        .search-input .btn-hero {
+            margin-left: 0;
+            margin-top: 0.7rem;
+        }
+
+        .hero-metric {
+            min-width: calc(50% - 0.5rem);
+        }
+
+        .filter-panel {
+            padding: 1rem;
+            border-radius: 1.35rem;
+        }
+
+        .job-card {
+            padding: 1.15rem;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .hero-metric {
+            width: 100%;
+        }
+    }
 </style>
 
-<main>
-<section class="hero text-white py-5 position-relative overflow-hidden">
+<main class="careers-page">
+<section class="hero careers-hero text-white position-relative overflow-hidden">
 
     <!-- Carousel Background -->
     <div id="heroCarousel" class="carousel slide carousel-fade position-absolute top-0 start-0 w-100 h-100"
@@ -190,97 +696,119 @@
         </div>
     </div>
 
+    <div class="hero-backdrop"></div>
+
     <!-- Hero Content -->
-    <div class="container text-center py-5 position-relative z-3">
-        <h1 class="display-5 fw-bold text-warning">
-            Build Your Future With Us
-        </h1>
+    <div class="container text-center position-relative z-3">
+        <div class="hero-shell animated-card2 delay-5">
+            <span class="hero-kicker">Career Opportunities 2026</span>
+            <h1 class="hero-title">
+                Find a role where your <span class="hero-highlight">skills can grow</span>
+            </h1>
 
-        <p class="lead mb-4 text-warning">
-            Explore career opportunities and take the first step towards your dream job
-        </p>
+            <p class="hero-copy">
+                Explore meaningful opportunities, discover the teams behind them, and take the next confident step in your professional journey with us.
+            </p>
 
-        <form id="jobSearchForm" class="d-flex justify-content-center mb-4 animated-card2 delay-5" role="search">
-            <div class="input-group search-input" style="max-width:720px;">
-                <input id="jobSearchInput" type="search" class="form-control"
-                       placeholder="Search job titles, keywords..."
-                       aria-label="Search">
-                <button class="btn btn-hero" type="submit">Search</button>
+            <form id="jobSearchForm" class="hero-search-card animated-card2 delay-5" role="search">
+                <div class="input-group search-input">
+                    <input id="jobSearchInput" type="search" class="form-control"
+                           placeholder="Search job titles, keywords..."
+                           aria-label="Search">
+                    <button class="btn btn-hero" type="submit">Search</button>
+                </div>
+            </form>
+
+            <div class="hero-metrics">
+                <div class="hero-metric">
+                    <strong>{{ $openCount }}</strong>
+                    <span>Open Positions</span>
+                </div>
+                <div class="hero-metric">
+                    <strong>{{ $department }}</strong>
+                    <span>Departments</span>
+                </div>
+                <div class="hero-metric">
+                    <strong>{{ $employee }}</strong>
+                    <span>Employees</span>
+                </div>
+                <div class="hero-metric">
+                    @php
+                        $ratingValue = is_null($companyRating ?? null) ? 0.0 : max(0, min(5, (float) $companyRating));
+                        $ratingWidth = ($ratingValue / 5) * 100;
+                    @endphp
+                    <strong>
+                        <span>{{ number_format($ratingValue, 1) }}</span>
+                        <span class="hero-metric-rating" aria-label="{{ number_format($ratingValue, 1) }} out of 5 stars">
+                            <span class="hero-metric-rating-base">★★★★★</span>
+                            <span class="hero-metric-rating-fill" style="width: {{ number_format($ratingWidth, 2, '.', '') }}%;">★★★★★</span>
+                        </span>
+                    </strong>
+                    <span>Company Rating</span>
+                </div>
             </div>
-        </form>
+        </div>
     </div>
 </section>
 
 
-            <div class="container mt-4 position-relative z-2 animated-card2 delay-5">
-            <div class="filter-card bg-white rounded shadow-sm p-4 mx-auto" style="max-width:1100px; margin-top:-40px;">
+            <div class="container position-relative z-2 animated-card2 delay-5">
+            <div class="filter-panel">
+                <div class="filter-intro">
+                    <div>
+                        <h2>Refine Your Search</h2>
+                        <p>Filter openings by department, employment type, and location to quickly find the role that fits you best.</p>
+                    </div>
+                    <span class="filter-chip">{{ $open_position->count() }} opportunities available</span>
+                </div>
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <label class="form-label small mb-1">Department</label>
-                        <select id="departmentFilter" class="form-select">
-                            <option value="">All Departments</option>
-                            @foreach($open_position->pluck('department')->unique() as $departments)
-                                <option value="{{ $departments }}">{{ $departments }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small mb-1">Employment Type</label>
-                        <select id="employmentFilter" class="form-select">
-                            <option value="">All Types</option>
-                            @foreach($open_position->pluck('employment')->unique() as $employments)
-                                <option value="{{ $employments }}">{{ $employments }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label small mb-1">Location</label>
-                        <select id="locationFilter" class="form-select">
-                            <option value="">All Location</option>
-                            @foreach($open_position->pluck('location')->unique() as $locations)
-                                <option value="{{ $locations }}">{{ $locations }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="container stats-section mt-4 ">
-            <div class="row g-3 text-center">
-                <div class="col-6 col-md-3">
-                    <div class="stat-card bg-white rounded p-3 animated-card delay-5">
-                        <div class="stat-number fw-bold display-6">{{$openCount}}</div>
-                        <div class="stat-label small text-muted">Open Positions</div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-card bg-white rounded p-3 animated-card delay-5">
-                        <div class="stat-number fw-bold display-6">{{$department}}</div>
-                        <div class="stat-label small text-muted">Departments</div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-card bg-white rounded p-3 animated-card delay-5">
-                        <div class="stat-number fw-bold display-6">{{$employee}}</div>
-                        <div class="stat-label small text-muted">Employees</div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="stat-card bg-white rounded p-3 animated-card delay-5">
-                        <div class="stat-number fw-bold display-6">
-                            {{ is_null($companyRating ?? null) ? '0.0' : number_format((float) $companyRating, 1) }}<span class="star">★</span>
+                        <div class="filter-field">
+                            <label class="form-label small mb-1">Department</label>
+                            <select id="departmentFilter" class="form-select">
+                                <option value="">All Departments</option>
+                                @foreach($open_position->pluck('department')->unique() as $departments)
+                                    <option value="{{ $departments }}">{{ $departments }}</option>
+                                @endforeach
+                            </select>
                         </div>
-                        <div class="stat-label small text-muted">Company Rating</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="filter-field">
+                            <label class="form-label small mb-1">Employment Type</label>
+                            <select id="employmentFilter" class="form-select">
+                                <option value="">All Types</option>
+                                @foreach($open_position->pluck('employment')->unique() as $employments)
+                                    <option value="{{ $employments }}">{{ $employments }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="filter-field">
+                            <label class="form-label small mb-1">Location</label>
+                            <select id="locationFilter" class="form-select">
+                                <option value="">All Location</option>
+                                @foreach($open_position->pluck('location')->unique() as $locations)
+                                    <option value="{{ $locations }}">{{ $locations }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-<div class="container mt-5">
-    <h2 class="fw-bold text-start">Job Vacancies</h2>
+<div class="container job-section">
+    <div class="section-heading">
+        <div>
+            <h2>Job Vacancies</h2>
+            <p>Browse our latest openings and choose the path that matches your strengths, goals, and preferred work environment.</p>
+        </div>
+        <div class="section-pill">Updated opportunities across multiple teams</div>
+    </div>
 
-    <div id="jobList" class="row">
+    <div id="jobList" class="row g-4">
         @foreach ($open_position as $position)
             <div class="col-12 col-md-6 job-item"
                 data-title="{{ Str::lower($position->title) }}"
@@ -289,9 +817,12 @@
                 data-location="{{ Str::lower($position->location) }}"
                 data-description="{{ Str::lower($position->job_description) }}"
             >
-                <div class="card p-3 rounded shadow-lg mb-4 animated-card delay-5 hover-card border-1">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h5 class="fw-bold mb-1">{{ $position->title }}</h5>
+                <div class="job-card card animated-card delay-5 hover-card border-1">
+                    <div class="job-card-top">
+                        <div>
+                            <h5 class="job-card-title">{{ $position->title }}</h5>
+                            <div class="job-card-dept">{{ $position->department }}</div>
+                        </div>
                         @php
                             $postedDays = $position->created_at
                                 ? now()->diffInDays($position->created_at, true)
@@ -305,13 +836,17 @@
                         @endif
                     </div>
 
-                    <small class="text-muted">{{ $position->department }}</small>
-
                     @php
                         $lines = preg_split("/\r\n|\n|\r/", $position->job_description);
                     @endphp
 
-                    <ul class="list-unstyled mt-2 mb-3">
+                    <div class="job-meta-row">
+                        <span class="job-meta-pill">{{ $position->location }}</span>
+                        <span class="job-meta-pill">{{ $position->employment }}</span>
+                        <span class="job-meta-pill">{{ $position->work_mode }}</span>
+                    </div>
+
+                    <ul class="job-card-copy">
                         @foreach (array_slice($lines, 0, 3) as $line)
                             <li>
                                 {{
@@ -325,9 +860,7 @@
                         @endforeach
                     </ul>
 
-
-
-                    <div class="mb-3">
+                    <div class="job-badge-stack">
                         @if ($position->employment == "Full-Time")
                             <span class="badge bg-success bg-opacity-25 text-success me-1 bordered-badge">Full - Time</span>
                             <span class="badge bg-purple-light-opacity me-1">{{ $position->work_mode }}</span>
@@ -338,7 +871,7 @@
                     </div>
 
                     <button
-                        onclick="window.location.href='{{ route('guest.jobOpen', $position->id) }}'";
+                        onclick="window.location.href='{{ route('guest.jobOpen', $position->id) }}';"
                         class="btn btn-primary w-100 green-btn"
                     >
                         View Details & Apply
@@ -348,11 +881,10 @@
         @endforeach
     </div>
 
-    <div id="noResultsMessage" class="alert alert-warning mt-3 d-none" role="alert">
+    <div id="noResultsMessage" class="alert empty-state mt-4 d-none" role="alert">
         No jobs matched your filters.
     </div>
 </div>
-
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const jobSearchForm = document.getElementById('jobSearchForm');
@@ -439,3 +971,4 @@
 
 </main>
 @endsection
+

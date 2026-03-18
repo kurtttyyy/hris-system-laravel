@@ -77,6 +77,7 @@ Route::controller(AdministratorPageController::class)->group(function () {
     Route::get('system/matrix/school-administrator', 'display_school_administrator')->name('admin.schoolAdministrator');
     Route::get('system/matrix/non-teaching', 'display_non_teaching_matrix')->name('admin.nonTeachingMatrix');
     Route::get('system/matrix/teaching', 'display_teaching_matrix')->name('admin.teachingMatrix');
+    Route::get('system/loads', 'display_loads')->name('admin.adminLoads');
 
     Route::get('system/applicant', 'display_applicant')->name('admin.adminApplicant');
     Route::get('system/applicants/ID/{id}', 'display_applicant_ID');
@@ -110,6 +111,7 @@ Route::controller(AdministratorStoreController::class)->group(function () {
     Route::post('system/employee/document', 'store_document')->name('admin.addDocument');
     Route::post('system/attendance/upload', 'store_attendance_excel')->name('admin.uploadAttendanceExcel');
     Route::post('system/payslip/upload', 'store_payslip_file')->name('admin.uploadPayslipFile');
+    Route::post('system/loads/upload', 'store_loads_file')->name('admin.uploadLoadsFile');
     Route::post('system/employee/document/requirements', 'store_required_documents')->name('admin.saveRequiredDocuments');
 
     //UPDATE
@@ -126,6 +128,8 @@ Route::controller(AdministratorStoreController::class)->group(function () {
     Route::post('admin/attendance/update-status/{id}', 'update_attendance_status')->name('admin.updateAttendanceStatus');
     Route::post('admin/attendance/delete/{id}', 'delete_attendance_file')->name('admin.deleteAttendanceFile');
     Route::post('admin/payslip/update-status/{id}', 'scan_payslip_file')->name('admin.scanPayslipFile');
+    Route::post('system/loads/delete/{id}', 'delete_loads_file')->name('admin.deleteLoadsFile');
+    Route::post('system/loads/update-status/{id}', 'scan_loads_file')->name('admin.scanLoadsFile');
 
 
     //DELETE
