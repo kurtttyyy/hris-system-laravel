@@ -250,7 +250,7 @@
                     </form>
                 </div>
 
-                <div class="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                <div id="resignation-timeline-section" class="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
                     <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-5 md:flex-row md:items-end md:justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Request History</p>
@@ -335,6 +335,21 @@
 <script>
     const sidebar = document.querySelector('aside');
     const main = document.querySelector('main');
+
+    (function () {
+        const focusId = @json(request()->query('focus'));
+        if (!focusId) return;
+        const target = document.getElementById(focusId);
+        if (!target) return;
+
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('ring-4', 'ring-emerald-300', 'ring-offset-4', 'ring-offset-slate-100', 'transition');
+
+        setTimeout(() => {
+            target.classList.remove('ring-4', 'ring-emerald-300', 'ring-offset-4', 'ring-offset-slate-100');
+        }, 2200);
+    })();
+
     if (sidebar && main) {
         sidebar.addEventListener('mouseenter', function() {
             main.classList.remove('ml-16');

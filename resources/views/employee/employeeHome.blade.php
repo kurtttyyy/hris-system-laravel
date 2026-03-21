@@ -19,7 +19,9 @@
     @include('components.employeeSideBar')
 
     <main class="flex-1 ml-16 transition-all duration-300">
-        @include('components.employeeHeader.dashboardHeader')
+        @include('components.employeeHeader.dashboardHeader', [
+            'notifications' => (int) ($notifications ?? 0),
+        ])
 
         <div class="space-y-8 p-4 pt-20 md:p-8">
             <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-2xl md:p-8">
@@ -183,7 +185,7 @@
             </section>
 
             <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6">
+                <div id="weekly-attendance-section" class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-bold text-gray-900">This Week's Attendance</h3>
                         <span class="text-sm text-gray-500 font-medium">{{ $weeklyAttendanceRangeLabel ?? '-' }}</span>
@@ -268,6 +270,20 @@
             main.classList.add('ml-16');
         });
     }
+
+    (function () {
+        const focusId = @json(request()->query('focus'));
+        if (!focusId) return;
+        const target = document.getElementById(focusId);
+        if (!target) return;
+
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('ring-4', 'ring-emerald-300', 'ring-offset-4', 'ring-offset-slate-100', 'transition');
+
+        setTimeout(() => {
+            target.classList.remove('ring-4', 'ring-emerald-300', 'ring-offset-4', 'ring-offset-slate-100');
+        }, 2200);
+    })();
 
     (function updateThisMonthEventsCard() {
         const badgeEl = document.getElementById('month-events-badge');

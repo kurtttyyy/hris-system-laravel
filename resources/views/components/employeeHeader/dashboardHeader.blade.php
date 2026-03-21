@@ -1,7 +1,7 @@
 @php
     $headerUser = auth()->user();
     $displayName = $name ?? trim((string) ($headerUser?->first_name ?? ''));
-    $notificationCount = (int) ($notifications ?? 3);
+    $notificationCount = (int) ($notifications ?? 0);
     $currentHour = now()->hour;
 
     if ($currentHour < 12) {
@@ -135,14 +135,12 @@
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <button class="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:text-emerald-700">
-                        @if ($notificationCount > 0)
-                            <span class="absolute right-0 top-0 flex h-5 min-w-[1.25rem] -translate-y-1/4 translate-x-1/4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
-                                {{ $notificationCount }}
-                            </span>
-                        @endif
-                        <i class="fa fa-bell text-lg"></i>
-                    </button>
+                    <a href="{{ route('employee.employeeNotifications') }}" class="relative flex h-12 w-12 cursor-pointer items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:text-emerald-700" aria-label="Open notifications">
+                        <span data-employee-notification-badge data-fallback-count="{{ $notificationCount }}" class="{{ $notificationCount > 0 ? '' : 'hidden ' }}pointer-events-none absolute right-0 top-0 flex h-5 min-w-[1.25rem] -translate-y-1/4 translate-x-1/4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                            {{ $notificationCount }}
+                        </span>
+                        <i class="pointer-events-none fa fa-bell text-lg"></i>
+                    </a>
 
                     <div class="relative group">
                         <button class="p-2.5 text-slate-600 transition hover:rounded-full hover:bg-slate-100">
@@ -202,5 +200,72 @@
 
         updateHeaderOnScroll();
         window.addEventListener('scroll', updateHeaderOnScroll, { passive: true });
+    })();
+
+    (function () {
+        const badge = document.querySelector('[data-employee-notification-badge]');
+        const summaryUrl = @json(route('employee.employeeNotifications.summary'));
+        if (!badge || !summaryUrl) {
+            return;
+        }
+
+        const readKey = 'employee_notifications_read_v1';
+        const unreadKey = 'employee_notifications_unread_v1';
+        const fallbackCount = Number.parseInt(badge.getAttribute('data-fallback-count') || '0', 10) || 0;
+        const renderBadge = (count) => {
+            if (count > 0) {
+                badge.textContent = String(count);
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        };
+
+        const computeUnreadCount = (items) => {
+            let readLookup = {};
+            try {
+                const raw = localStorage.getItem(readKey);
+                const parsed = raw ? JSON.parse(raw) : {};
+                readLookup = parsed && typeof parsed === 'object' ? parsed : {};
+            } catch (error) {
+                readLookup = {};
+            }
+
+            return (Array.isArray(items) ? items : []).reduce((count, item) => {
+                const id = item?.id ? String(item.id) : '';
+                return count + (id && !readLookup[id] ? 1 : 0);
+            }, 0);
+        };
+
+        const syncBadge = async () => {
+            try {
+                const response = await fetch(summaryUrl, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Unable to load notification summary.');
+                }
+
+                const payload = await response.json();
+                const unreadCount = computeUnreadCount(payload?.items ?? []);
+                localStorage.setItem(unreadKey, String(unreadCount));
+                renderBadge(unreadCount);
+            } catch (error) {
+                const storedUnread = Number.parseInt(localStorage.getItem(unreadKey) || '', 10);
+                const nextCount = Number.isFinite(storedUnread) ? storedUnread : fallbackCount;
+                renderBadge(nextCount);
+            }
+        };
+
+        syncBadge();
+        window.addEventListener('storage', function (event) {
+            if (event.key === unreadKey) {
+                const nextCount = Number.parseInt(event.newValue || '', 10);
+                renderBadge(Number.isFinite(nextCount) ? nextCount : fallbackCount);
+            }
+        });
+        window.setInterval(syncBadge, 30000);
     })();
 </script>

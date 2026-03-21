@@ -221,7 +221,7 @@
         </article>
     </section>
 
-    <section class="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+    <section id="leave-history-section" class="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
         <div class="flex flex-col gap-4 border-b border-slate-200 px-6 py-5 md:flex-row md:items-end md:justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Request History</p>
@@ -367,6 +367,20 @@
             main.classList.add('ml-16');
         });
     }
+
+    (function () {
+        const focusId = @json(request()->query('focus'));
+        if (!focusId) return;
+        const target = document.getElementById(focusId);
+        if (!target) return;
+
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('ring-4', 'ring-emerald-300', 'ring-offset-4', 'ring-offset-slate-100', 'transition');
+
+        setTimeout(() => {
+            target.classList.remove('ring-4', 'ring-emerald-300', 'ring-offset-4', 'ring-offset-slate-100');
+        }, 2200);
+    })();
 </script>
 
 </body>

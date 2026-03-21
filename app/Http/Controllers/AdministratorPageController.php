@@ -343,6 +343,8 @@ class AdministratorPageController extends Controller
             },
             ])->where('role','Employee')->get();
 
+        $this->attachSubjectLoadsToEmployees($employee);
+
         Log::info($employee);
         return view('admin.adminEmployee', compact('employee'));
     }
@@ -1917,6 +1919,8 @@ class AdministratorPageController extends Controller
         $administrators = User::with([
             'employee',
             'education',
+            'government',
+            'license',
             'salary',
             'applicant.position:id,title,department,employment,benifits',
             'applicant.documents:id,applicant_id,filename,filepath,mime_type,type',
@@ -1947,6 +1951,8 @@ class AdministratorPageController extends Controller
         $nonTeachingEmployees = User::with([
             'employee',
             'education',
+            'government',
+            'license',
             'salary',
             'applicant.position:id,title,department,employment,benifits,job_type,skills',
             'applicant.documents:id,applicant_id,filename,filepath,mime_type,type',
@@ -1975,6 +1981,8 @@ class AdministratorPageController extends Controller
         $teachingEmployees = User::with([
             'employee',
             'education',
+            'government',
+            'license',
             'salary',
             'applicant.position:id,title,department,employment,benifits,job_type,skills,responsibilities,requirements',
             'applicant.documents:id,applicant_id,filename,filepath,mime_type,type',
@@ -1994,7 +2002,113 @@ class AdministratorPageController extends Controller
             ->orderBy('first_name')
             ->get();
 
+        $this->attachSubjectLoadsToEmployees($teachingEmployees);
+
         return view('Admin.Matrix.adminTeachingMatrix', compact('teachingEmployees'));
+    }
+
+    private function attachSubjectLoadsToEmployees($employees): void
+    {
+        if (!$employees || $employees->isEmpty()) {
+            return;
+        }
+
+        $loadsByEmployeeName = LoadsRecord::query()
+            ->select([
+                'id',
+                'employee_name',
+                'subject_name',
+                'code',
+                'course_no',
+                'units',
+                'lec_units',
+                'lab_units',
+                'schedule',
+                'scanned_at',
+            ])
+            ->whereNotNull('employee_name')
+            ->where('employee_name', '!=', '')
+            ->orderByDesc('scanned_at')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy(function ($record) {
+                return $this->normalizeLoadsEmployeeName($record->employee_name);
+            });
+
+        foreach ($employees as $employee) {
+            $matchedLoads = collect($this->buildLoadsEmployeeNameVariants(
+                $employee->first_name,
+                $employee->middle_name,
+                $employee->last_name
+            ))
+                ->map(fn ($variant) => $this->normalizeLoadsEmployeeName($variant))
+                ->filter()
+                ->unique()
+                ->flatMap(function ($normalizedName) use ($loadsByEmployeeName) {
+                    return $loadsByEmployeeName->get($normalizedName, collect());
+                })
+                ->unique(function ($record) {
+                    return strtolower(trim(implode('|', [
+                        (string) ($record->subject_name ?? ''),
+                        (string) ($record->units ?? ''),
+                        (string) ($record->lec_units ?? ''),
+                        (string) ($record->lab_units ?? ''),
+                        (string) ($record->schedule ?? ''),
+                    ])));
+                })
+                ->values()
+                ->map(function ($record) {
+                    return [
+                        'subject_name' => trim((string) ($record->subject_name ?? '')),
+                        'code' => trim((string) ($record->code ?? '')),
+                        'course_no' => trim((string) ($record->course_no ?? '')),
+                        'units' => trim((string) ($record->units ?? '')),
+                        'lec_units' => trim((string) ($record->lec_units ?? '')),
+                        'lab_units' => trim((string) ($record->lab_units ?? '')),
+                        'schedule' => trim((string) ($record->schedule ?? '')),
+                    ];
+                })
+                ->filter(function ($record) {
+                    return collect($record)->contains(fn ($value) => trim((string) $value) !== '');
+                })
+                ->values();
+
+            $employee->setAttribute('subject_loads', $matchedLoads->all());
+        }
+    }
+
+    private function buildLoadsEmployeeNameVariants($firstName, $middleName, $lastName): array
+    {
+        $first = trim((string) ($firstName ?? ''));
+        $middle = trim((string) ($middleName ?? ''));
+        $last = trim((string) ($lastName ?? ''));
+
+        if ($first === '' && $middle === '' && $last === '') {
+            return [];
+        }
+
+        $middleInitial = $middle !== '' ? strtoupper(substr($middle, 0, 1)) : '';
+
+        return array_values(array_unique(array_filter([
+            trim(implode(' ', array_filter([$first, $middle, $last]))),
+            trim(implode(' ', array_filter([$first, $last]))),
+            $last !== '' ? trim($last.', '.implode(' ', array_filter([$first, $middle]))) : '',
+            $last !== '' ? trim($last.', '.implode(' ', array_filter([$first, $middleInitial !== '' ? $middleInitial.'.' : '']))) : '',
+            $last !== '' ? trim($last.', '.implode(' ', array_filter([$first, $middleInitial]))) : '',
+        ], fn ($value) => trim((string) $value) !== '')));
+    }
+
+    private function normalizeLoadsEmployeeName($value): ?string
+    {
+        $name = trim((string) ($value ?? ''));
+        if ($name === '') {
+            return null;
+        }
+
+        $name = preg_replace('/\s+/', ' ', $name);
+        $name = str_replace('.', '', $name);
+
+        return strtolower(trim($name));
     }
 
     public function display_loads()

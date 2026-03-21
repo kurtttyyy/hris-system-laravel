@@ -158,25 +158,39 @@
 
     if (excelBtn) {
       excelBtn.addEventListener('click', function () {
-        const rows = Array.from(table.querySelectorAll('tr'));
-        const csv = rows
-          .map((row) => {
-            const cells = Array.from(row.querySelectorAll('th, td'));
-            return cells
-              .map((cell) => {
-                const text = (cell.innerText || '').replace(/\r?\n|\r/g, ' ').trim();
-                const escaped = text.replace(/"/g, '""');
-                return `"${escaped}"`;
-              })
-              .join(',');
-          })
-          .join('\n');
+        const currentTheadHtml = table.querySelector('thead')?.innerHTML || '';
+        const currentTbodyHtml = table.querySelector('tbody')?.innerHTML || '';
+        const currentChartHtml = chartContainer ? chartContainer.innerHTML : '';
+        const chartHidden = chartContainer ? chartContainer.classList.contains('hidden') : true;
+        const tableHidden = tableWrapper ? tableWrapper.classList.contains('hidden') : false;
 
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const attendanceRows = getTableRowsFromHtml(originalTheadHtml, originalTbodyHtml);
+
+        const summaryData = computeSummaryData();
+        const summaryRows = [summaryData.headers, ...summaryData.rows];
+        const chartRows = computeChartSheetRows(summaryData);
+
+        table.querySelector('thead').innerHTML = currentTheadHtml;
+        table.querySelector('tbody').innerHTML = currentTbodyHtml;
+        if (chartContainer) {
+          chartContainer.innerHTML = currentChartHtml;
+          chartContainer.classList.toggle('hidden', chartHidden);
+        }
+        if (tableWrapper) {
+          tableWrapper.classList.toggle('hidden', tableHidden);
+        }
+
+        const workbookXml = buildExcelWorkbookXml([
+          { name: 'Attendance Table', rows: attendanceRows },
+          { name: 'Summary Table', rows: summaryRows },
+          { name: 'Chart Data', rows: chartRows },
+        ]);
+
+        const blob = new Blob([workbookXml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'total_employee_attendance.csv';
+        link.download = 'total_employee_attendance.xls';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -223,6 +237,82 @@
       return normalized.toUpperCase();
     }
 
+    function escapeXml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    }
+
+    function parseNumberCell(value) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+
+      const text = String(value ?? '').trim();
+      if (text === '' || text === '-') {
+        return null;
+      }
+
+      if (/^-?\d+(?:\.\d+)?$/.test(text)) {
+        return Number(text);
+      }
+
+      return null;
+    }
+
+    function getTableRowsFromHtml(theadHtml, tbodyHtml) {
+      const tempTable = document.createElement('table');
+      tempTable.innerHTML = `<thead>${theadHtml}</thead><tbody>${tbodyHtml}</tbody>`;
+
+      return Array.from(tempTable.querySelectorAll('tr')).map((row) => {
+        return Array.from(row.querySelectorAll('th, td')).map((cell) => {
+          return (cell.innerText || cell.textContent || '').replace(/\r?\n|\r/g, ' ').trim();
+        });
+      });
+    }
+
+    function sanitizeSheetName(name, fallback) {
+      const cleaned = String(name || fallback || 'Sheet')
+        .replace(/[\\\/\?\*\[\]:]/g, ' ')
+        .trim();
+
+      return (cleaned || fallback || 'Sheet').slice(0, 31);
+    }
+
+    function buildExcelWorkbookXml(sheets) {
+      const worksheetXml = sheets.map((sheet) => {
+        const rowsXml = (sheet.rows || []).map((row) => {
+          const cellsXml = (row || []).map((value) => {
+            const numericValue = parseNumberCell(value);
+            if (numericValue !== null) {
+              return `<Cell><Data ss:Type="Number">${numericValue}</Data></Cell>`;
+            }
+
+            return `<Cell><Data ss:Type="String">${escapeXml(value)}</Data></Cell>`;
+          }).join('');
+
+          return `<Row>${cellsXml}</Row>`;
+        }).join('');
+
+        return `<Worksheet ss:Name="${escapeXml(sanitizeSheetName(sheet.name, 'Sheet'))}"><Table>${rowsXml}</Table></Worksheet>`;
+      }).join('');
+
+      return [
+        '<?xml version="1.0"?>',
+        '<?mso-application progid="Excel.Sheet"?>',
+        '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"',
+        ' xmlns:o="urn:schemas-microsoft-com:office:office"',
+        ' xmlns:x="urn:schemas-microsoft-com:office:excel"',
+        ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"',
+        ' xmlns:html="http://www.w3.org/TR/REC-html40">',
+        worksheetXml,
+        '</Workbook>',
+      ].join('');
+    }
+
     function buildDateRange() {
       if (summaryFromDate && summaryToDate) {
         const start = new Date(`${summaryFromDate}T00:00:00`);
@@ -259,7 +349,7 @@
       return Array.from(found).sort();
     }
 
-    function renderSummaryTable() {
+    function computeSummaryData() {
       const dateRange = buildDateRange();
       const sourceRows = rawSourceRows;
       const employeeMap = new Map();
@@ -330,29 +420,187 @@
         'Total Absence Department',
       ];
 
-      const theadHtml = `<tr>${headers.map((h) => `<th class="px-3 py-2 text-left">${h}</th>`).join('')}</tr>`;
-      table.querySelector('thead').innerHTML = theadHtml;
-
       const employees = Array.from(employeeMap.values()).sort((a, b) => {
         const deptCompare = (a.department || '-').localeCompare(b.department || '-');
         if (deptCompare !== 0) return deptCompare;
         return (a.employeeName || '-').localeCompare(b.employeeName || '-');
       });
-      if (!employees.length) {
-        table.querySelector('tbody').innerHTML = `<tr><td colspan="${headers.length}" class="px-3 py-4 text-center text-gray-500">No attendance records found.</td></tr>`;
-        return;
-      }
 
-      const totalDays = Math.max(dateRange.length, 1);
       const departmentRowspans = {};
       employees.forEach((emp) => {
         const dept = emp.department || '-';
         departmentRowspans[dept] = (departmentRowspans[dept] || 0) + 1;
       });
-      const renderedDepartmentCell = {};
 
-        const bodyHtml = employees.map((emp, index) => {
-          const dateCells = dateRange.map((date) => {
+      const renderedDepartmentCell = {};
+      const exportRows = employees.map((emp, index) => {
+        const dateCellValues = dateRange.map((date) => {
+          const day = emp.byDate[date] || { status: '', lateMinutes: 0, hasMissingLogs: false, missingLogs: [] };
+          const status = day.status;
+          const missingLogsText = (day.missingLogs || []).join('/');
+          if (status === 'present' && day.hasMissingLogs) return missingLogsText || 'Missing Logs';
+          if (status === 'present') return '-';
+          if (status === 'tardy') {
+            const tardyPercent = ((day.lateMinutes || 0) / 100).toFixed(2);
+            return day.hasMissingLogs ? `${tardyPercent}/${missingLogsText || 'Missing Logs'}` : tardyPercent;
+          }
+          if (status === 'absent') return 'A';
+          if (day.hasMissingLogs) return missingLogsText || 'Missing Logs';
+          return '-';
+        });
+
+        const tardyDecimal = (emp.totalLateMinutes / 100).toFixed(2);
+        const hasAttendanceIssue = emp.absent > 0 || emp.totalLateMinutes > 0;
+        const tardinessDisplay = hasAttendanceIssue ? tardyDecimal : '-';
+        const absenceDisplay = hasAttendanceIssue ? emp.absent : '-';
+        const deptKey = emp.department || '-';
+        const deptAbs = departmentAbsenceTotals[deptKey] || 0;
+        const departmentAbsenceDisplay = renderedDepartmentCell[deptKey] ? '' : deptAbs;
+        renderedDepartmentCell[deptKey] = true;
+
+        return [
+          index + 1,
+          emp.employeeName || '-',
+          emp.department || '-',
+          ...dateCellValues,
+          tardinessDisplay,
+          absenceDisplay,
+          departmentAbsenceDisplay,
+        ];
+      });
+
+      return {
+        headers,
+        rows: exportRows,
+        employees,
+        dateRange,
+        departmentAbsenceTotals,
+        departmentRowspans,
+      };
+    }
+
+    function computeChartSheetRows(summaryData) {
+      const employees = summaryData?.employees || [];
+      const dateRange = summaryData?.dateRange || [];
+      const tardinessByDepartment = {};
+      const employeeCountByDepartment = {};
+      const absencesByDepartment = {};
+      const absentEmployeeCountByDepartment = {};
+
+      employees.forEach((emp) => {
+        const department = (emp.department || '-').trim() || '-';
+        const tardiness = Number(emp.totalLateMinutes || 0);
+        const absences = Number(emp.absent || 0);
+        tardinessByDepartment[department] = (tardinessByDepartment[department] || 0) + tardiness;
+        employeeCountByDepartment[department] = (employeeCountByDepartment[department] || 0) + 1;
+        absencesByDepartment[department] = (absencesByDepartment[department] || 0) + absences;
+        if (absences > 0) {
+          absentEmployeeCountByDepartment[department] = (absentEmployeeCountByDepartment[department] || 0) + 1;
+        }
+      });
+
+      const totalDaysInRange = Math.max(dateRange.length, 1);
+      const totalClassDaysByDepartment = {};
+      const absenceRateByDepartment = {};
+      const tardinessRateByDepartment = {};
+      const outstandingScoreByDepartment = {};
+      const minutesPerClassDay = 9 * 60;
+
+      Object.keys(employeeCountByDepartment).forEach((department) => {
+        const employeeCount = Number(employeeCountByDepartment[department] || 0);
+        const classDays = employeeCount * totalDaysInRange;
+        const absences = Number(absencesByDepartment[department] || 0);
+        const lateMinutes = Number(tardinessByDepartment[department] || 0);
+        const possibleLateMinutes = classDays * minutesPerClassDay;
+
+        totalClassDaysByDepartment[department] = classDays;
+        absenceRateByDepartment[department] = classDays > 0
+          ? Number(((absences / classDays) * 100).toFixed(2))
+          : 0;
+        tardinessRateByDepartment[department] = possibleLateMinutes > 0
+          ? Number(((lateMinutes / possibleLateMinutes) * 100).toFixed(2))
+          : 0;
+        outstandingScoreByDepartment[department] = Number(
+          Math.max(0, Math.min(100, 100 - (absenceRateByDepartment[department] + tardinessRateByDepartment[department]))).toFixed(2)
+        );
+      });
+
+      const rows = [
+        ['Chart Metric', 'Department', 'Value', 'Extra'],
+      ];
+
+      const appendSection = (title, entries) => {
+        rows.push([title, '', '', '']);
+        entries.forEach((entry) => rows.push(entry));
+        rows.push(['', '', '', '']);
+      };
+
+      appendSection(
+        'Absence Rate per Department',
+        Object.entries(absenceRateByDepartment)
+          .sort((a, b) => b[1] - a[1])
+          .map(([department, value]) => [
+            'Absence Rate',
+            department,
+            value,
+            `${absentEmployeeCountByDepartment[department] || 0}/${employeeCountByDepartment[department] || 0} employees absent`,
+          ])
+      );
+
+      appendSection(
+        'Total Employees per Department',
+        Object.entries(employeeCountByDepartment)
+          .sort((a, b) => b[1] - a[1])
+          .map(([department, value]) => [
+            'Total Employees',
+            department,
+            value,
+            `Class days: ${totalClassDaysByDepartment[department] || 0}`,
+          ])
+      );
+
+      appendSection(
+        'Outstanding Score by Department',
+        Object.entries(outstandingScoreByDepartment)
+          .sort((a, b) => b[1] - a[1])
+          .map(([department, value]) => [
+            'Outstanding Score',
+            department,
+            value,
+            value >= 96 ? 'Excellent' : value >= 86 ? 'Very Good' : value >= 75 ? 'Good' : 'Needs Improvement',
+          ])
+      );
+
+      appendSection(
+        'Tardiness Rate per Department',
+        Object.entries(tardinessRateByDepartment)
+          .sort((a, b) => b[1] - a[1])
+          .map(([department, value]) => [
+            'Tardiness Rate',
+            department,
+            value,
+            `${Math.round(tardinessByDepartment[department] || 0)}/${Math.round((totalClassDaysByDepartment[department] || 0) * minutesPerClassDay)} late-minutes`,
+          ])
+      );
+
+      return rows;
+    }
+
+    function renderSummaryTable() {
+      const summaryData = computeSummaryData();
+      const { headers, employees, dateRange, departmentAbsenceTotals, departmentRowspans } = summaryData;
+
+      const theadHtml = `<tr>${headers.map((h) => `<th class="px-3 py-2 text-left">${h}</th>`).join('')}</tr>`;
+      table.querySelector('thead').innerHTML = theadHtml;
+
+      if (!employees.length) {
+        table.querySelector('tbody').innerHTML = `<tr><td colspan="${headers.length}" class="px-3 py-4 text-center text-gray-500">No attendance records found.</td></tr>`;
+        return summaryData;
+      }
+
+      const renderedDepartmentCell = {};
+      const bodyHtml = employees.map((emp, index) => {
+        const dateCells = dateRange.map((date) => {
           const day = emp.byDate[date] || { status: '', lateMinutes: 0, hasMissingLogs: false, missingLogs: [] };
           const status = day.status;
           const missingLogsText = (day.missingLogs || []).join('/');
@@ -360,10 +608,9 @@
           if (status === 'present') return `<td class="px-3 py-2">-</td>`;
           if (status === 'tardy') {
             const tardyPercent = ((day.lateMinutes || 0) / 100).toFixed(2);
-            if (day.hasMissingLogs) {
-              return `<td class="px-3 py-2">${tardyPercent}/${missingLogsText || 'Missing Logs'}</td>`;
-            }
-            return `<td class="px-3 py-2">${tardyPercent}</td>`;
+            return day.hasMissingLogs
+              ? `<td class="px-3 py-2">${tardyPercent}/${missingLogsText || 'Missing Logs'}</td>`
+              : `<td class="px-3 py-2">${tardyPercent}</td>`;
           }
           if (status === 'absent') return `<td class="px-3 py-2">A</td>`;
           if (day.hasMissingLogs) return `<td class="px-3 py-2">${missingLogsText || 'Missing Logs'}</td>`;
@@ -375,11 +622,10 @@
         const tardinessDisplay = hasAttendanceIssue ? tardyDecimal : '-';
         const absenceDisplay = hasAttendanceIssue ? emp.absent : '-';
         const deptKey = emp.department || '-';
-        const deptAbs = departmentAbsenceTotals[deptKey] || 0;
         let departmentAbsenceCell = '';
         if (!renderedDepartmentCell[deptKey]) {
           renderedDepartmentCell[deptKey] = true;
-          departmentAbsenceCell = `<td class="px-3 py-2 align-middle text-center" rowspan="${departmentRowspans[deptKey]}">${deptAbs}</td>`;
+          departmentAbsenceCell = `<td class="px-3 py-2 align-middle text-center" rowspan="${departmentRowspans[deptKey] || 1}">${departmentAbsenceTotals[deptKey] || 0}</td>`;
         }
 
         return `
@@ -397,10 +643,7 @@
 
       table.querySelector('tbody').innerHTML = bodyHtml;
 
-      return {
-        employees,
-        dateRange,
-      };
+      return summaryData;
     }
 
     function renderSummaryChart() {

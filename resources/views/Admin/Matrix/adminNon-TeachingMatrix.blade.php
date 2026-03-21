@@ -52,7 +52,10 @@
     }
 
     .matrix-employee-card {
-      width: min(720px, 100%);
+      width: min(1200px, 100%);
+      max-height: min(90vh, 860px);
+      display: flex;
+      flex-direction: column;
       overflow: hidden;
       border: 1px solid #d6d3d1;
       border-radius: 1rem;
@@ -87,16 +90,19 @@
 
     .matrix-employee-card-body {
       display: grid;
-      grid-template-columns: 170px minmax(0, 1fr);
+      grid-template-columns: 180px minmax(0, 1fr);
       gap: 1.25rem;
       padding: 1.5rem;
+      overflow-y: auto;
     }
 
     .matrix-employee-avatar {
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 210px;
+      align-self: start;
+      width: 180px;
+      aspect-ratio: 3 / 4;
       overflow: hidden;
       border: 1px solid #d6d3d1;
       background: linear-gradient(135deg, #f5f5f4, #e7e5e4);
@@ -109,11 +115,80 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+      object-position: center top;
     }
 
     .matrix-employee-fields {
       display: grid;
+      gap: 1rem;
+      align-content: start;
+    }
+
+    .matrix-employee-carousel {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .matrix-employee-section {
+      display: none;
       gap: 0.7rem;
+    }
+
+    .matrix-employee-section.is-active {
+      display: grid;
+    }
+
+    .matrix-employee-section-title {
+      margin: 0;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid #e7e5e4;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #57534e;
+    }
+
+    .matrix-employee-carousel-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding-top: 0.25rem;
+      border-top: 1px solid #e7e5e4;
+    }
+
+    .matrix-employee-carousel-status {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #57534e;
+    }
+
+    .matrix-employee-carousel-actions {
+      display: inline-flex;
+      gap: 0.6rem;
+    }
+
+    .matrix-employee-carousel-button {
+      border: 1px solid #a8a29e;
+      border-radius: 9999px;
+      background: #ffffff;
+      padding: 0.5rem 1rem;
+      color: #1c1917;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .matrix-employee-carousel-button:hover {
+      background: #f5f5f4;
+      border-color: #78716c;
+    }
+
+    .matrix-employee-carousel-button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
 
     .matrix-employee-field {
@@ -177,9 +252,23 @@
         grid-template-columns: 1fr;
       }
 
+      .matrix-employee-avatar {
+        width: min(220px, 100%);
+        margin: 0 auto;
+      }
+
       .matrix-employee-field {
         grid-template-columns: 1fr;
         gap: 0.35rem;
+      }
+
+      .matrix-employee-carousel-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .matrix-employee-carousel-actions {
+        justify-content: space-between;
       }
     }
 
@@ -548,22 +637,94 @@
                     });
                 }
                 $profilePhotoUrl = $profilePhotoDocument?->filepath ? asset('storage/'.$profilePhotoDocument->filepath) : null;
+                $middleNameDisplay = trim((string) ($staff->middle_name ?? '')) !== '' ? trim((string) ($staff->middle_name ?? '')) : 'N/A';
+                $accountNumberDisplay = trim((string) (optional($staff->employee)->account_number ?? '')) !== '' ? trim((string) (optional($staff->employee)->account_number ?? '')) : 'N/A';
+                $civilStatusDisplay = trim((string) (optional($staff->employee)->civil_status ?? '')) !== '' ? trim((string) (optional($staff->employee)->civil_status ?? '')) : 'N/A';
+                $contactNumberDisplay = collect([
+                  trim((string) (optional($staff->employee)->contact_number ?? '')),
+                  trim((string) (optional($staff->applicant)->phone ?? '')),
+                ])->first(fn ($value) => $value !== '') ?? 'N/A';
+                $birthdayDisplay = 'N/A';
+                if (!empty(optional($staff->employee)->birthday)) {
+                  try {
+                    $birthdayDisplay = \Carbon\Carbon::parse(optional($staff->employee)->birthday)->format('F j, Y');
+                  } catch (\Throwable $e) {
+                    $birthdayDisplay = trim((string) (optional($staff->employee)->birthday ?? '')) !== '' ? trim((string) (optional($staff->employee)->birthday ?? '')) : 'N/A';
+                  }
+                }
+                $addressDisplay = collect([
+                  trim((string) (optional($staff->employee)->address ?? '')),
+                  trim((string) (optional($staff->applicant)->address ?? '')),
+                ])->first(fn ($value) => $value !== '') ?? 'N/A';
+                $classificationDisplay = collect([
+                  trim((string) (optional($staff->employee)->classification ?? '')),
+                  trim((string) (optional(optional($staff->applicant)->position)->employment ?? '')),
+                  trim((string) (optional($staff->employee)->job_type ?? '')),
+                ])->first(fn ($value) => $value !== '') ?? 'N/A';
+                $licenseDisplay = trim((string) (optional($staff->license)->license ?? '')) !== '' ? trim((string) (optional($staff->license)->license ?? '')) : 'N/A';
+                $registrationNumberDisplay = trim((string) (optional($staff->license)->registration_number ?? '')) !== '' ? trim((string) (optional($staff->license)->registration_number ?? '')) : 'N/A';
+                $registrationDateDisplay = 'N/A';
+                if (!empty(optional($staff->license)->registration_date)) {
+                  try {
+                    $registrationDateDisplay = \Carbon\Carbon::parse(optional($staff->license)->registration_date)->format('F j, Y');
+                  } catch (\Throwable $e) {
+                    $registrationDateDisplay = trim((string) (optional($staff->license)->registration_date ?? '')) !== '' ? trim((string) (optional($staff->license)->registration_date ?? '')) : 'N/A';
+                  }
+                }
+                $validUntilDisplay = 'N/A';
+                if (!empty(optional($staff->license)->valid_until)) {
+                  try {
+                    $validUntilDisplay = \Carbon\Carbon::parse(optional($staff->license)->valid_until)->format('F j, Y');
+                  } catch (\Throwable $e) {
+                    $validUntilDisplay = trim((string) (optional($staff->license)->valid_until ?? '')) !== '' ? trim((string) (optional($staff->license)->valid_until ?? '')) : 'N/A';
+                  }
+                }
+                $bachelorDisplay = trim((string) (optional($staff->education)->bachelor ?? '')) !== '' ? trim((string) (optional($staff->education)->bachelor ?? '')) : 'N/A';
+                $masterDisplay = trim((string) (optional($staff->education)->master ?? '')) !== '' ? trim((string) (optional($staff->education)->master ?? '')) : 'N/A';
+                $doctorateDisplay = trim((string) (optional($staff->education)->doctorate ?? '')) !== '' ? trim((string) (optional($staff->education)->doctorate ?? '')) : 'N/A';
+                $salaryDisplay = trim((string) (optional($staff->salary)->salary ?? '')) !== '' ? trim((string) (optional($staff->salary)->salary ?? '')) : 'N/A';
+                $colaDisplay = trim((string) (optional($staff->salary)->cola ?? '')) !== '' ? trim((string) (optional($staff->salary)->cola ?? '')) : 'N/A';
+                $sssDisplay = trim((string) (optional($staff->government)->SSS ?? '')) !== '' ? trim((string) (optional($staff->government)->SSS ?? '')) : 'N/A';
+                $tinDisplay = trim((string) (optional($staff->government)->TIN ?? '')) !== '' ? trim((string) (optional($staff->government)->TIN ?? '')) : 'N/A';
+                $philHealthDisplay = trim((string) (optional($staff->government)->PhilHealth ?? '')) !== '' ? trim((string) (optional($staff->government)->PhilHealth ?? '')) : 'N/A';
+                $pagIbigMidDisplay = trim((string) (optional($staff->government)->MID ?? '')) !== '' ? trim((string) (optional($staff->government)->MID ?? '')) : 'N/A';
+                $pagIbigRtnDisplay = trim((string) (optional($staff->government)->RTN ?? '')) !== '' ? trim((string) (optional($staff->government)->RTN ?? '')) : 'N/A';
                 $matrixEmployeeModalData = [
                   'employee_id' => $employeeIdDisplay,
                   'first_name' => trim((string) ($staff->first_name ?? '')) !== '' ? trim((string) ($staff->first_name ?? '')) : 'N/A',
+                  'middle_name' => $middleNameDisplay,
                   'last_name' => trim((string) ($staff->last_name ?? '')) !== '' ? trim((string) ($staff->last_name ?? '')) : 'N/A',
                   'gender' => $genderDisplay,
-                  'birthday' => trim((string) (optional($staff->employee)->birthday ?? '')),
+                  'birthday' => $birthdayDisplay,
+                  'account_number' => $accountNumberDisplay,
+                  'civil_status' => $civilStatusDisplay,
+                  'contact_number' => $contactNumberDisplay,
+                  'address' => $addressDisplay,
                   'hired_date' => $hireDateDisplay,
                   'position' => $positionDisplay,
                   'department' => $departmentDisplay,
                   'full_name' => $fullName !== '' ? $fullName : 'N/A',
                   'age' => $ageDisplay,
                   'rate' => $salaryText !== '' ? $salaryText : 'N/A',
+                  'salary' => $salaryDisplay,
                   'rate_per_hour' => $salaryPerHour !== '' ? $salaryPerHour : 'N/A',
+                  'cola' => $colaDisplay,
+                  'classification' => $classificationDisplay,
                   'employment_status' => $employmentStatus,
                   'regularization_date' => $regularizationDateDisplay,
                   'benefits_text' => $benefits->implode(' | '),
+                  'bachelor_degree' => $bachelorDisplay,
+                  'master_degree' => $masterDisplay,
+                  'doctorate_degree' => $doctorateDisplay,
+                  'license' => $licenseDisplay,
+                  'registration_number' => $registrationNumberDisplay,
+                  'registration_date' => $registrationDateDisplay,
+                  'valid_until' => $validUntilDisplay,
+                  'sss' => $sssDisplay,
+                  'tin' => $tinDisplay,
+                  'philhealth' => $philHealthDisplay,
+                  'pagibig_mid' => $pagIbigMidDisplay,
+                  'pagibig_rtn' => $pagIbigRtnDisplay,
                   'initials' => $initials,
                   'profile_photo_url' => $profilePhotoUrl,
                 ];
@@ -677,13 +838,56 @@
     <div class="matrix-employee-card-body">
       <div id="matrix-employee-avatar" class="matrix-employee-avatar">NA</div>
       <div class="matrix-employee-fields">
-        <div class="matrix-employee-field"><div class="matrix-employee-label">Employee ID:</div><div id="matrix-employee-id" class="matrix-employee-value">-</div></div>
-        <div class="matrix-employee-field"><div class="matrix-employee-label">First Name:</div><div id="matrix-employee-first-name" class="matrix-employee-value">-</div></div>
-        <div class="matrix-employee-field"><div class="matrix-employee-label">Last Name:</div><div id="matrix-employee-last-name" class="matrix-employee-value">-</div></div>
-        <div class="matrix-employee-field"><div class="matrix-employee-label">Gender:</div><div id="matrix-employee-gender" class="matrix-employee-value">-</div></div>
-        <div class="matrix-employee-field"><div class="matrix-employee-label">Hired Date:</div><div id="matrix-employee-hired-date" class="matrix-employee-value">-</div></div>
-        <div class="matrix-employee-field"><div class="matrix-employee-label">Position:</div><div id="matrix-employee-position" class="matrix-employee-value">-</div></div>
-        <div class="matrix-employee-field"><div class="matrix-employee-label">Department:</div><div id="matrix-employee-department" class="matrix-employee-value">-</div></div>
+        <div class="matrix-employee-carousel">
+          <div class="matrix-employee-section is-active" data-matrix-employee-section>
+            <p class="matrix-employee-section-title">Personal Information</p>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">ID Number:</div><div id="matrix-employee-id" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Last Name:</div><div id="matrix-employee-last-name" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">First Name:</div><div id="matrix-employee-first-name" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Middle Name:</div><div id="matrix-employee-middle-name" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Account No.:</div><div id="matrix-employee-account-number" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Sex:</div><div id="matrix-employee-gender" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Civil Status:</div><div id="matrix-employee-civil-status" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Contact No.:</div><div id="matrix-employee-contact-number" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Date of Birth:</div><div id="matrix-employee-birthday" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Address:</div><div id="matrix-employee-address" class="matrix-employee-value">-</div></div>
+          </div>
+          <div class="matrix-employee-section" data-matrix-employee-section>
+            <p class="matrix-employee-section-title">Employment And License</p>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Employment Date:</div><div id="matrix-employee-hired-date" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Position:</div><div id="matrix-employee-position" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Department:</div><div id="matrix-employee-department" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Classification:</div><div id="matrix-employee-classification" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">License:</div><div id="matrix-employee-license" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Registration No.:</div><div id="matrix-employee-registration-number" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Registration Date:</div><div id="matrix-employee-registration-date" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Valid Until:</div><div id="matrix-employee-valid-until" class="matrix-employee-value">-</div></div>
+          </div>
+          <div class="matrix-employee-section" data-matrix-employee-section>
+            <p class="matrix-employee-section-title">Education And Salary</p>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Bachelor's:</div><div id="matrix-employee-bachelor-degree" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Master's:</div><div id="matrix-employee-master-degree" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Doctorate:</div><div id="matrix-employee-doctorate-degree" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Basic Salary:</div><div id="matrix-employee-salary" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Rate per Hour:</div><div id="matrix-employee-rate-per-hour" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">COLA:</div><div id="matrix-employee-cola" class="matrix-employee-value">-</div></div>
+          </div>
+          <div class="matrix-employee-section" data-matrix-employee-section>
+            <p class="matrix-employee-section-title">Government IDs</p>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">SSS:</div><div id="matrix-employee-sss" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">TIN:</div><div id="matrix-employee-tin" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">PhilHealth:</div><div id="matrix-employee-philhealth" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Pag-IBIG MID:</div><div id="matrix-employee-pagibig-mid" class="matrix-employee-value">-</div></div>
+            <div class="matrix-employee-field"><div class="matrix-employee-label">Pag-IBIG RTN:</div><div id="matrix-employee-pagibig-rtn" class="matrix-employee-value">-</div></div>
+          </div>
+          <div class="matrix-employee-carousel-footer">
+            <div id="matrix-employee-section-status" class="matrix-employee-carousel-status">Section 1 of 4</div>
+            <div class="matrix-employee-carousel-actions">
+              <button type="button" id="matrix-employee-prev-section" class="matrix-employee-carousel-button" onclick="changeMatrixEmployeeSection(-1)">Previous</button>
+              <button type="button" id="matrix-employee-next-section" class="matrix-employee-carousel-button" onclick="changeMatrixEmployeeSection(1)">Next</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -705,6 +909,41 @@
 
 <script>
   let matrixExcelExportState = { tableId: null, title: null };
+  let matrixEmployeeSectionIndex = 0;
+
+  function renderMatrixEmployeeSection() {
+    const modal = document.getElementById('matrix-employee-modal');
+    const sections = modal ? Array.from(modal.querySelectorAll('[data-matrix-employee-section]')) : [];
+    if (!sections.length) {
+      return;
+    }
+
+    matrixEmployeeSectionIndex = Math.min(Math.max(matrixEmployeeSectionIndex, 0), sections.length - 1);
+
+    sections.forEach((section, index) => {
+      section.classList.toggle('is-active', index === matrixEmployeeSectionIndex);
+    });
+
+    const status = document.getElementById('matrix-employee-section-status');
+    if (status) {
+      status.textContent = `Section ${matrixEmployeeSectionIndex + 1} of ${sections.length}`;
+    }
+
+    const prevButton = document.getElementById('matrix-employee-prev-section');
+    if (prevButton) {
+      prevButton.disabled = matrixEmployeeSectionIndex === 0;
+    }
+
+    const nextButton = document.getElementById('matrix-employee-next-section');
+    if (nextButton) {
+      nextButton.disabled = matrixEmployeeSectionIndex === sections.length - 1;
+    }
+  }
+
+  function changeMatrixEmployeeSection(direction) {
+    matrixEmployeeSectionIndex += Number(direction) || 0;
+    renderMatrixEmployeeSection();
+  }
 
   function openMatrixEmployeeModal(employee) {
     const modal = document.getElementById('matrix-employee-modal');
@@ -715,11 +954,33 @@
     const map = {
       'matrix-employee-id': employee.employee_id,
       'matrix-employee-first-name': employee.first_name,
+      'matrix-employee-middle-name': employee.middle_name,
       'matrix-employee-last-name': employee.last_name,
+      'matrix-employee-account-number': employee.account_number,
       'matrix-employee-gender': employee.gender,
+      'matrix-employee-civil-status': employee.civil_status,
+      'matrix-employee-contact-number': employee.contact_number,
+      'matrix-employee-birthday': employee.birthday,
+      'matrix-employee-address': employee.address,
       'matrix-employee-hired-date': employee.hired_date,
       'matrix-employee-position': employee.position,
       'matrix-employee-department': employee.department,
+      'matrix-employee-classification': employee.classification,
+      'matrix-employee-license': employee.license,
+      'matrix-employee-registration-number': employee.registration_number,
+      'matrix-employee-registration-date': employee.registration_date,
+      'matrix-employee-valid-until': employee.valid_until,
+      'matrix-employee-bachelor-degree': employee.bachelor_degree,
+      'matrix-employee-master-degree': employee.master_degree,
+      'matrix-employee-doctorate-degree': employee.doctorate_degree,
+      'matrix-employee-salary': employee.salary,
+      'matrix-employee-rate-per-hour': employee.rate_per_hour,
+      'matrix-employee-cola': employee.cola,
+      'matrix-employee-sss': employee.sss,
+      'matrix-employee-tin': employee.tin,
+      'matrix-employee-philhealth': employee.philhealth,
+      'matrix-employee-pagibig-mid': employee.pagibig_mid,
+      'matrix-employee-pagibig-rtn': employee.pagibig_rtn,
     };
 
     Object.entries(map).forEach(([id, value]) => {
@@ -738,6 +999,8 @@
       }
     }
 
+    matrixEmployeeSectionIndex = 0;
+    renderMatrixEmployeeSection();
     modal.classList.add('is-open');
     document.body.style.overflow = 'hidden';
   }
@@ -963,15 +1226,37 @@
       const details = [
         ['Employee Name', fullName],
         ['Employee ID', employee.employee_id || 'N/A'],
+        ['Middle Name', employee.middle_name || 'N/A'],
         ['First Name', employee.first_name || 'N/A'],
         ['Last Name', employee.last_name || 'N/A'],
         ['Age', age],
         ['Gender', employee.gender || 'N/A'],
+        ['Account Number', employee.account_number || 'N/A'],
+        ['Civil Status', employee.civil_status || 'N/A'],
+        ['Contact Number', employee.contact_number || 'N/A'],
+        ['Date of Birth', employee.birthday || 'N/A'],
+        ['Address', employee.address || 'N/A'],
         ['Hired Date', employee.hired_date || 'N/A'],
         ['Position', employee.position || 'N/A'],
         ['Department', employee.department || 'N/A'],
+        ['Classification', employee.classification || 'N/A'],
+        ['Bachelor Degree', employee.bachelor_degree || 'N/A'],
+        ['Master Degree', employee.master_degree || 'N/A'],
+        ['Doctorate Degree', employee.doctorate_degree || 'N/A'],
+        ['License', employee.license || 'N/A'],
+        ['Registration Number', employee.registration_number || 'N/A'],
+        ['Registration Date', employee.registration_date || 'N/A'],
+        ['Valid Until', employee.valid_until || 'N/A'],
+        ['Basic Salary', employee.salary || 'N/A'],
         ['Rate', employee.rate || 'N/A'],
+        ['Rate Per Hour', employee.rate_per_hour || 'N/A'],
+        ['COLA', employee.cola || 'N/A'],
         ['Status of Employment', employee.employment_status || 'N/A'],
+        ['SSS', employee.sss || 'N/A'],
+        ['TIN', employee.tin || 'N/A'],
+        ['PhilHealth', employee.philhealth || 'N/A'],
+        ['Pag-IBIG MID', employee.pagibig_mid || 'N/A'],
+        ['Pag-IBIG RTN', employee.pagibig_rtn || 'N/A'],
       ];
 
       return {

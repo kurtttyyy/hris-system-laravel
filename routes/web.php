@@ -39,6 +39,8 @@ Route::controller(RegisterLoginController::class)->group(function () {
 
 Route::controller(EmployeePageController::class)->group(function () {
     Route::get('employee/dashboard', 'display_home')->name('employee.employeeHome');
+    Route::get('employee/notifications', 'display_notifications')->name('employee.employeeNotifications');
+    Route::get('employee/notifications/summary', 'notification_summary')->name('employee.employeeNotifications.summary');
     Route::get('employee/leave', 'display_leave')->name('employee.employeeLeave');
     Route::get('employee/profile', 'display_profile')->name('employee.employeeProfile');
     Route::get('employee/communication', 'display_communication')->name('employee.employeeCommunication');

@@ -1443,6 +1443,11 @@
         'instructors_pt' => $departmentStaffingSummary->sum('instructors_pt'),
         'total' => $departmentStaffingSummary->sum('total'),
       ];
+      $nonTeachingCategoryTotal = (int) ($departmentStaffingTotals['heads'] ?? 0)
+        + (int) ($departmentStaffingTotals['coordinator'] ?? 0)
+        + (int) ($departmentStaffingTotals['staff'] ?? 0);
+      $teachingCategoryTotal = (int) ($departmentStaffingTotals['instructors_ft'] ?? 0)
+        + (int) ($departmentStaffingTotals['instructors_pt'] ?? 0);
       $employeeCategoryTotals = $employee->reduce(function ($carry, $emp) use ($resolveDepartment) {
         $department = strtolower(trim((string) ($resolveDepartment($emp) ?? '')));
         $jobTypeValue = strtolower(trim((string) (data_get($emp, 'applicant.position.job_type') ?: data_get($emp, 'employee.job_type') ?: ($emp->job_type ?? ''))));
@@ -1618,7 +1623,7 @@
         <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
           <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Non-Teaching</p>
           <div class="mt-3 flex items-end justify-between">
-            <p class="text-3xl font-black text-slate-900">{{ $employeeCategoryTotals['non_teaching'] }}</p>
+            <p class="text-3xl font-black text-slate-900">{{ $nonTeachingCategoryTotal }}</p>
             <span class="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-700">Staff</span>
           </div>
         </div>
@@ -1626,7 +1631,7 @@
         <div class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-4">
           <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-sky-600">Teaching</p>
           <div class="mt-3 flex items-end justify-between">
-            <p class="text-3xl font-black text-sky-950">{{ $employeeCategoryTotals['teaching'] }}</p>
+            <p class="text-3xl font-black text-sky-950">{{ $teachingCategoryTotal }}</p>
             <span class="rounded-full bg-sky-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-sky-700">Faculty</span>
           </div>
         </div>

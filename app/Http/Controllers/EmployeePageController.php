@@ -28,11 +28,212 @@ class EmployeePageController extends Controller
         $weeklyAttendance = $this->buildWeeklyAttendanceData($user);
 
         return view('employee.employeeHome', array_merge(
-            ['user' => $user],
+            [
+                'user' => $user,
+                'notifications' => 0,
+            ],
             $leaveMetrics,
             $attendanceMetrics,
             $weeklyAttendance
         ));
+    }
+
+    public function display_notifications()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login_display');
+        }
+
+        [$notificationItems, $notificationStats] = $this->buildEmployeeNotifications($user);
+
+        return view('employee.employeeNotifications', compact(
+            'user',
+            'notificationItems',
+            'notificationStats'
+        ));
+    }
+
+    public function notification_summary()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['total' => 0, 'stats' => [], 'items' => []], 401);
+        }
+
+        [$notificationItems, $notificationStats] = $this->buildEmployeeNotifications($user);
+
+        return response()->json([
+            'total' => (int) ($notificationStats['total'] ?? 0),
+            'stats' => $notificationStats,
+            'items' => $notificationItems->map(function ($item) {
+                return [
+                    'id' => $item['id'] ?? null,
+                    'category' => $item['category'] ?? 'Update',
+                    'date' => optional($item['date'] ?? null)?->toIso8601String(),
+                ];
+            })->values(),
+        ]);
+    }
+
+    private function buildEmployeeNotifications($user): array
+    {
+
+        $employeeId = trim((string) ($user->employee->employee_id ?? ''));
+
+        $leaveNotifications = LeaveApplication::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('filing_date')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get()
+            ->map(function ($application) {
+                $status = strtolower(trim((string) ($application->status ?? 'pending')));
+                $statusLabel = $status !== '' ? Str::title($status) : 'Pending';
+                $filedAt = $application->filing_date
+                    ? Carbon::parse($application->filing_date)
+                    : Carbon::parse($application->created_at);
+
+                return [
+                    'category' => 'Leave',
+                    'title' => $status === 'approved'
+                        ? 'Leave request approved'
+                        : ($status === 'rejected' ? 'Leave request needs attention' : 'Leave request submitted'),
+                    'message' => trim((string) ($application->leave_type ?? 'Leave')).' update: '.$statusLabel.'.',
+                    'date' => $filedAt,
+                    'href' => route('employee.employeeLeave', ['focus' => 'leave-history-section']),
+                    'badge' => $statusLabel,
+                    'tone' => $status === 'approved' ? 'emerald' : ($status === 'rejected' ? 'rose' : 'amber'),
+                ];
+            });
+
+        $payslipNotifications = PayslipRecord::query()
+            ->where(function ($query) use ($user, $employeeId) {
+                $query->where('user_id', (int) $user->id);
+                if ($employeeId !== '') {
+                    $query->orWhere('employee_id', $employeeId);
+                }
+            })
+            ->orderByDesc('pay_date')
+            ->orderByDesc('scanned_at')
+            ->orderByDesc('id')
+            ->limit(4)
+            ->get()
+            ->map(function ($record) {
+                $payDate = $record->pay_date
+                    ? Carbon::parse($record->pay_date)
+                    : Carbon::parse($record->created_at);
+
+                return [
+                    'category' => 'Payslip',
+                    'title' => 'New payslip available',
+                    'message' => 'Payroll record for '.$payDate->format('F j, Y').' is ready to review.',
+                    'date' => $payDate,
+                    'href' => route('employee.employeePayslip', ['record_id' => $record->id, 'focus' => 'payslip-history-section']),
+                    'badge' => 'Payslip',
+                    'tone' => 'violet',
+                ];
+            });
+
+        $attendanceNotifications = AttendanceRecord::query()
+            ->where(function ($query) use ($user, $employeeId) {
+                if ($employeeId !== '') {
+                    $query->where('employee_id', $employeeId);
+                } else {
+                    $query->whereRaw('LOWER(TRIM(COALESCE(employee_name, \'\'))) = ?', [
+                        strtolower($this->formatEmployeeDisplayName($user->first_name, $user->middle_name, $user->last_name) ?? ''),
+                    ]);
+                }
+            })
+            ->whereDate('attendance_date', '>=', now()->subDays(21)->toDateString())
+            ->orderByDesc('attendance_date')
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get()
+            ->filter(function ($record) {
+                $lateMinutes = (int) ($record->late_minutes ?? 0);
+                $hasMissingLogs = !empty($record->missing_time_logs) && $record->missing_time_logs !== '[]';
+                return !empty($record->is_absent) || $lateMinutes > 0 || $hasMissingLogs;
+            })
+            ->map(function ($record) {
+                $attendanceDate = $record->attendance_date
+                    ? Carbon::parse($record->attendance_date)
+                    : Carbon::parse($record->created_at);
+                $lateMinutes = (int) ($record->late_minutes ?? 0);
+                $statusLabel = !empty($record->is_absent)
+                    ? 'Absent'
+                    : ($lateMinutes > 0 ? 'Tardy' : 'Missing Logs');
+
+                $message = !empty($record->is_absent)
+                    ? 'You were marked absent on '.$attendanceDate->format('F j, Y').'.'
+                    : ($lateMinutes > 0
+                        ? 'Recorded '.$lateMinutes.' late minute(s) on '.$attendanceDate->format('F j, Y').'.'
+                        : 'Your attendance entry on '.$attendanceDate->format('F j, Y').' has incomplete logs.');
+
+                return [
+                    'category' => 'Attendance',
+                    'title' => 'Attendance follow-up',
+                    'message' => $message,
+                    'date' => $attendanceDate,
+                    'href' => route('employee.employeeHome', ['focus' => 'weekly-attendance-section']),
+                    'badge' => $statusLabel,
+                    'tone' => !empty($record->is_absent) ? 'rose' : ($lateMinutes > 0 ? 'amber' : 'sky'),
+                ];
+            });
+
+        $resignationNotifications = Resignation::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('created_at')
+            ->limit(3)
+            ->get()
+            ->map(function ($resignation) {
+                $status = trim((string) ($resignation->status ?? 'Pending'));
+                $statusKey = strtolower($status);
+                $submittedAt = $resignation->submitted_at
+                    ? Carbon::parse($resignation->submitted_at)
+                    : Carbon::parse($resignation->created_at);
+
+                return [
+                    'category' => 'Resignation',
+                    'title' => 'Resignation request update',
+                    'message' => 'Current status: '.$status.'.',
+                    'date' => $submittedAt,
+                    'href' => route('employee.employeeResignation', ['focus' => 'resignation-timeline-section']),
+                    'badge' => $status,
+                    'tone' => in_array($statusKey, ['approved', 'completed'], true) ? 'slate' : 'amber',
+                ];
+            });
+
+        $notificationItems = collect()
+            ->concat($leaveNotifications)
+            ->concat($payslipNotifications)
+            ->concat($attendanceNotifications)
+            ->concat($resignationNotifications)
+            ->sortByDesc(function ($item) {
+                return optional($item['date'] ?? null)->timestamp ?? 0;
+            })
+            ->values()
+            ->map(function ($item) {
+                $item['id'] = md5(
+                    ($item['category'] ?? 'update')
+                    .'|'.($item['title'] ?? '')
+                    .'|'.($item['message'] ?? '')
+                    .'|'.optional($item['date'] ?? null)->format('Y-m-d H:i:s')
+                );
+
+                return $item;
+            });
+
+        $notificationStats = [
+            'total' => $notificationItems->count(),
+            'leave' => $leaveNotifications->count(),
+            'payslip' => $payslipNotifications->count(),
+            'attendance' => $attendanceNotifications->count(),
+            'resignation' => $resignationNotifications->count(),
+        ];
+
+        return [$notificationItems, $notificationStats];
     }
 
     public function display_leave(){

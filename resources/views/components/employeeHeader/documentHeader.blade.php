@@ -7,12 +7,12 @@
         </div>
 
         <div class="flex items-center gap-2">
-            <button class="relative rounded-2xl border border-emerald-100 bg-white p-3.5 text-emerald-700 transition hover:bg-emerald-50">
-                <span class="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">
-                    3
+            <a href="{{ route('employee.employeeNotifications') }}" class="relative cursor-pointer rounded-2xl border border-emerald-100 bg-white p-3.5 text-emerald-700 transition hover:bg-emerald-50" aria-label="Open notifications">
+                <span data-employee-notification-badge data-fallback-count="0" class="hidden pointer-events-none absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">
+                    0
                 </span>
-                <i class="fa fa-bell fa-lg"></i>
-            </button>
+                <i class="pointer-events-none fa fa-bell fa-lg"></i>
+            </a>
 
             <div class="relative group">
                 <button class="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-100 bg-white text-emerald-700 transition hover:bg-emerald-50">
@@ -37,3 +37,55 @@
         </div>
     </div>
 </header>
+<script>
+    (function () {
+        const badge = document.querySelector('[data-employee-notification-badge]');
+        if (!badge) return;
+        const summaryUrl = @json(route('employee.employeeNotifications.summary'));
+        const readKey = 'employee_notifications_read_v1';
+        const unreadKey = 'employee_notifications_unread_v1';
+        const fallbackCount = Number.parseInt(badge.getAttribute('data-fallback-count') || '0', 10) || 0;
+        const renderBadge = (count) => {
+            if (count > 0) {
+                badge.textContent = String(count);
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        };
+        const computeUnreadCount = (items) => {
+            let readLookup = {};
+            try {
+                const raw = localStorage.getItem(readKey);
+                const parsed = raw ? JSON.parse(raw) : {};
+                readLookup = parsed && typeof parsed === 'object' ? parsed : {};
+            } catch (error) {
+                readLookup = {};
+            }
+            return (Array.isArray(items) ? items : []).reduce((count, item) => {
+                const id = item?.id ? String(item.id) : '';
+                return count + (id && !readLookup[id] ? 1 : 0);
+            }, 0);
+        };
+        const syncBadge = async () => {
+            try {
+                const response = await fetch(summaryUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+                if (!response.ok) throw new Error('Unable to load notification summary.');
+                const payload = await response.json();
+                const unreadCount = computeUnreadCount(payload?.items ?? []);
+                localStorage.setItem(unreadKey, String(unreadCount));
+                renderBadge(unreadCount);
+            } catch (error) {
+                const storedUnread = Number.parseInt(localStorage.getItem(unreadKey) || '', 10);
+                renderBadge(Number.isFinite(storedUnread) ? storedUnread : fallbackCount);
+            }
+        };
+        syncBadge();
+        window.addEventListener('storage', function (event) {
+            if (event.key === unreadKey) {
+                const nextCount = Number.parseInt(event.newValue || '', 10);
+                renderBadge(Number.isFinite(nextCount) ? nextCount : fallbackCount);
+            }
+        });
+    })();
+</script>

@@ -368,6 +368,46 @@
   </div>
 </div>
 
+  <!-- Subject Loads -->
+  <div class="bg-slate-50 p-4 rounded-xl text-sm">
+    <h3 class="font-semibold mb-5">Subjects and Units</h3>
+
+    <div
+      x-show="Array.isArray(selectedEmployee?.subject_loads) && selectedEmployee.subject_loads.length"
+      class="space-y-3"
+    >
+      <template x-for="(load, index) in (selectedEmployee?.subject_loads ?? [])" :key="`${load?.subject_name ?? load?.code ?? 'load'}-${index}`">
+        <div class="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <div class="min-w-0">
+            <p
+              class="font-medium text-slate-800"
+              x-text="load?.subject_name || [load?.code, load?.course_no].filter(Boolean).join(' ') || 'Untitled subject'"
+            ></p>
+            <p
+              class="text-xs text-slate-500"
+              x-show="load?.schedule"
+              x-text="load?.schedule"
+            ></p>
+          </div>
+          <span
+            class="shrink-0 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700"
+            x-text="(() => {
+              const rawUnits = (load?.units ?? '').toString().trim();
+              return rawUnits ? `${rawUnits} unit${rawUnits === '1' ? '' : 's'}` : 'No units';
+            })()"
+          ></span>
+        </div>
+      </template>
+    </div>
+
+    <p
+      x-show="!Array.isArray(selectedEmployee?.subject_loads) || !selectedEmployee.subject_loads.length"
+      class="text-slate-500"
+    >
+      No existing subject loads found.
+    </p>
+  </div>
+
 
   <!-- Recent Activity -->
   <div class="bg-slate-50 p-4 rounded-xl text-sm">
