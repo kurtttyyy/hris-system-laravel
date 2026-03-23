@@ -18,8 +18,17 @@
     body {
       font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; transition: margin-left 0.3s ease;
     }
-    main { transition: margin-left 0.3s ease; }
-    aside ~ main { margin-left: 16rem; }
+    main {
+      transition: margin-left 0.3s ease, width 0.3s ease;
+    }
+    main.main-with-collapsed-sidebar {
+      margin-left: 4rem;
+      width: calc(100vw - 4rem);
+    }
+    main.main-with-expanded-sidebar {
+      margin-left: 16rem;
+      width: calc(100vw - 16rem);
+    }
   </style>
 </head>
 
@@ -120,7 +129,7 @@
   @endphp
 
   <!-- Main Content -->
-<main class="min-w-0 flex-1 ml-16 transition-all duration-300"
+<main class="main-with-collapsed-sidebar min-w-0 transition-all duration-300"
       x-data="{
         openProfile:false,
         openEditProfile:false,
@@ -2463,12 +2472,12 @@
   const main = document.querySelector('main');
   if (sidebar && main) {
     sidebar.addEventListener('mouseenter', function() {
-      main.classList.remove('ml-16');
-      main.classList.add('ml-64');
+      main.classList.remove('main-with-collapsed-sidebar');
+      main.classList.add('main-with-expanded-sidebar');
     });
     sidebar.addEventListener('mouseleave', function() {
-      main.classList.remove('ml-64');
-      main.classList.add('ml-16');
+      main.classList.remove('main-with-expanded-sidebar');
+      main.classList.add('main-with-collapsed-sidebar');
     });
   }
 </script>

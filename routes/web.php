@@ -60,11 +60,15 @@ Route::controller(EmployeeStoreController::class)->group(function () {
     Route::post('employee/document/{id}/remove', 'remove_document')->name('employee.remove_document');
     Route::post('employee/leave/application', 'leave_application_store')->name('employee.leaveApplication.store');
     Route::post('employee/resignation/store', 'store_resignation')->name('employee.storeResignation');
+    Route::post('employee/communication/send', 'send_communication_message')->name('employee.communication.send');
 
 });
 
 Route::controller(AdministratorPageController::class)->group(function () {
     Route::get('system/dashboard', 'display_home')->name('admin.adminHome');
+    Route::get('system/notifications', 'display_notifications')->name('admin.adminNotifications');
+    Route::get('system/notifications/summary', 'notification_summary')->name('admin.adminNotifications.summary');
+    Route::get('system/communication', 'display_communication')->name('admin.adminCommunication');
     Route::get('system/employee', 'display_employee')->name('admin.adminEmployee');
     Route::get('system/attendance', 'display_attendance')->name('admin.adminAttendance');
     Route::get('system/attendance/present', 'display_attendance_present')->name('admin.attendance.present');
@@ -110,6 +114,7 @@ Route::controller(AdministratorStoreController::class)->group(function () {
     Route::post('system/store/new/position', 'store_new_position')->name('admin.createPositionStore');
     Route::post('system/store/ratings', 'store_star_ratings')->name('admin.adminStarStore');
     Route::post('system/store/interview', 'store_interview')->name('admin.storeNewInterview');
+    Route::post('system/communication/send', 'send_communication_message')->name('admin.communication.send');
     Route::post('system/employee/document', 'store_document')->name('admin.addDocument');
     Route::post('system/attendance/upload', 'store_attendance_excel')->name('admin.uploadAttendanceExcel');
     Route::post('system/payslip/upload', 'store_payslip_file')->name('admin.uploadPayslipFile');

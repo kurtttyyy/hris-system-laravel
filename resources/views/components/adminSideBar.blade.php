@@ -16,6 +16,23 @@
     $adminInitials = 'AD';
   }
   $adminRoleLabel = trim((string) ($adminUser->role ?? 'Admin'));
+  $adminUnreadMessages = 0;
+  if (
+    $adminUser
+    && \Illuminate\Support\Facades\Schema::hasTable('conversations')
+    && \Illuminate\Support\Facades\Schema::hasTable('conversation_messages')
+  ) {
+    $adminUnreadMessages = \App\Models\ConversationMessage::query()
+      ->whereNull('read_at')
+      ->where('sender_user_id', '!=', (int) $adminUser->id)
+      ->whereHas('conversation', function ($query) use ($adminUser) {
+        $query->where(function ($innerQuery) use ($adminUser) {
+          $innerQuery->where('user_one_id', (int) $adminUser->id)
+            ->orWhere('user_two_id', (int) $adminUser->id);
+        });
+      })
+      ->count();
+  }
 @endphp
 
 <style>
@@ -107,6 +124,23 @@
         : 'text-white hover:bg-green-600/30' }}">
       <i class="fa-solid fa-file-invoice-dollar"></i>
       <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Payslip</span>
+    </a>
+
+    <a href="{{ route('admin.adminCommunication') }}"
+       class="relative flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
+       {{ request()->routeIs('admin.adminCommunication')
+          ? 'bg-green-600 text-white'
+          : 'text-white hover:bg-green-600/30' }}">
+      <span class="relative inline-flex items-center justify-center">
+        <i class="fa-solid fa-comments"></i>
+        @if ($adminUnreadMessages > 0)
+          <span class="absolute -right-2 -top-2 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white group-hover:hidden">{{ $adminUnreadMessages > 9 ? '9+' : $adminUnreadMessages }}</span>
+        @endif
+      </span>
+      <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Communication</span>
+      @if ($adminUnreadMessages > 0)
+        <span class="ml-auto hidden min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white group-hover:inline-flex">{{ $adminUnreadMessages > 99 ? '99+' : $adminUnreadMessages }}</span>
+      @endif
     </a>
 
     <details class="space-y-1 hiring-menu" {{ $isHiringRoute ? 'open' : '' }}>

@@ -6,6 +6,7 @@ use App\Models\AttendanceUpload;
 use App\Models\AttendanceRecord;
 use App\Models\Applicant;
 use App\Models\ApplicantDocument;
+use App\Models\Conversation;
 use App\Models\Employee;
 use App\Models\GuestLog;
 use App\Models\Interviewer;
@@ -19,6 +20,7 @@ use App\Models\Resignation;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -232,6 +234,12 @@ class AdministratorPageController extends Controller
 
         $openPositionsCount = OpenPosition::query()->count();
         $openPositionApplicationsCount = Applicant::query()->count();
+        [$adminNotificationItems, $adminNotificationStats] = $this->buildAdminNotifications(
+            $employee,
+            $pendingLeaveRequestsForHome,
+            $departments,
+            $openPositionApplicationsCount
+        );
         
         return view('admin.adminHome', compact(
             'employee',
@@ -245,8 +253,379 @@ class AdministratorPageController extends Controller
             'pendingLeaveRequestCount',
             'pendingLeaveRequestsForHome',
             'openPositionsCount',
+            'openPositionApplicationsCount',
+            'adminNotificationItems',
+            'adminNotificationStats'
+        ));
+    }
+
+    public function display_notifications()
+    {
+        $employee = User::with([
+            'applicant.documents' => function ($query) {
+                $query->select([
+                    'id',
+                    'applicant_id',
+                    'filename',
+                    'filepath',
+                    'type',
+                    'mime_type',
+                    'created_at',
+                ])->orderByDesc('created_at');
+            },
+        ])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
+            ->latest()
+            ->get();
+
+        $departments = User::with(['employee', 'applicant.position:id,department'])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
+            ->get()
+            ->groupBy(function ($user) {
+                $userDepartment = trim((string) ($user->department ?? ''));
+                if ($userDepartment !== '') {
+                    return $userDepartment;
+                }
+
+                $employeeDepartment = trim((string) (optional($user->employee)->department ?? ''));
+                if ($employeeDepartment !== '') {
+                    return $employeeDepartment;
+                }
+
+                $applicantDepartment = trim((string) (optional(optional($user->applicant)->position)->department ?? ''));
+                return $applicantDepartment !== '' ? $applicantDepartment : 'Unassigned';
+            })
+            ->map(function ($group, $departmentName) {
+                return [
+                    'name' => $departmentName,
+                    'count' => $group->count(),
+                ];
+            })
+            ->values();
+
+        $pendingLeaveRequestsForHome = LeaveApplication::query()
+            ->where(function ($query) {
+                $query->whereNull('status')
+                    ->orWhereRaw("TRIM(status) = ''")
+                    ->orWhereRaw("LOWER(TRIM(status)) = ?", ['pending']);
+            })
+            ->orderByDesc('created_at')
+            ->take(6)
+            ->get();
+
+        $openPositionApplicationsCount = Applicant::query()->count();
+
+        [$adminNotificationItems, $adminNotificationStats] = $this->buildAdminNotifications(
+            $employee,
+            $pendingLeaveRequestsForHome,
+            $departments,
+            $openPositionApplicationsCount
+        );
+
+        return view('Admin.adminNotifications', compact(
+            'adminNotificationItems',
+            'adminNotificationStats',
+            'employee',
+            'departments',
             'openPositionApplicationsCount'
         ));
+    }
+
+    public function notification_summary()
+    {
+        $employee = User::query()
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
+            ->latest()
+            ->get();
+
+        $departments = User::with(['employee', 'applicant.position:id,department'])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
+            ->get()
+            ->groupBy(function ($user) {
+                $userDepartment = trim((string) ($user->department ?? ''));
+                if ($userDepartment !== '') {
+                    return $userDepartment;
+                }
+
+                $employeeDepartment = trim((string) (optional($user->employee)->department ?? ''));
+                if ($employeeDepartment !== '') {
+                    return $employeeDepartment;
+                }
+
+                $applicantDepartment = trim((string) (optional(optional($user->applicant)->position)->department ?? ''));
+                return $applicantDepartment !== '' ? $applicantDepartment : 'Unassigned';
+            })
+            ->map(function ($group, $departmentName) {
+                return [
+                    'name' => $departmentName,
+                    'count' => $group->count(),
+                ];
+            })
+            ->values();
+
+        $pendingLeaveRequests = LeaveApplication::query()
+            ->where(function ($query) {
+                $query->whereNull('status')
+                    ->orWhereRaw("TRIM(status) = ''")
+                    ->orWhereRaw("LOWER(TRIM(status)) = ?", ['pending']);
+            })
+            ->orderByDesc('created_at')
+            ->take(6)
+            ->get();
+
+        $openPositionApplicationsCount = Applicant::query()->count();
+
+        [$adminNotificationItems, $adminNotificationStats] = $this->buildAdminNotifications(
+            $employee,
+            $pendingLeaveRequests,
+            $departments,
+            $openPositionApplicationsCount
+        );
+
+        return response()->json([
+            'total' => (int) ($adminNotificationStats['total'] ?? 0),
+            'stats' => $adminNotificationStats,
+            'items' => $adminNotificationItems->map(function ($item) {
+                return [
+                    'id' => $item['id'] ?? null,
+                    'category' => $item['category'] ?? 'Update',
+                    'date' => optional($item['date'] ?? null)?->toIso8601String(),
+                ];
+            })->values(),
+        ]);
+    }
+
+    public function display_communication()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login_display');
+        }
+
+        if (!in_array(strtolower(trim((string) ($user->role ?? ''))), ['admin', 'administrator'], true)) {
+            return redirect()->route('employee.employeeCommunication')
+                ->with('warning', 'You are signed in as an employee account. Please log in as an admin account to access admin communication.');
+        }
+
+        $employees = User::query()
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
+            ->orderBy('first_name')
+            ->get();
+
+        if (!Schema::hasTable('conversations') || !Schema::hasTable('conversation_messages')) {
+            return view('Admin.adminCommunication', [
+                'employees' => $employees,
+                'conversations' => collect(),
+                'conversationSummaries' => collect(),
+                'selectedConversation' => null,
+                'selectedParticipant' => null,
+            ])->with('warning', 'Communication tables are not ready yet. Please run the latest migration.');
+        }
+
+        $selectedParticipantId = (int) request()->query('user', 0);
+        $selectedConversationId = (int) request()->query('conversation', 0);
+
+        $conversations = Conversation::query()
+            ->forUser((int) $user->id)
+            ->with([
+                'userOne',
+                'userTwo',
+                'latestMessage.sender',
+            ])
+            ->withCount([
+                'messages as unread_count' => function ($query) use ($user) {
+                    $query->whereNull('read_at')
+                        ->where('sender_user_id', '!=', (int) $user->id);
+                },
+            ])
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $selectedConversation = null;
+        if ($selectedConversationId > 0) {
+            $selectedConversation = $conversations->firstWhere('id', $selectedConversationId);
+        }
+
+        $selectedParticipant = null;
+        if ($selectedConversation) {
+            $selectedParticipant = $selectedConversation->otherParticipantFor((int) $user->id);
+        } elseif ($selectedParticipantId > 0) {
+            $selectedParticipant = $employees->firstWhere('id', $selectedParticipantId);
+            if ($selectedParticipant) {
+                $selectedConversation = $conversations->first(function (Conversation $conversation) use ($selectedParticipant, $user) {
+                    $otherParticipant = $conversation->otherParticipantFor((int) $user->id);
+                    return (int) ($otherParticipant?->id ?? 0) === (int) $selectedParticipant->id;
+                });
+            }
+        }
+
+        if ($selectedConversation) {
+            $selectedConversation->load([
+                'messages' => function ($query) {
+                    $query->with('sender')->orderBy('created_at');
+                },
+                'userOne',
+                'userTwo',
+            ]);
+
+            $selectedConversation->messages()
+                ->whereNull('read_at')
+                ->where('sender_user_id', '!=', (int) $user->id)
+                ->update(['read_at' => now()]);
+
+            $selectedParticipant = $selectedParticipant ?: $selectedConversation->otherParticipantFor((int) $user->id);
+
+            $activeConversationIndex = $conversations->search(fn (Conversation $conversation) => (int) $conversation->id === (int) $selectedConversation->id);
+            if ($activeConversationIndex !== false) {
+                $conversations[$activeConversationIndex]->unread_count = 0;
+            }
+        }
+
+        $conversationSummaries = $conversations->map(function (Conversation $conversation) use ($user) {
+            $participant = $conversation->otherParticipantFor((int) $user->id);
+            $latestMessage = $conversation->latestMessage;
+
+            return [
+                'id' => (int) $conversation->id,
+                'participant' => $participant,
+                'latest_message' => trim((string) ($latestMessage?->body ?? '')),
+                'latest_at' => $conversation->last_message_at ?? $latestMessage?->created_at ?? $conversation->updated_at,
+                'unread_count' => (int) ($conversation->unread_count ?? 0),
+            ];
+        })->filter(fn ($item) => $item['participant'])->values();
+
+        $unreadCountsByParticipant = $conversationSummaries
+            ->filter(fn ($item) => ($item['participant']->id ?? null) !== null)
+            ->mapWithKeys(fn ($item) => [
+                (int) $item['participant']->id => (int) ($item['unread_count'] ?? 0),
+            ]);
+
+        $employees = $employees->map(function ($employee) use ($unreadCountsByParticipant) {
+            $employee->unread_message_count = (int) $unreadCountsByParticipant->get((int) $employee->id, 0);
+            $employee->has_unread_messages = $employee->unread_message_count > 0;
+            return $employee;
+        });
+
+        return view('Admin.adminCommunication', compact(
+            'employees',
+            'conversations',
+            'conversationSummaries',
+            'selectedConversation',
+            'selectedParticipant'
+        ));
+    }
+
+    private function buildAdminNotifications($pendingEmployees, $pendingLeaveRequests, $departments, int $openPositionApplicationsCount): array
+    {
+        $pendingEmployees = collect($pendingEmployees ?? []);
+        $pendingLeaveRequests = collect($pendingLeaveRequests ?? []);
+        $departments = collect($departments ?? []);
+
+        $approvalNotifications = $pendingEmployees
+            ->take(6)
+            ->map(function ($user) {
+                $fullName = trim(implode(' ', array_filter([
+                    $user->first_name ?? null,
+                    $user->middle_name ?? null,
+                    $user->last_name ?? null,
+                ])));
+
+                return [
+                    'category' => 'Approvals',
+                    'title' => 'Employee account pending review',
+                    'message' => ($fullName !== '' ? $fullName : 'A new employee').' is waiting for approval.',
+                    'date' => $user->created_at ? Carbon::parse($user->created_at) : now(),
+                    'href' => route('admin.adminEmployee'),
+                    'badge' => 'Pending',
+                    'tone' => 'emerald',
+                ];
+            });
+
+        $leaveNotifications = $pendingLeaveRequests
+            ->take(6)
+            ->map(function ($application) {
+                $employeeName = trim((string) ($application->employee_name ?? 'Employee'));
+                $leaveType = trim((string) ($application->leave_type ?? 'Leave request'));
+                $filedAt = $application->filing_date
+                    ? Carbon::parse($application->filing_date)
+                    : Carbon::parse($application->created_at);
+
+                return [
+                    'category' => 'Leave',
+                    'title' => 'Leave request awaiting action',
+                    'message' => $employeeName.' submitted '.$leaveType.'.',
+                    'date' => $filedAt,
+                    'href' => route('admin.adminLeaveManagement'),
+                    'badge' => 'Pending',
+                    'tone' => 'amber',
+                ];
+            });
+
+        $hiringNotifications = collect();
+        if ($openPositionApplicationsCount > 0) {
+            $hiringNotifications->push([
+                'category' => 'Hiring',
+                'title' => 'Active hiring pipeline',
+                'message' => number_format($openPositionApplicationsCount).' applicant'.($openPositionApplicationsCount === 1 ? '' : 's').' are attached to open roles.',
+                'date' => now(),
+                'href' => route('admin.adminApplicant'),
+                'badge' => 'Pipeline',
+                'tone' => 'sky',
+            ]);
+        }
+
+        $coverageNotifications = $departments
+            ->sortByDesc('count')
+            ->take(4)
+            ->map(function ($department) {
+                $count = (int) ($department['count'] ?? 0);
+
+                return [
+                    'category' => 'Workforce',
+                    'title' => 'Department coverage snapshot',
+                    'message' => trim((string) ($department['name'] ?? 'Department')).' currently has '.number_format($count).' active employee'.($count === 1 ? '' : 's').'.',
+                    'date' => now(),
+                    'href' => route('admin.adminHome'),
+                    'badge' => 'Coverage',
+                    'tone' => 'slate',
+                ];
+            });
+
+        $notificationItems = collect()
+            ->concat($approvalNotifications)
+            ->concat($leaveNotifications)
+            ->concat($hiringNotifications)
+            ->concat($coverageNotifications)
+            ->sortByDesc(function ($item) {
+                return optional($item['date'] ?? null)->timestamp ?? 0;
+            })
+            ->values()
+            ->map(function ($item) {
+                $item['id'] = md5(
+                    ($item['category'] ?? 'update')
+                    .'|'.($item['title'] ?? '')
+                    .'|'.($item['message'] ?? '')
+                    .'|'.optional($item['date'] ?? null)->format('Y-m-d H:i:s')
+                );
+
+                return $item;
+            });
+
+        $notificationStats = [
+            'total' => $notificationItems->count(),
+            'approvals' => $approvalNotifications->count(),
+            'leave' => $leaveNotifications->count(),
+            'hiring' => $hiringNotifications->count(),
+            'workforce' => $coverageNotifications->count(),
+        ];
+
+        return [$notificationItems, $notificationStats];
     }
 
     public function display_employee(){

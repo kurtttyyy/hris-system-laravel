@@ -7,6 +7,7 @@ use App\Models\AttendanceRecord;
 use App\Models\Applicant;
 use App\Models\ApplicantDegree;
 use App\Models\ApplicantDocument;
+use App\Models\Conversation;
 use App\Models\Education;
 use App\Models\Employee;
 use App\Models\EmployeePositionHistory;
@@ -36,6 +37,52 @@ use Illuminate\Support\Facades\Mail;
 
 class AdministratorStoreController extends Controller
 {
+    public function send_communication_message(Request $request)
+    {
+        if (!Schema::hasTable('conversations') || !Schema::hasTable('conversation_messages')) {
+            return redirect()->back()->withErrors(['body' => 'Communication tables are not ready yet. Please run the latest migration.']);
+        }
+
+        $attrs = $request->validate([
+            'participant_user_id' => 'required|integer|exists:users,id',
+            'conversation_id' => 'nullable|integer|exists:conversations,id',
+            'body' => 'required|string|max:4000',
+        ]);
+
+        $authUser = Auth::user();
+        if (!$authUser) {
+            return redirect()->route('login_display');
+        }
+
+        if (!in_array(strtolower(trim((string) ($authUser->role ?? ''))), ['admin', 'administrator'], true)) {
+            return redirect()->route('employee.employeeCommunication')
+                ->withErrors(['body' => 'You must be logged in as an admin account to send messages from the admin communication page.']);
+        }
+
+        $participant = User::query()->findOrFail((int) $attrs['participant_user_id']);
+        if ((int) $participant->id === (int) $authUser->id) {
+            return redirect()->back()->withErrors(['body' => 'You cannot message yourself.']);
+        }
+
+        if (strcasecmp(trim((string) ($participant->role ?? '')), 'employee') !== 0) {
+            return redirect()->back()->withErrors(['body' => 'Admins can only start chats with employee users here.']);
+        }
+
+        $conversation = Conversation::findOrCreateBetweenUsers((int) $authUser->id, (int) $participant->id);
+        $conversation->messages()->create([
+            'sender_user_id' => (int) $authUser->id,
+            'body' => trim((string) $attrs['body']),
+        ]);
+        $conversation->forceFill([
+            'last_message_at' => now(),
+        ])->save();
+
+        return redirect()->route('admin.adminCommunication', [
+            'conversation' => $conversation->id,
+            'user' => $participant->id,
+        ])->with('success', 'Message sent.');
+    }
+
     public function sync_hidden_official_holidays(Request $request)
     {
         $attrs = $request->validate([

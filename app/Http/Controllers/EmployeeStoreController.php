@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Applicant;
 use App\Models\ApplicantDocument;
+use App\Models\Conversation;
 use App\Models\LeaveApplication;
 use App\Models\Resignation;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -479,6 +482,47 @@ class EmployeeStoreController extends Controller
 
         return redirect()->route('employee.employeeResignation')
             ->with('success', 'Resignation request submitted.');
+    }
+
+    public function send_communication_message(Request $request)
+    {
+        if (!Schema::hasTable('conversations') || !Schema::hasTable('conversation_messages')) {
+            return redirect()->back()->withErrors(['body' => 'Communication tables are not ready yet. Please run the latest migration.']);
+        }
+
+        $attrs = $request->validate([
+            'participant_user_id' => 'required|integer|exists:users,id',
+            'conversation_id' => 'nullable|integer|exists:conversations,id',
+            'body' => 'required|string|max:4000',
+        ]);
+
+        $authUser = Auth::user();
+        if (!$authUser) {
+            return redirect()->route('login_display');
+        }
+
+        $participant = User::query()->findOrFail((int) $attrs['participant_user_id']);
+        if ((int) $participant->id === (int) $authUser->id) {
+            return redirect()->back()->withErrors(['body' => 'You cannot message yourself.']);
+        }
+
+        if (strcasecmp(trim((string) ($participant->role ?? '')), 'employee') === 0) {
+            return redirect()->back()->withErrors(['body' => 'Employees can only start chats with admin users.']);
+        }
+
+        $conversation = Conversation::findOrCreateBetweenUsers((int) $authUser->id, (int) $participant->id);
+        $conversation->messages()->create([
+            'sender_user_id' => (int) $authUser->id,
+            'body' => trim((string) $attrs['body']),
+        ]);
+        $conversation->forceFill([
+            'last_message_at' => now(),
+        ])->save();
+
+        return redirect()->route('employee.employeeCommunication', [
+            'conversation' => $conversation->id,
+            'user' => $participant->id,
+        ])->with('success', 'Message sent.');
     }
 
     private function clearMatchingRequiredDocumentMeta(int $applicantId, string $submittedDocumentName): void

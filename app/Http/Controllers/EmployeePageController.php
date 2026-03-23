@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Applicant;
 use App\Models\ApplicantDocument;
+use App\Models\Conversation;
 use App\Models\AttendanceRecord;
 use App\Models\PayslipRecord;
 use App\Models\Resignation;
@@ -13,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -857,12 +859,118 @@ class EmployeePageController extends Controller
     }
 
     public function display_communication(){
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login_display');
+        }
+
         $admins = User::query()
             ->whereIn('role', ['admin', 'Admin'])
             ->orderBy('first_name')
             ->get();
 
-        return view('employee.employeeCommunication', compact('admins'));
+        if (!Schema::hasTable('conversations') || !Schema::hasTable('conversation_messages')) {
+            return view('employee.employeeCommunication', [
+                'admins' => $admins,
+                'conversations' => collect(),
+                'conversationSummaries' => collect(),
+                'selectedConversation' => null,
+                'selectedParticipant' => null,
+            ])->with('warning', 'Communication tables are not ready yet. Please run the latest migration.');
+        }
+
+        $selectedParticipantId = (int) request()->query('user', 0);
+        $selectedConversationId = (int) request()->query('conversation', 0);
+
+        $conversations = Conversation::query()
+            ->forUser((int) $user->id)
+            ->with([
+                'userOne',
+                'userTwo',
+                'latestMessage.sender',
+            ])
+            ->withCount([
+                'messages as unread_count' => function ($query) use ($user) {
+                    $query->whereNull('read_at')
+                        ->where('sender_user_id', '!=', (int) $user->id);
+                },
+            ])
+            ->orderByDesc('last_message_at')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $selectedConversation = null;
+        if ($selectedConversationId > 0) {
+            $selectedConversation = $conversations->firstWhere('id', $selectedConversationId);
+        }
+
+        $selectedParticipant = null;
+        if ($selectedConversation) {
+            $selectedParticipant = $selectedConversation->otherParticipantFor((int) $user->id);
+        } elseif ($selectedParticipantId > 0) {
+            $selectedParticipant = $admins->firstWhere('id', $selectedParticipantId);
+            if ($selectedParticipant) {
+                $selectedConversation = $conversations->first(function (Conversation $conversation) use ($selectedParticipant, $user) {
+                    $otherParticipant = $conversation->otherParticipantFor((int) $user->id);
+                    return (int) ($otherParticipant?->id ?? 0) === (int) $selectedParticipant->id;
+                });
+            }
+        }
+
+        if ($selectedConversation) {
+            $selectedConversation->load([
+                'messages' => function ($query) {
+                    $query->with('sender')->orderBy('created_at');
+                },
+                'userOne',
+                'userTwo',
+            ]);
+
+            $selectedConversation->messages()
+                ->whereNull('read_at')
+                ->where('sender_user_id', '!=', (int) $user->id)
+                ->update(['read_at' => now()]);
+
+            $selectedParticipant = $selectedParticipant ?: $selectedConversation->otherParticipantFor((int) $user->id);
+
+            $activeConversationIndex = $conversations->search(fn (Conversation $conversation) => (int) $conversation->id === (int) $selectedConversation->id);
+            if ($activeConversationIndex !== false) {
+                $conversations[$activeConversationIndex]->unread_count = 0;
+            }
+        }
+
+        $conversationSummaries = $conversations->map(function (Conversation $conversation) use ($user) {
+            $participant = $conversation->otherParticipantFor((int) $user->id);
+            $latestMessage = $conversation->latestMessage;
+
+            return [
+                'id' => (int) $conversation->id,
+                'participant' => $participant,
+                'latest_message' => trim((string) ($latestMessage?->body ?? '')),
+                'latest_at' => $conversation->last_message_at ?? $latestMessage?->created_at ?? $conversation->updated_at,
+                'unread_count' => (int) ($conversation->unread_count ?? 0),
+            ];
+        })->filter(fn ($item) => $item['participant'])->values();
+
+        $unreadCountsByParticipant = $conversationSummaries
+            ->filter(fn ($item) => ($item['participant']->id ?? null) !== null)
+            ->mapWithKeys(fn ($item) => [
+                (int) $item['participant']->id => (int) ($item['unread_count'] ?? 0),
+            ]);
+
+        $admins = $admins->map(function ($admin) use ($unreadCountsByParticipant) {
+            $admin->unread_message_count = (int) $unreadCountsByParticipant->get((int) $admin->id, 0);
+            $admin->has_unread_messages = $admin->unread_message_count > 0;
+            return $admin;
+        });
+
+        return view('employee.employeeCommunication', compact(
+            'admins',
+            'conversations',
+            'conversationSummaries',
+            'selectedConversation',
+            'selectedParticipant'
+        ));
     }
 
     public function display_resignation(){
