@@ -231,6 +231,12 @@ class AdministratorPageController extends Controller
             ->orderByDesc('created_at')
             ->take(3)
             ->get();
+        $pendingResignationsForHome = Resignation::query()
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('created_at')
+            ->take(6)
+            ->get();
 
         $openPositionsCount = OpenPosition::query()->count();
         $openPositionApplicationsCount = Applicant::query()->count();
@@ -238,7 +244,8 @@ class AdministratorPageController extends Controller
             $employee,
             $pendingLeaveRequestsForHome,
             $departments,
-            $openPositionApplicationsCount
+            $openPositionApplicationsCount,
+            $pendingResignationsForHome
         );
         
         return view('admin.adminHome', compact(
@@ -315,13 +322,21 @@ class AdministratorPageController extends Controller
             ->take(6)
             ->get();
 
+        $pendingResignations = Resignation::query()
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('created_at')
+            ->take(6)
+            ->get();
+
         $openPositionApplicationsCount = Applicant::query()->count();
 
         [$adminNotificationItems, $adminNotificationStats] = $this->buildAdminNotifications(
             $employee,
             $pendingLeaveRequestsForHome,
             $departments,
-            $openPositionApplicationsCount
+            $openPositionApplicationsCount,
+            $pendingResignations
         );
 
         return view('Admin.adminNotifications', compact(
@@ -377,23 +392,42 @@ class AdministratorPageController extends Controller
             ->take(6)
             ->get();
 
+        $pendingResignations = Resignation::query()
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
+            ->orderByDesc('submitted_at')
+            ->orderByDesc('created_at')
+            ->take(6)
+            ->get();
+
         $openPositionApplicationsCount = Applicant::query()->count();
 
         [$adminNotificationItems, $adminNotificationStats] = $this->buildAdminNotifications(
             $employee,
             $pendingLeaveRequests,
             $departments,
-            $openPositionApplicationsCount
+            $openPositionApplicationsCount,
+            $pendingResignations
         );
 
         return response()->json([
             'total' => (int) ($adminNotificationStats['total'] ?? 0),
             'stats' => $adminNotificationStats,
             'items' => $adminNotificationItems->map(function ($item) {
+                $itemDate = $item['date'] ?? null;
+                $dateHuman = $itemDate
+                    ? Carbon::parse($itemDate)->diffForHumans(now(), ['parts' => 2])
+                    : 'Live';
+
                 return [
                     'id' => $item['id'] ?? null,
                     'category' => $item['category'] ?? 'Update',
-                    'date' => optional($item['date'] ?? null)?->toIso8601String(),
+                    'title' => $item['title'] ?? 'Notification',
+                    'message' => $item['message'] ?? '',
+                    'href' => $item['href'] ?? '#',
+                    'badge' => $item['badge'] ?? 'Notice',
+                    'tone' => $item['tone'] ?? 'slate',
+                    'date' => optional($itemDate)?->toIso8601String(),
+                    'date_human' => $dateHuman,
                 ];
             })->values(),
         ]);
@@ -414,6 +448,7 @@ class AdministratorPageController extends Controller
         $employees = User::query()
             ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
             ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
+            ->whereKeyNot((int) $user->id)
             ->orderBy('first_name')
             ->get();
 
@@ -427,8 +462,12 @@ class AdministratorPageController extends Controller
             ])->with('warning', 'Communication tables are not ready yet. Please run the latest migration.');
         }
 
-        $selectedParticipantId = (int) request()->query('user', 0);
-        $selectedConversationId = (int) request()->query('conversation', 0);
+        $resetChat = request()->boolean('reset_chat');
+        $selectedParticipantId = $resetChat ? 0 : (int) request()->query('user', 0);
+        $selectedConversationId = $resetChat ? 0 : (int) request()->query('conversation', 0);
+        if ($selectedParticipantId === (int) $user->id) {
+            $selectedParticipantId = 0;
+        }
 
         $conversations = Conversation::query()
             ->forUser((int) $user->id)
@@ -521,11 +560,12 @@ class AdministratorPageController extends Controller
         ));
     }
 
-    private function buildAdminNotifications($pendingEmployees, $pendingLeaveRequests, $departments, int $openPositionApplicationsCount): array
+    private function buildAdminNotifications($pendingEmployees, $pendingLeaveRequests, $departments, int $openPositionApplicationsCount, $pendingResignations = null): array
     {
         $pendingEmployees = collect($pendingEmployees ?? []);
         $pendingLeaveRequests = collect($pendingLeaveRequests ?? []);
         $departments = collect($departments ?? []);
+        $pendingResignations = collect($pendingResignations ?? []);
 
         $approvalNotifications = $pendingEmployees
             ->take(6)
@@ -552,9 +592,19 @@ class AdministratorPageController extends Controller
             ->map(function ($application) {
                 $employeeName = trim((string) ($application->employee_name ?? 'Employee'));
                 $leaveType = trim((string) ($application->leave_type ?? 'Leave request'));
-                $filedAt = $application->filing_date
-                    ? Carbon::parse($application->filing_date)
-                    : Carbon::parse($application->created_at);
+                $filingDateRaw = trim((string) ($application->filing_date ?? ''));
+                $filingDateHasTime = $filingDateRaw !== '' && preg_match('/\d{1,2}:\d{2}/', $filingDateRaw) === 1;
+                $createdAt = $application->created_at ? Carbon::parse($application->created_at)->setTimezone(config('app.timezone')) : null;
+                $updatedAt = $application->updated_at ? Carbon::parse($application->updated_at)->setTimezone(config('app.timezone')) : null;
+                $latestRecordedAt = collect([$createdAt, $updatedAt])
+                    ->filter()
+                    ->sortByDesc(fn (Carbon $date) => $date->timestamp)
+                    ->first();
+
+                // filing_date is often date-only; prefer precise timestamps from created/updated audit fields.
+                $filedAt = $filingDateHasTime
+                    ? Carbon::parse($filingDateRaw)->setTimezone(config('app.timezone'))
+                    : ($latestRecordedAt ?: now());
 
                 return [
                     'category' => 'Leave',
@@ -573,12 +623,31 @@ class AdministratorPageController extends Controller
                 'category' => 'Hiring',
                 'title' => 'Active hiring pipeline',
                 'message' => number_format($openPositionApplicationsCount).' applicant'.($openPositionApplicationsCount === 1 ? '' : 's').' are attached to open roles.',
-                'date' => now(),
+                'date' => null,
                 'href' => route('admin.adminApplicant'),
                 'badge' => 'Pipeline',
                 'tone' => 'sky',
             ]);
         }
+
+        $requestNotifications = $pendingResignations
+            ->take(6)
+            ->map(function ($resignation) {
+                $employeeName = trim((string) ($resignation->employee_name ?? 'Employee'));
+                $filedAt = $resignation->submitted_at
+                    ? Carbon::parse($resignation->submitted_at)
+                    : Carbon::parse($resignation->created_at);
+
+                return [
+                    'category' => 'Requests',
+                    'title' => 'Resignation request needs review',
+                    'message' => $employeeName.' submitted a resignation request.',
+                    'date' => $filedAt,
+                    'href' => route('admin.adminResignations'),
+                    'badge' => 'Pending',
+                    'tone' => 'rose',
+                ];
+            });
 
         $coverageNotifications = $departments
             ->sortByDesc('count')
@@ -590,7 +659,7 @@ class AdministratorPageController extends Controller
                     'category' => 'Workforce',
                     'title' => 'Department coverage snapshot',
                     'message' => trim((string) ($department['name'] ?? 'Department')).' currently has '.number_format($count).' active employee'.($count === 1 ? '' : 's').'.',
-                    'date' => now(),
+                    'date' => null,
                     'href' => route('admin.adminHome'),
                     'badge' => 'Coverage',
                     'tone' => 'slate',
@@ -601,6 +670,7 @@ class AdministratorPageController extends Controller
             ->concat($approvalNotifications)
             ->concat($leaveNotifications)
             ->concat($hiringNotifications)
+            ->concat($requestNotifications)
             ->concat($coverageNotifications)
             ->sortByDesc(function ($item) {
                 return optional($item['date'] ?? null)->timestamp ?? 0;
@@ -622,6 +692,7 @@ class AdministratorPageController extends Controller
             'approvals' => $approvalNotifications->count(),
             'leave' => $leaveNotifications->count(),
             'hiring' => $hiringNotifications->count(),
+            'requests' => $requestNotifications->count(),
             'workforce' => $coverageNotifications->count(),
         ];
 
@@ -870,7 +941,11 @@ class AdministratorPageController extends Controller
                 return [$employeeId => $jobTypeFromEmployee];
             });
         $employeeDepartmentMap = Employee::query()
-            ->select(['employee_id', 'department'])
+            ->with([
+                'user:id,department',
+                'user.applicant.position:id,department',
+            ])
+            ->select(['employee_id', 'department', 'user_id'])
             ->whereNotNull('employee_id')
             ->orderBy('employee_id')
             ->get()
@@ -880,7 +955,14 @@ class AdministratorPageController extends Controller
                     return [];
                 }
 
-                return [$employeeId => $employee->department ? (string) $employee->department : null];
+                $employeeDepartment = trim((string) ($employee->department ?? ''));
+                $userDepartment = trim((string) ($employee->user?->department ?? ''));
+                $applicantDepartment = trim((string) (optional(optional($employee->user?->applicant)->position)->department ?? ''));
+                $resolvedDepartment = $employeeDepartment !== ''
+                    ? $employeeDepartment
+                    : ($userDepartment !== '' ? $userDepartment : ($applicantDepartment !== '' ? $applicantDepartment : null));
+
+                return [$employeeId => $resolvedDepartment];
             });
         $employeeDisplayNameMap = Employee::query()
             ->with('user:id,first_name,middle_name,last_name')
@@ -956,6 +1038,12 @@ class AdministratorPageController extends Controller
             $employeeId = $this->normalizeEmployeeId($row->employee_id);
             $rowJobType = $this->normalizeJobType($employeeJobTypeMap->get($employeeId));
             $rowDepartment = $employeeDepartmentMap->get($employeeId);
+            $rowDepartmentRaw = trim((string) ($row->department ?? ''));
+            $rowDepartmentKey = strtolower($rowDepartmentRaw);
+            $rowDepartmentIsPlaceholder = in_array($rowDepartmentKey, ['', '-', 'n/a', 'na', 'none', 'null'], true);
+            $resolvedDepartment = $rowDepartmentIsPlaceholder
+                ? $rowDepartment
+                : $rowDepartmentRaw;
             $rowName = $employeeDisplayNameMap->get($employeeId) ?: $this->normalizeLooseDisplayName($row->employee_name ?? null);
             $computedLateMinutes = $this->calculateLateMinutesFromInTimes($row);
             $isWithinPresentWindow = $this->isPresentByTimeWindow($row);
@@ -994,7 +1082,7 @@ class AdministratorPageController extends Controller
 
             if (method_exists($row, 'setAttribute')) {
                 $row->setAttribute('job_type', $rowJobType);
-                $row->setAttribute('department', $row->department ?? $rowDepartment);
+                $row->setAttribute('department', $resolvedDepartment);
                 $row->setAttribute('main_gate', $gateLabel);
                 $row->setAttribute('employee_name', $rowName);
                 $row->setAttribute('computed_late_minutes', $computedLateMinutes);
@@ -1003,7 +1091,7 @@ class AdministratorPageController extends Controller
                 $row->setAttribute('is_holiday_present', $isHolidayPresent);
             } else {
                 $row->job_type = $rowJobType;
-                $row->department = $row->department ?? $rowDepartment;
+                $row->department = $resolvedDepartment;
                 $row->main_gate = $gateLabel;
                 $row->employee_name = $rowName;
                 $row->computed_late_minutes = $computedLateMinutes;
@@ -1047,12 +1135,12 @@ class AdministratorPageController extends Controller
         if (!$shouldAutoPresentHolidayDate && !$isSundayNoClassDate) {
             if ($exactDateFilter) {
                 $absentEmployees = $absentEmployees
-                    ->concat($this->buildMissingEmployeeAbsences($records, $exactDateFilter, $selectedJobType, $employeeJobTypeMap))
+                    ->concat($this->buildMissingEmployeeAbsences($records, $exactDateFilter, $selectedJobType, $employeeJobTypeMap, $employeeDepartmentMap))
                     ->values();
             } elseif ($rangeStartDate && $rangeEndDate) {
                 if (!$isExpandedRangeRecords) {
                     $absentEmployees = $absentEmployees
-                        ->concat($this->buildMissingEmployeeAbsencesForRange($records, $rangeStartDate, $rangeEndDate, $selectedJobType, $employeeJobTypeMap))
+                        ->concat($this->buildMissingEmployeeAbsencesForRange($records, $rangeStartDate, $rangeEndDate, $selectedJobType, $employeeJobTypeMap, $employeeDepartmentMap))
                         ->values();
                 }
             } else {
@@ -1078,7 +1166,8 @@ class AdministratorPageController extends Controller
                             (string) $recordDates->first(),
                             (string) $recordDates->last(),
                             $selectedJobType,
-                            $employeeJobTypeMap
+                            $employeeJobTypeMap,
+                            $employeeDepartmentMap
                         ))
                         ->values();
                 } else {
@@ -1092,7 +1181,8 @@ class AdministratorPageController extends Controller
                             $records,
                             $fallbackDate ? (string) $fallbackDate : null,
                             $selectedJobType,
-                            $employeeJobTypeMap
+                            $employeeJobTypeMap,
+                            $employeeDepartmentMap
                         ))
                         ->values();
                 }
@@ -1606,7 +1696,7 @@ class AdministratorPageController extends Controller
         return $late;
     }
 
-    private function buildMissingEmployeeAbsences($records, ?string $fromDate, ?string $selectedJobType = null, $employeeJobTypeMap = null)
+    private function buildMissingEmployeeAbsences($records, ?string $fromDate, ?string $selectedJobType = null, $employeeJobTypeMap = null, $employeeDepartmentMap = null)
     {
         $recordedEmployeeIds = $records
             ->pluck('employee_id')
@@ -1646,7 +1736,7 @@ class AdministratorPageController extends Controller
                 $employeeId = $this->normalizeEmployeeId($employee->employee_id);
                 return in_array($employeeId, $recordedEmployeeIds, true);
             })
-            ->map(function ($employee) use ($attendanceDate, $employeeJobTypeMap) {
+            ->map(function ($employee) use ($attendanceDate, $employeeJobTypeMap, $employeeDepartmentMap) {
                 $user = $employee->user;
                 $name = $this->formatEmployeeDisplayName(
                     $user?->first_name,
@@ -1659,6 +1749,7 @@ class AdministratorPageController extends Controller
                 return (object) [
                     'employee_id' => (string) $employee->employee_id,
                     'employee_name' => $name,
+                    'department' => $employeeDepartmentMap?->get($employeeId),
                     'job_type' => $jobType,
                     'main_gate' => null,
                     'attendance_date' => $attendanceDate,
@@ -1676,7 +1767,7 @@ class AdministratorPageController extends Controller
             ->values();
     }
 
-    private function buildMissingEmployeeAbsencesForRange($records, string $startDate, string $endDate, ?string $selectedJobType = null, $employeeJobTypeMap = null)
+    private function buildMissingEmployeeAbsencesForRange($records, string $startDate, string $endDate, ?string $selectedJobType = null, $employeeJobTypeMap = null, $employeeDepartmentMap = null)
     {
         $recordedEmployeeDateKeys = collect($records)
             ->filter(function ($row) {
@@ -1748,11 +1839,12 @@ class AdministratorPageController extends Controller
                     $user?->middle_name,
                     $user?->last_name
                 );
-                $jobType = $this->normalizeJobType($employeeJobTypeMap?->get($employeeId));
+                 $jobType = $this->normalizeJobType($employeeJobTypeMap?->get($employeeId));
 
                 $absences->push((object) [
                     'employee_id' => (string) $employee->employee_id,
                     'employee_name' => $name,
+                    'department' => $employeeDepartmentMap?->get($employeeId),
                     'job_type' => $jobType,
                     'main_gate' => null,
                     'attendance_date' => Carbon::parse($date)->startOfDay(),

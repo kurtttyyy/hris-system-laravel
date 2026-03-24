@@ -9,7 +9,8 @@
     <style>
         body{font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif;transition:margin-left .3s ease}
         main{transition:margin-left .3s ease}
-        aside~main{margin-left:16rem}
+        aside~main{margin-left:4rem}
+        aside:hover~main{margin-left:18rem}
         .admin-display{font-family:"Arial Black","Segoe UI",Tahoma,Geneva,Verdana,sans-serif;letter-spacing:-.03em}
         .messenger-shell{background:linear-gradient(180deg,#171717 0%,#202020 100%)}
         .messenger-sidebar{background:linear-gradient(180deg,#161616 0%,#1c1c1c 100%)}
@@ -30,7 +31,7 @@
 @endphp
 <div class="flex min-h-screen">
     @include('components.adminSideBar')
-    <main class="flex-1 ml-16 transition-all duration-300">
+    <main class="flex-1 transition-all duration-300">
         @include('components.adminHeader.dashboardHeader', [
             'headerTitle' => 'Communication Hub',
             'headerSubtitle' => 'Open employee threads, send updates, and keep conversations in one place.',
@@ -63,6 +64,7 @@
                             $employeeInitials = strtoupper(substr(trim((string) ($employee->first_name ?? 'E')), 0, 1).substr(trim((string) ($employee->last_name ?? '')), 0, 1));
                             $department = trim((string) ($employee->department ?? optional($employee->employee)->department ?? 'General'));
                             $position = trim((string) ($employee->position ?? optional($employee->employee)->position ?? 'Employee'));
+                            $isSelfEmployeeCard = (int) ($employee->id ?? 0) === (int) auth()->id();
                             $employeeUnreadCount = (int) ($employee->unread_message_count ?? 0);
                             $employeeHasUnreadMessages = (bool) ($employee->has_unread_messages ?? false);
                         @endphp
@@ -87,14 +89,18 @@
                                     <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Email</p>
                                     <p class="truncate text-sm text-slate-600">{{ $employee->email }}</p>
                                 </div>
-                                <a href="{{ route('admin.adminCommunication', ['user' => $employee->id]) }}#admin-chat-panel" class="relative inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-                                    @if ($employeeHasUnreadMessages)
-                                        <span class="absolute -right-2 -top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
-                                            {{ $employeeUnreadCount > 99 ? '99+' : $employeeUnreadCount }}
-                                        </span>
-                                    @endif
-                                    <i class="fa-solid fa-comment"></i>Connect
-                                </a>
+                                @if ($isSelfEmployeeCard)
+                                    <span class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-400"><i class="fa-solid fa-ban"></i>Current Account</span>
+                                @else
+                                    <a href="{{ route('admin.adminCommunication', ['user' => $employee->id]) }}#admin-chat-panel" class="relative inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                                        @if ($employeeHasUnreadMessages)
+                                            <span class="absolute -right-2 -top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                                                {{ $employeeUnreadCount > 99 ? '99+' : $employeeUnreadCount }}
+                                            </span>
+                                        @endif
+                                        <i class="fa-solid fa-comment"></i>Connect
+                                    </a>
+                                @endif
                             </div>
                         </article>
                     @endforeach
@@ -120,7 +126,7 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-3 text-violet-400">
-                                        <a href="{{ route('admin.adminCommunication') }}" class="text-violet-400"><i class="fa-solid fa-xmark"></i></a>
+                                        <a href="{{ route('admin.adminCommunication', ['reset_chat' => 1]) }}" class="text-violet-400"><i class="fa-solid fa-xmark"></i></a>
                                     </div>
                                 </div>
                             </div>

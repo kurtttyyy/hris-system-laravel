@@ -126,7 +126,7 @@
       <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Payslip</span>
     </a>
 
-    <a href="{{ route('admin.adminCommunication') }}"
+    <a href="{{ route('admin.adminCommunication', ['reset_chat' => 1]) }}"
        class="relative flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
        {{ request()->routeIs('admin.adminCommunication')
           ? 'bg-green-600 text-white'

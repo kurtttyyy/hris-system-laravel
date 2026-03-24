@@ -865,7 +865,7 @@ class EmployeePageController extends Controller
         }
 
         $admins = User::query()
-            ->whereIn('role', ['admin', 'Admin'])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) IN (?, ?)", ['admin', 'administrator'])
             ->orderBy('first_name')
             ->get();
 
@@ -879,9 +879,9 @@ class EmployeePageController extends Controller
             ])->with('warning', 'Communication tables are not ready yet. Please run the latest migration.');
         }
 
-        $selectedParticipantId = (int) request()->query('user', 0);
-        $selectedConversationId = (int) request()->query('conversation', 0);
-
+        $resetChat = request()->boolean('reset_chat');
+        $selectedParticipantId = $resetChat ? 0 : (int) request()->query('user', 0);
+        $selectedConversationId = $resetChat ? 0 : (int) request()->query('conversation', 0);
         $conversations = Conversation::query()
             ->forUser((int) $user->id)
             ->with([
@@ -914,6 +914,16 @@ class EmployeePageController extends Controller
                     $otherParticipant = $conversation->otherParticipantFor((int) $user->id);
                     return (int) ($otherParticipant?->id ?? 0) === (int) $selectedParticipant->id;
                 });
+            }
+        }
+
+        if (!$resetChat && !$selectedConversation && !$selectedParticipant) {
+            $selectedConversation = $conversations
+                ->first(fn (Conversation $conversation) => (int) ($conversation->unread_count ?? 0) > 0)
+                ?? $conversations->first();
+
+            if ($selectedConversation) {
+                $selectedParticipant = $selectedConversation->otherParticipantFor((int) $user->id);
             }
         }
 

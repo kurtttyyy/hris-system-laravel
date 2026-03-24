@@ -133,7 +133,7 @@
                                 $participantName = $participantName !== '' ? $participantName : (string) ($selectedParticipant->email ?? 'Admin');
                                 $participantInitials = strtoupper(substr(trim((string) ($selectedParticipant->first_name ?? 'A')), 0, 1).substr(trim((string) ($selectedParticipant->last_name ?? '')), 0, 1));
                             @endphp
-                            <div class="fixed bottom-5 right-5 z-50 w-[370px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-t-2xl rounded-b-[1.35rem] border border-slate-800 bg-[#1f1f1f] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
+                            <div id="chat-panel" class="fixed bottom-5 right-5 z-50 w-[370px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-t-2xl rounded-b-[1.35rem] border border-slate-800 bg-[#1f1f1f] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
                             <div class="border-b border-slate-700 bg-[#242424] px-4 py-3">
                                 <div class="flex items-center justify-between gap-4">
                                     <div class="flex items-center gap-4">
@@ -146,7 +146,7 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-3 text-violet-400">
-                                        <a href="{{ route('employee.employeeCommunication') }}" class="text-violet-400"><i class="fa-solid fa-xmark"></i></a>
+                                        <button id="chat-panel-close" type="button" class="text-violet-400" aria-label="Close chat"><i class="fa-solid fa-xmark"></i></button>
                                     </div>
                                 </div>
                             </div>
@@ -201,7 +201,8 @@ const sidebar=document.querySelector('aside');const main=document.querySelector(
 const searchInput=document.getElementById('directory-search');const filterButtons=Array.from(document.querySelectorAll('.directory-filter'));const directoryCards=Array.from(document.querySelectorAll('.directory-card'));const resultsCount=document.getElementById('directory-results-count');const resultsPlural=document.getElementById('directory-results-plural');let activeFilter='all';
 function applyDirectoryFilters(){const query=(searchInput?.value||'').trim().toLowerCase();let visibleCount=0;directoryCards.forEach((card)=>{const name=card.dataset.name||'';const role=card.dataset.role||'';const status=card.dataset.status||'';const matchesQuery=query===''||name.includes(query)||role.includes(query);const matchesStatus=activeFilter==='all'||status===activeFilter;const isVisible=matchesQuery&&matchesStatus;card.classList.toggle('hidden',!isVisible);if(isVisible){visibleCount+=1}});if(resultsCount){resultsCount.textContent=String(visibleCount)}if(resultsPlural){resultsPlural.textContent=visibleCount===1?'':'s'}}
 filterButtons.forEach((button)=>{button.addEventListener('click',function(){activeFilter=button.dataset.filter||'all';filterButtons.forEach((item)=>{item.classList.remove('bg-slate-900','text-white','bg-emerald-600');item.classList.add('bg-slate-100','text-slate-600')});if(activeFilter==='available'){button.classList.remove('bg-slate-100','text-slate-600','bg-emerald-50','text-emerald-700');button.classList.add('bg-emerald-600','text-white')}else{button.classList.remove('bg-slate-100','text-slate-600');button.classList.add('bg-slate-900','text-white')}filterButtons.forEach((item)=>{if(item!==button&&item.dataset.filter==='available'){item.classList.remove('bg-emerald-600','text-white');item.classList.add('bg-emerald-50','text-emerald-700')}});applyDirectoryFilters()})});if(searchInput){searchInput.addEventListener('input',applyDirectoryFilters)}applyDirectoryFilters();
-(function(){const thread=document.getElementById('message-thread');if(thread){thread.scrollTop=thread.scrollHeight}})();
+ (function(){const thread=document.getElementById('message-thread');if(thread){thread.scrollTop=thread.scrollHeight}})();
+ (function(){const closeBtn=document.getElementById('chat-panel-close');const panel=document.getElementById('chat-panel');if(closeBtn&&panel){closeBtn.addEventListener('click',function(){panel.classList.add('hidden')})}})();
 </script>
 </body>
 </html>

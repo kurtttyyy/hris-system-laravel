@@ -174,7 +174,7 @@
                         <p class="mt-2 text-sm leading-6 text-slate-500">Check payment history, salary details, and downloadable payroll records.</p>
                     </a>
 
-                    <a href="{{ route('employee.employeeCommunication') }}" class="group rounded-[1.5rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
+                    <a href="{{ route('employee.employeeCommunication', ['reset_chat' => 1]) }}" class="group rounded-[1.5rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
                         <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20">
                             <i class="fa fa-users fa-2x"></i>
                         </div>

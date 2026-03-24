@@ -3,6 +3,188 @@
 @section('content')
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 <style>
+    .apply-shell {
+        max-width: 1240px;
+    }
+
+    .apply-card {
+        border: 1px solid rgba(22, 101, 52, 0.14);
+        border-radius: 1.2rem;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.1);
+        overflow: hidden;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdfb 100%);
+    }
+
+    .apply-card-body {
+        padding: 2rem;
+    }
+
+    .apply-hero {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .apply-hero h2 {
+        font-size: clamp(1.6rem, 2.2vw, 2.2rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+    }
+
+    .apply-hero-subtext {
+        color: #5b6472 !important;
+        margin-bottom: 0;
+    }
+
+    .apply-meta {
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        border-radius: 0.9rem;
+        background: linear-gradient(145deg, rgba(22, 163, 74, 0.08), rgba(234, 179, 8, 0.08));
+        padding: 0.7rem 0.95rem;
+        min-width: 220px;
+    }
+
+    .apply-meta-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #1e7a3f;
+        margin-bottom: 0.25rem;
+    }
+
+    .apply-meta-value {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #123f26;
+        margin: 0;
+    }
+
+    .step-progress-shell {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        overflow: hidden;
+        margin: 1rem 0 1.4rem;
+    }
+
+    .step-progress-bar {
+        height: 100%;
+        width: 20%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #16a34a, #22c55e);
+        transition: width 0.35s ease;
+    }
+
+    .stepper1 {
+        margin-bottom: 1rem;
+    }
+
+    .circle1 {
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.1);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .step1.active .circle1,
+    .step1.completed1 .circle1 {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(22, 163, 74, 0.2);
+    }
+
+    .form-step {
+        animation: fadeUpIn 0.35s ease both;
+    }
+
+    @keyframes fadeUpIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .floating-input input,
+    .floating-input select {
+        border-radius: 0.65rem;
+        border: 1px solid #d5dbe3;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .floating-input input:focus,
+    .floating-input select:focus {
+        border-color: #22c55e;
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+        transform: translateY(-1px);
+    }
+
+    #experienceForm .floating-input input:focus,
+    #experienceForm .floating-input select:focus,
+    #experienceForm .floating-input input:not(:placeholder-shown),
+    #experienceForm .floating-input select:not([value=""]) {
+        border-color: #16a34a;
+        box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.2), 0 10px 22px rgba(22, 163, 74, 0.12);
+        background: linear-gradient(180deg, #ffffff 0%, #f4fff8 100%);
+    }
+
+    #experienceForm .floating-input label {
+        transition: color 0.2s ease, letter-spacing 0.2s ease;
+    }
+
+    #experienceForm .floating-input input:focus + label,
+    #experienceForm .floating-input input:not(:placeholder-shown) + label,
+    #experienceForm .floating-input select:focus + label,
+    #experienceForm .floating-input select:not([value=""]) + label {
+        color: #0f7a39;
+        letter-spacing: 0.01em;
+        font-weight: 700;
+    }
+
+    .upload-area {
+        border-radius: 0.9rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .upload-area:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
+    }
+
+    .step-actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 3;
+        padding-top: 0.75rem;
+        margin-top: 1.25rem !important;
+        background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.96) 36%, #ffffff 100%);
+    }
+
+    .step-actions .btn {
+        min-width: 120px;
+        border-radius: 0.65rem;
+        font-weight: 600;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .step-actions .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+    }
+
+    @media (max-width: 992px) {
+        .apply-card-body {
+            padding: 1.2rem;
+        }
+
+        .apply-hero {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .apply-meta {
+            width: 100%;
+        }
+    }
+
     .field-error-highlight {
         border: 1px solid rgba(220, 38, 38, 0.55) !important;
         background: rgba(220, 38, 38, 0.08) !important;
@@ -50,7 +232,7 @@
 
 <div class="header-divider"></div>
 
-<main class="container my-5">
+<main class="container my-5 apply-shell">
 
     @if (session('popup_error'))
         <div class="alert alert-danger" role="alert">
@@ -70,12 +252,16 @@
     @endif
 
     {{-- step 1 --}}
-    <div class="card shadow-sm mb-4 animated-card delay-5 hover-card">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="card shadow-sm mb-4 animated-card delay-5 hover-card apply-card">
+        <div class="card-body apply-card-body">
+            <div class="apply-hero">
                 <div>
                     <h2 class="mb-1">Apply for {{ $openPosition->title}}</h2>
-                    <h6 class="text-secondary mb-1">Please fill out all fields to  complete your application</h6>
+                    <h6 class="apply-hero-subtext">Please fill out all fields to complete your application</h6>
+                </div>
+                <div class="apply-meta">
+                    <p class="apply-meta-label">Application Flow</p>
+                    <p id="currentStepText" class="apply-meta-value">Step 1 of 5: Personal Info</p>
                 </div>
             </div>
 
@@ -115,7 +301,6 @@
                 </div>
 
             </div>
-
 <!-- Personal Info Form -->
 <form id="formPersonal" action="{{ route('applicant.store') }}" method="POST" enctype="multipart/form-data">
     @csrf
@@ -163,7 +348,7 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-end mt-auto">
+    <div class="d-flex justify-content-end mt-auto step-actions">
         <div></div>
         <button type="button" id="btnToExperience" class="btn btn-primary">Proceed</button>
     </div>
@@ -463,7 +648,7 @@
         </datalist>
     </div>
 
-    <div class="d-flex justify-content-between mt-auto">
+    <div class="d-flex justify-content-between mt-auto step-actions">
         <button type="button" id="btnBackToPersonal" class="btn btn-secondary">Previous</button>
         <button type="button" id="btnToDocuments" class="btn btn-primary">Proceed</button>
     </div>
@@ -583,7 +768,7 @@
         </label>
     </div>
 
-    <div class="d-flex justify-content-between">
+    <div class="d-flex justify-content-between step-actions">
         <button type="button" id="btnBackToExperience" class="btn btn-secondary">Previous</button>
         <button type="button" id="btnToReview" class="btn btn-primary">Proceed</button>
     </div>
@@ -766,7 +951,7 @@
 
 
 
-        <div class="d-flex justify-content-between">
+        <div class="d-flex justify-content-between step-actions">
             <button type="button" id="btnBackToDocumentsFromReview" class="btn btn-secondary">Previous</button>
             <button type="submit" class="btn btn-success">Submit Application</button>
         </div>
@@ -835,6 +1020,16 @@ document.addEventListener('DOMContentLoaded', () => {
     ======================= */
     const steps = document.querySelectorAll('.step1');
     const lines = document.querySelectorAll('.line1');
+    const stepProgressBar = document.getElementById('stepProgressBar');
+    const currentStepText = document.getElementById('currentStepText');
+
+    const stepMeta = {
+        1: 'Step 1 of 5: Personal Info',
+        2: 'Step 2 of 5: Experience',
+        3: 'Step 3 of 5: Documents',
+        4: 'Step 4 of 5: Review',
+        5: 'Step 5 of 5: Submit',
+    };
 
     function setStep(stepNumber) {
         steps.forEach((step, index) => {
@@ -846,6 +1041,16 @@ document.addEventListener('DOMContentLoaded', () => {
         lines.forEach((line, index) => {
             line.classList.toggle('completed1', index < stepNumber - 1);
         });
+
+        if (stepProgressBar) {
+            const maxStep = Math.max(1, steps.length);
+            const progress = Math.min(Math.max(stepNumber, 1), maxStep);
+            stepProgressBar.style.width = `${(progress / maxStep) * 100}%`;
+        }
+
+        if (currentStepText) {
+            currentStepText.textContent = stepMeta[stepNumber] || stepMeta[1];
+        }
     }
 
     setStep(1); // Initial step

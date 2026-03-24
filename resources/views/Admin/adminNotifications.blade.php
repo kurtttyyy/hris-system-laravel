@@ -22,7 +22,7 @@
 <body class="bg-[radial-gradient(circle_at_top,_#f8fafc,_#eef2ff_40%,_#f8fafc_100%)] text-slate-900">
 @php
     $adminNotificationItems = collect($adminNotificationItems ?? []);
-    $adminNotificationStats = $adminNotificationStats ?? ['total' => 0, 'approvals' => 0, 'leave' => 0, 'hiring' => 0, 'workforce' => 0];
+    $adminNotificationStats = $adminNotificationStats ?? ['total' => 0, 'approvals' => 0, 'leave' => 0, 'hiring' => 0, 'requests' => 0, 'workforce' => 0];
     $toneClasses = [
         'emerald' => 'bg-emerald-100 text-emerald-700',
         'amber' => 'bg-amber-100 text-amber-700',
@@ -35,14 +35,31 @@
         'Approvals' => 'fa-user-check',
         'Leave' => 'fa-calendar-check',
         'Hiring' => 'fa-briefcase',
+        'Requests' => 'fa-file-signature',
         'Workforce' => 'fa-building-user',
     ];
     $categoryKeyMap = [
         'Approvals' => 'approvals',
         'Leave' => 'leave',
         'Hiring' => 'hiring',
+        'Requests' => 'requests',
         'Workforce' => 'workforce',
     ];
+    $initialNotificationItems = $adminNotificationItems->map(function ($item) use ($categoryKeyMap) {
+        $itemDate = $item['date'] ?? null;
+        return [
+            'id' => $item['id'] ?? null,
+            'category' => $item['category'] ?? 'Update',
+            'filter' => $categoryKeyMap[$item['category'] ?? ''] ?? 'other',
+            'title' => $item['title'] ?? 'Notification',
+            'message' => $item['message'] ?? '',
+            'href' => $item['href'] ?? '#',
+            'badge' => $item['badge'] ?? 'Notice',
+            'tone' => $item['tone'] ?? 'slate',
+            'date' => optional($itemDate)?->toIso8601String(),
+            'date_human' => $itemDate ? \Carbon\Carbon::parse($itemDate)->diffForHumans(now(), ['parts' => 2]) : 'Live',
+        ];
+    })->values();
 @endphp
 
 <div class="flex min-h-screen">
@@ -66,30 +83,34 @@
                     <aside class="border-b border-slate-200 bg-[linear-gradient(180deg,#f8fafc,#f1f5f9)] p-5 xl:border-b-0 xl:border-r">
                         <div class="rounded-[1.4rem] bg-slate-900 px-4 py-4 text-white shadow-lg">
                             <p class="admin-kicker text-[11px] font-semibold uppercase text-slate-300">Inbox</p>
-                            <p class="admin-display mt-2 text-3xl text-white">{{ (int) ($adminNotificationStats['total'] ?? 0) }}</p>
+                            <p class="admin-display mt-2 text-3xl text-white" data-stat-total>{{ (int) ($adminNotificationStats['total'] ?? 0) }}</p>
                             <p class="mt-1 text-sm text-slate-300">admin update{{ (int) ($adminNotificationStats['total'] ?? 0) === 1 ? '' : 's' }}</p>
                         </div>
 
                         <div class="mt-6 space-y-2">
                             <button type="button" data-filter="all" class="notification-filter flex w-full items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
                                 <span><i class="fa-solid fa-inbox mr-2"></i>All mail</span>
-                                <span>{{ (int) ($adminNotificationStats['total'] ?? 0) }}</span>
+                                <span data-stat-total>{{ (int) ($adminNotificationStats['total'] ?? 0) }}</span>
                             </button>
                             <button type="button" data-filter="approvals" class="notification-filter flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm text-slate-600 transition hover:bg-slate-100">
                                 <span><i class="fa-solid fa-user-check mr-2 text-emerald-600"></i>Approvals</span>
-                                <span>{{ (int) ($adminNotificationStats['approvals'] ?? 0) }}</span>
+                                <span data-stat-approvals>{{ (int) ($adminNotificationStats['approvals'] ?? 0) }}</span>
                             </button>
                             <button type="button" data-filter="leave" class="notification-filter flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm text-slate-600 transition hover:bg-slate-100">
                                 <span><i class="fa-solid fa-calendar-check mr-2 text-amber-600"></i>Leave</span>
-                                <span>{{ (int) ($adminNotificationStats['leave'] ?? 0) }}</span>
+                                <span data-stat-leave>{{ (int) ($adminNotificationStats['leave'] ?? 0) }}</span>
                             </button>
                             <button type="button" data-filter="hiring" class="notification-filter flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm text-slate-600 transition hover:bg-slate-100">
                                 <span><i class="fa-solid fa-briefcase mr-2 text-sky-600"></i>Hiring</span>
-                                <span>{{ (int) ($adminNotificationStats['hiring'] ?? 0) }}</span>
+                                <span data-stat-hiring>{{ (int) ($adminNotificationStats['hiring'] ?? 0) }}</span>
+                            </button>
+                            <button type="button" data-filter="requests" class="notification-filter flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm text-slate-600 transition hover:bg-slate-100">
+                                <span><i class="fa-solid fa-file-signature mr-2 text-rose-600"></i>Requests</span>
+                                <span data-stat-requests>{{ (int) ($adminNotificationStats['requests'] ?? 0) }}</span>
                             </button>
                             <button type="button" data-filter="workforce" class="notification-filter flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm text-slate-600 transition hover:bg-slate-100">
                                 <span><i class="fa-solid fa-building-user mr-2 text-slate-600"></i>Workforce</span>
-                                <span>{{ (int) ($adminNotificationStats['workforce'] ?? 0) }}</span>
+                                <span data-stat-workforce>{{ (int) ($adminNotificationStats['workforce'] ?? 0) }}</span>
                             </button>
                         </div>
 
@@ -159,7 +180,7 @@
                                         </div>
                                     </div>
                                     <div class="text-sm font-medium text-slate-400 md:text-right">
-                                        {{ $itemDate ? $itemDate->diffForHumans() : '-' }}
+                                        {{ $itemDate ? $itemDate->diffForHumans() : 'Live' }}
                                     </div>
                                 </a>
                             @empty
@@ -189,16 +210,104 @@
 <script>
     (function () {
         const filterButtons = Array.from(document.querySelectorAll('.notification-filter'));
-        const items = Array.from(document.querySelectorAll('#notification-list > a[data-category]'));
         const resultsLabel = document.getElementById('notification-results-label');
+        const listContainer = document.getElementById('notification-list');
         const filterEmpty = document.getElementById('notification-filter-empty');
         const defaultEmpty = document.getElementById('notification-empty-state');
+        const summaryUrl = @json(route('admin.adminNotifications.summary'));
+        const storageKey = 'admin_notifications_read_v1';
+        const unreadKey = 'admin_notifications_unread_v1';
+        const totalKey = 'admin_notifications_total_v1';
+        const statElements = {
+            total: Array.from(document.querySelectorAll('[data-stat-total]')),
+            approvals: Array.from(document.querySelectorAll('[data-stat-approvals]')),
+            leave: Array.from(document.querySelectorAll('[data-stat-leave]')),
+            hiring: Array.from(document.querySelectorAll('[data-stat-hiring]')),
+            requests: Array.from(document.querySelectorAll('[data-stat-requests]')),
+            workforce: Array.from(document.querySelectorAll('[data-stat-workforce]')),
+        };
+        const toneClasses = {
+            emerald: 'bg-emerald-100 text-emerald-700',
+            amber: 'bg-amber-100 text-amber-700',
+            rose: 'bg-rose-100 text-rose-700',
+            violet: 'bg-violet-100 text-violet-700',
+            sky: 'bg-sky-100 text-sky-700',
+            slate: 'bg-slate-100 text-slate-700',
+        };
+        const iconClasses = {
+            approvals: 'fa-user-check',
+            leave: 'fa-calendar-check',
+            hiring: 'fa-briefcase',
+            requests: 'fa-file-signature',
+            workforce: 'fa-building-user',
+            other: 'fa-bell',
+        };
+        const initialItems = @json($initialNotificationItems);
+        const initialStats = @json($adminNotificationStats);
 
-        if (!filterButtons.length || !resultsLabel) {
+        if (!filterButtons.length || !resultsLabel || !listContainer) {
             return;
         }
 
-        const updateActiveButton = (activeFilter) => {
+        let items = Array.isArray(initialItems) ? initialItems : [];
+        let activeFilter = 'all';
+        let readLookup = {};
+
+        try {
+            const rawRead = localStorage.getItem(storageKey);
+            const parsedRead = rawRead ? JSON.parse(rawRead) : {};
+            readLookup = parsedRead && typeof parsedRead === 'object' ? parsedRead : {};
+        } catch (error) {
+            readLookup = {};
+        }
+
+        const saveReadLookup = () => {
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(readLookup));
+            } catch (error) {
+            }
+        };
+
+        const escapeHtml = (value) => {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+
+        const formatAgo = (dateString) => {
+            if (!dateString) {
+                return 'Live';
+            }
+
+            const date = new Date(dateString);
+            if (Number.isNaN(date.getTime())) {
+                return '-';
+            }
+
+            const diffSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+            if (diffSeconds < 15) return 'Just now';
+            if (diffSeconds < 60) return `${diffSeconds} second${diffSeconds === 1 ? '' : 's'} ago`;
+
+            const diffMinutes = Math.floor(diffSeconds / 60);
+            if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+
+            const diffHours = Math.floor(diffMinutes / 60);
+            if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+
+            const diffDays = Math.floor(diffHours / 24);
+            if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+
+            const diffMonths = Math.floor(diffDays / 30);
+            if (diffMonths < 12) return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
+
+            const diffYears = Math.floor(diffMonths / 12);
+            return `${diffYears} year${diffYears === 1 ? '' : 's'} ago`;
+        };
+
+        const updateActiveButton = () => {
             filterButtons.forEach((button) => {
                 const isActive = button.getAttribute('data-filter') === activeFilter;
                 button.classList.toggle('bg-emerald-50', isActive);
@@ -208,76 +317,23 @@
             });
         };
 
-        const applyFilter = (filterValue) => {
-            let visibleCount = 0;
-
-            items.forEach((item) => {
-                const matches = filterValue === 'all' || item.getAttribute('data-category') === filterValue;
-                item.classList.toggle('hidden', !matches);
-                if (matches) {
-                    visibleCount += 1;
-                }
-            });
-
-            resultsLabel.textContent = `${visibleCount} conversation${visibleCount === 1 ? '' : 's'}`;
-
-            if (defaultEmpty) {
-                defaultEmpty.classList.toggle('hidden', items.length > 0 || visibleCount !== 0);
+        const normalizeCategory = (value) => {
+            const raw = String(value ?? '').trim().toLowerCase();
+            if (['approvals', 'leave', 'hiring', 'requests', 'workforce'].includes(raw)) {
+                return raw;
             }
-
-            if (filterEmpty) {
-                filterEmpty.classList.toggle('hidden', visibleCount !== 0 || items.length === 0);
-            }
-
-            updateActiveButton(filterValue);
+            return 'other';
         };
 
-        filterButtons.forEach((button) => {
-            button.addEventListener('click', function () {
-                applyFilter(this.getAttribute('data-filter') || 'all');
-            });
-        });
-
-        applyFilter('all');
-    })();
-
-    (function () {
-        const storageKey = 'admin_notifications_read_v1';
-        const unreadKey = 'admin_notifications_unread_v1';
-        const totalKey = 'admin_notifications_total_v1';
-        const notificationRows = Array.from(document.querySelectorAll('.notification-row[data-notification-id]'));
-
-        if (!notificationRows.length) {
-            localStorage.setItem(unreadKey, '0');
-            return;
-        }
-
-        const readLookup = (() => {
-            try {
-                const raw = localStorage.getItem(storageKey);
-                const parsed = raw ? JSON.parse(raw) : {};
-                return parsed && typeof parsed === 'object' ? parsed : {};
-            } catch (error) {
-                return {};
-            }
-        })();
-
-        const saveLookup = () => {
-            try {
-                localStorage.setItem(storageKey, JSON.stringify(readLookup));
-            } catch (error) {
-            }
-        };
-
-        const updateUnreadCount = () => {
-            const unreadCount = notificationRows.reduce((count, row) => {
-                const id = row.getAttribute('data-notification-id');
+        const renderBadges = () => {
+            const unreadCount = items.reduce((count, item) => {
+                const id = item?.id ? String(item.id) : '';
                 return count + (id && !readLookup[id] ? 1 : 0);
             }, 0);
 
             try {
                 localStorage.setItem(unreadKey, String(unreadCount));
-                localStorage.setItem(totalKey, String(notificationRows.length));
+                localStorage.setItem(totalKey, String(items.length));
             } catch (error) {
             }
 
@@ -291,40 +347,177 @@
             });
         };
 
-        const applyReadState = (row, isRead) => {
-            row.classList.toggle('bg-emerald-50', !isRead);
-            row.classList.toggle('hover:bg-emerald-100', !isRead);
-            row.classList.toggle('border-l-4', !isRead);
-            row.classList.toggle('border-emerald-400', !isRead);
-            row.classList.toggle('bg-white', isRead);
-            row.classList.toggle('opacity-90', isRead);
+        const renderStats = (stats) => {
+            const safeStats = {
+                total: Number.parseInt(stats?.total ?? items.length, 10) || 0,
+                approvals: Number.parseInt(stats?.approvals ?? 0, 10) || 0,
+                leave: Number.parseInt(stats?.leave ?? 0, 10) || 0,
+                hiring: Number.parseInt(stats?.hiring ?? 0, 10) || 0,
+                requests: Number.parseInt(stats?.requests ?? 0, 10) || 0,
+                workforce: Number.parseInt(stats?.workforce ?? 0, 10) || 0,
+            };
 
-            const title = row.querySelector('.notification-title');
-            if (title) {
-                title.classList.toggle('font-black', !isRead);
-                title.classList.toggle('font-semibold', isRead);
-                title.classList.toggle('text-slate-900', !isRead);
-                title.classList.toggle('text-slate-700', isRead);
+            Object.entries(statElements).forEach(([key, nodes]) => {
+                const value = safeStats[key] ?? 0;
+                nodes.forEach((node) => {
+                    node.textContent = String(value);
+                });
+            });
+        };
+
+        const renderRows = () => {
+            const visibleItems = items.filter((item) => activeFilter === 'all' || item.filter === activeFilter);
+            resultsLabel.textContent = `${visibleItems.length} conversation${visibleItems.length === 1 ? '' : 's'}`;
+            updateActiveButton();
+
+            if (!items.length) {
+                listContainer.querySelectorAll('.notification-row').forEach((row) => row.remove());
+                if (defaultEmpty) {
+                    defaultEmpty.classList.remove('hidden');
+                }
+                if (filterEmpty) {
+                    filterEmpty.classList.add('hidden');
+                }
+                return;
+            }
+
+            if (!visibleItems.length) {
+                listContainer.querySelectorAll('.notification-row').forEach((row) => row.remove());
+                if (defaultEmpty) {
+                    defaultEmpty.classList.add('hidden');
+                }
+                if (filterEmpty) {
+                    filterEmpty.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (defaultEmpty) {
+                defaultEmpty.classList.add('hidden');
+            }
+            if (filterEmpty) {
+                filterEmpty.classList.add('hidden');
+            }
+
+            const rowsHtml = visibleItems.map((item) => {
+                const id = String(item?.id ?? '');
+                const isRead = id !== '' && Boolean(readLookup[id]);
+                const tone = toneClasses[item?.tone] || toneClasses.slate;
+                const icon = iconClasses[item?.filter] || iconClasses.other;
+                const rowClasses = [
+                    'notification-row group grid grid-cols-1 gap-3 px-5 py-4 transition md:grid-cols-[52px_170px_minmax(0,1fr)_110px] md:items-center',
+                    isRead ? 'bg-white opacity-90 hover:bg-slate-50' : 'border-l-4 border-emerald-400 bg-emerald-50 hover:bg-emerald-100',
+                ].join(' ');
+
+                return `
+                    <a href="${escapeHtml(item?.href || '#')}" data-category="${escapeHtml(item?.filter || 'other')}" data-notification-id="${escapeHtml(id)}" class="${rowClasses}">
+                        <div class="flex h-12 w-12 items-center justify-center rounded-2xl ${tone}">
+                            <i class="fa-solid ${icon}"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-bold text-slate-900">${escapeHtml(item?.category || 'Update')}</p>
+                            <span class="mt-1 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}">${escapeHtml(item?.badge || 'Notice')}</span>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="notification-title truncate text-sm ${isRead ? 'font-semibold text-slate-700' : 'font-black text-slate-900 group-hover:text-emerald-700'}">${escapeHtml(item?.title || 'Notification')}</span>
+                                <span class="hidden text-slate-300 md:inline">-</span>
+                                <span class="truncate text-sm text-slate-500">${escapeHtml(item?.message || '')}</span>
+                            </div>
+                        </div>
+                        <div class="text-sm font-medium text-slate-400 md:text-right">${escapeHtml(item?.date_human || formatAgo(item?.date || null))}</div>
+                    </a>
+                `;
+            }).join('');
+
+            listContainer.querySelectorAll('.notification-row').forEach((row) => row.remove());
+            const anchor = filterEmpty || defaultEmpty;
+            if (anchor) {
+                anchor.insertAdjacentHTML('beforebegin', rowsHtml);
+            } else {
+                listContainer.insertAdjacentHTML('beforeend', rowsHtml);
             }
         };
 
-        notificationRows.forEach((row) => {
-            const id = row.getAttribute('data-notification-id');
+        const setItems = (nextItems) => {
+            items = (Array.isArray(nextItems) ? nextItems : []).map((item) => {
+                const category = normalizeCategory(item?.filter ?? item?.category);
+                const categoryLabelMap = {
+                    approvals: 'Approvals',
+                    leave: 'Leave',
+                    hiring: 'Hiring',
+                    requests: 'Requests',
+                    workforce: 'Workforce',
+                    other: 'Update',
+                };
+
+                return {
+                    id: item?.id ? String(item.id) : '',
+                    category: String(item?.category || categoryLabelMap[category] || 'Update'),
+                    filter: category,
+                    title: String(item?.title || 'Notification'),
+                    message: String(item?.message || ''),
+                    href: String(item?.href || '#'),
+                    badge: String(item?.badge || 'Notice'),
+                    tone: String(item?.tone || 'slate'),
+                    date: item?.date || null,
+                    date_human: String(item?.date_human || ''),
+                };
+            });
+        };
+
+        filterButtons.forEach((button) => {
+            button.addEventListener('click', function () {
+                activeFilter = this.getAttribute('data-filter') || 'all';
+                renderRows();
+            });
+        });
+
+        listContainer.addEventListener('click', (event) => {
+            const row = event.target.closest('.notification-row[data-notification-id]');
+            if (!row) {
+                return;
+            }
+
+            const id = row.getAttribute('data-notification-id') || '';
             if (!id) {
                 return;
             }
 
-            applyReadState(row, Boolean(readLookup[id]));
-
-            row.addEventListener('click', function () {
-                readLookup[id] = true;
-                saveLookup();
-                applyReadState(row, true);
-                updateUnreadCount();
-            });
+            readLookup[id] = true;
+            saveReadLookup();
+            renderRows();
+            renderBadges();
         });
 
-        updateUnreadCount();
+        const syncFromServer = async () => {
+            try {
+                const response = await fetch(summaryUrl, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Unable to fetch notification summary.');
+                }
+
+                const payload = await response.json();
+                setItems(payload?.items ?? []);
+                renderStats(payload?.stats ?? {});
+                renderRows();
+                renderBadges();
+            } catch (error) {
+                renderRows();
+                renderBadges();
+            }
+        };
+
+        setItems(initialItems);
+        renderStats(initialStats);
+        renderRows();
+        renderBadges();
+        syncFromServer();
+        window.setInterval(syncFromServer, 30000);
     })();
 </script>
 </body>
