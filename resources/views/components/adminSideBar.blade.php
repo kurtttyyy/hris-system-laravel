@@ -16,6 +16,7 @@
     $adminInitials = 'AD';
   }
   $adminRoleLabel = trim((string) ($adminUser->role ?? 'Admin'));
+  $tabSession = trim((string) request()->query('tab_session', ''));
   $adminUnreadMessages = 0;
   if (
     $adminUser
@@ -76,7 +77,8 @@
   <nav class="flex-1 px-2 group-hover:px-3 py-4 space-y-1.5">
 
     <!-- Dashboard -->
-    <a href="{{ route('admin.adminHome') }}"
+    <a href="{{ route('admin.adminHome', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+       data-admin-nav
        class="flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
        {{ request()->routeIs('admin.adminHome')
         ? 'bg-green-600 text-white'
@@ -86,7 +88,8 @@
     </a>
 
     <!-- Employees -->
-    <a href="{{ route('admin.adminEmployee') }}"
+    <a href="{{ route('admin.adminEmployee', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+       data-admin-nav
        class="flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
        {{ request()->routeIs('admin.adminEmployee')
         ? 'bg-green-600 text-white'
@@ -96,7 +99,8 @@
     </a>
 
     <!-- Attendance -->
-    <a href="{{ route('admin.adminAttendance') }}"
+    <a href="{{ route('admin.adminAttendance', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+       data-admin-nav
        class="flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
        {{ request()->routeIs('admin.adminAttendance')
         ? 'bg-green-600 text-white'
@@ -106,7 +110,8 @@
     </a>
 
     <!-- Leave -->
-    <a href="{{ route('admin.adminLeaveManagement') }}"
+    <a href="{{ route('admin.adminLeaveManagement', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+       data-admin-nav
        class="flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
        {{ request()->routeIs('admin.adminLeaveManagement')
         ? 'bg-green-600 text-white'
@@ -117,7 +122,8 @@
 
     <!-- ✅ Hiring Dropdown (FIXED) -->
     <!-- Payslip -->
-    <a href="{{ route('admin.adminPayslip') }}"
+    <a href="{{ route('admin.adminPayslip', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+       data-admin-nav
        class="flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
        {{ request()->routeIs('admin.adminPayslip')
         ? 'bg-green-600 text-white'
@@ -126,7 +132,8 @@
       <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Payslip</span>
     </a>
 
-    <a href="{{ route('admin.adminCommunication', ['reset_chat' => 1]) }}"
+    <a href="{{ route('admin.adminCommunication', array_filter(['reset_chat' => 1, 'tab_session' => $tabSession !== '' ? $tabSession : null])) }}"
+       data-admin-nav
        class="relative flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
        {{ request()->routeIs('admin.adminCommunication')
           ? 'bg-green-600 text-white'
@@ -158,7 +165,8 @@
       <!-- Submenu -->
       <div class="ml-0 group-hover:ml-8 space-y-1">
 
-        <a href="{{ route('admin.adminApplicant') }}"
+        <a href="{{ route('admin.adminApplicant', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+           data-admin-nav
            class="flex items-center gap-0 group-hover:gap-2 px-4 py-2 rounded-md text-sm justify-center group-hover:justify-start
            {{ request()->routeIs('admin.adminApplicant')
                 ? 'bg-green-600 text-white'
@@ -167,7 +175,8 @@
           <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Applicant</span>
         </a>
 
-        <a href="{{ route('admin.adminPosition') }}"
+        <a href="{{ route('admin.adminPosition', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+           data-admin-nav
            class="flex items-center gap-0 group-hover:gap-2 px-4 py-2 rounded-md text-sm justify-center group-hover:justify-start
            {{ request()->routeIs('admin.adminPosition')
                 ? 'bg-green-600 text-white'
@@ -176,7 +185,8 @@
           <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Job Position</span>
         </a>
 
-        <a href="{{ route('admin.adminInterview') }}"
+        <a href="{{ route('admin.adminInterview', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+           data-admin-nav
            class="flex items-center gap-0 group-hover:gap-2 px-4 py-2 rounded-md text-sm justify-center group-hover:justify-start
            {{ request()->routeIs('admin.adminInterview')
                 ? 'bg-green-600 text-white'
@@ -213,7 +223,8 @@
       </summary>
 
       <div class="ml-0 group-hover:ml-8 space-y-1">
-        <a href="{{ route('admin.adminCalendar') }}"
+        <a href="{{ route('admin.adminCalendar', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+           data-admin-nav
            class="flex items-center gap-0 group-hover:gap-2 px-4 py-2 rounded-md text-sm justify-center group-hover:justify-start
            {{ request()->routeIs('admin.adminCalendar')
                 ? 'bg-green-600 text-white'
@@ -222,7 +233,8 @@
           <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Calendar</span>
         </a>
 
-        <a href="{{ route('admin.adminLoads') }}"
+        <a href="{{ route('admin.adminLoads', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+           data-admin-nav
            class="flex items-center gap-0 group-hover:gap-2 px-4 py-2 rounded-md text-sm justify-center group-hover:justify-start
            {{ request()->routeIs('admin.adminLoads')
                 ? 'bg-green-600 text-white'
@@ -243,7 +255,8 @@
           </summary>
 
           <div class="ml-0 group-hover:ml-6 space-y-1">
-            <a href="{{ route('admin.schoolAdministrator') }}"
+            <a href="{{ route('admin.schoolAdministrator', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+               data-admin-nav
                class="flex items-center gap-0 group-hover:gap-2 px-4 py-2 rounded-md text-sm justify-center group-hover:justify-start
                {{ request()->routeIs('admin.schoolAdministrator')
                     ? 'bg-green-600 text-white'
@@ -252,7 +265,8 @@
               <span class="hidden group-hover:block leading-tight break-words">School Administrator</span>
             </a>
 
-            <a href="{{ route('admin.nonTeachingMatrix') }}"
+            <a href="{{ route('admin.nonTeachingMatrix', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+               data-admin-nav
                class="flex items-center gap-0 group-hover:gap-2 px-4 py-2 rounded-md text-sm justify-center group-hover:justify-start
                {{ request()->routeIs('admin.nonTeachingMatrix')
                     ? 'bg-green-600 text-white'
@@ -261,7 +275,8 @@
               <span class="hidden group-hover:block leading-tight break-words">Academic Non-Teaching</span>
             </a>
 
-            <a href="{{ route('admin.teachingMatrix') }}"
+            <a href="{{ route('admin.teachingMatrix', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+               data-admin-nav
                class="flex items-center gap-0 group-hover:gap-2 px-4 py-2 rounded-md text-sm justify-center group-hover:justify-start
                {{ request()->routeIs('admin.teachingMatrix')
                     ? 'bg-green-600 text-white'
@@ -272,7 +287,8 @@
           </div>
         </details>
 
-        <a href="{{ route('admin.adminResignations') }}"
+        <a href="{{ route('admin.adminResignations', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
+           data-admin-nav
            class="flex items-center gap-0 group-hover:gap-2 px-4 py-2 rounded-md text-sm justify-center group-hover:justify-start
            {{ request()->routeIs('admin.adminResignations')
                 ? 'bg-green-600 text-white'
@@ -294,6 +310,9 @@
         <p class="font-medium truncate">{{ $adminDisplayName }}</p>
         <form method="POST" action="{{ route('logout') }}" class="inline-flex">
           @csrf
+          @if($tabSession !== '')
+            <input type="hidden" name="tab_session" value="{{ $tabSession }}">
+          @endif
           <button
             type="submit"
             class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 text-slate-200 hover:border-red-500 hover:bg-red-600 hover:text-white"
@@ -308,3 +327,181 @@
     </div>
   </div>
 </aside>
+
+<style>
+  .admin-nav-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(2, 6, 23, 0.24);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+  }
+
+  .admin-nav-overlay.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .admin-nav-overlay__card {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.95rem 1.15rem;
+    border-radius: 9999px;
+    background: rgba(15, 23, 42, 0.94);
+    color: #f8fafc;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.28);
+    transform: translateY(8px) scale(0.98);
+    transition: transform 220ms ease;
+  }
+
+  .admin-nav-overlay.is-visible .admin-nav-overlay__card {
+    transform: translateY(0) scale(1);
+  }
+
+  .admin-nav-overlay__spinner {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    border-top-color: #4ade80;
+    animation: admin-nav-spin 0.75s linear infinite;
+  }
+
+  @keyframes admin-nav-spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+
+<script>
+  (function () {
+    const links = Array.from(document.querySelectorAll('[data-admin-nav]'));
+    const currentUrl = new URL(window.location.href);
+    const tabSession = currentUrl.searchParams.get('tab_session') || '';
+    if (!links.length && !tabSession) {
+      return;
+    }
+
+    let overlay = document.querySelector('[data-admin-nav-overlay]');
+    const prefetched = new Set();
+
+    const appendTabSession = (href) => {
+      if (!href || !tabSession) {
+        return href;
+      }
+
+      const url = new URL(href, window.location.origin);
+      if (url.origin !== window.location.origin) {
+        return href;
+      }
+
+      url.searchParams.set('tab_session', tabSession);
+      return `${url.pathname}${url.search}${url.hash}`;
+    };
+
+    if (tabSession) {
+      document.querySelectorAll('a[href]').forEach((anchor) => {
+        const href = anchor.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+          return;
+        }
+
+        const nextHref = appendTabSession(href);
+        if (nextHref) {
+          anchor.setAttribute('href', nextHref);
+        }
+      });
+
+      document.querySelectorAll('form').forEach((form) => {
+        let hiddenInput = form.querySelector('input[name="tab_session"]');
+        if (!hiddenInput) {
+          hiddenInput = document.createElement('input');
+          hiddenInput.type = 'hidden';
+          hiddenInput.name = 'tab_session';
+          form.appendChild(hiddenInput);
+        }
+        hiddenInput.value = tabSession;
+      });
+    }
+
+    const ensureOverlay = () => {
+      if (overlay) {
+        return overlay;
+      }
+
+      overlay = document.createElement('div');
+      overlay.className = 'admin-nav-overlay';
+      overlay.setAttribute('data-admin-nav-overlay', '');
+      overlay.innerHTML = `
+        <div class="admin-nav-overlay__card">
+          <span class="admin-nav-overlay__spinner"></span>
+          <span class="text-sm font-semibold tracking-wide">Opening page...</span>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      return overlay;
+    };
+
+    const prefetchPage = (href) => {
+      if (!href || prefetched.has(href)) {
+        return;
+      }
+
+      prefetched.add(href);
+      fetch(href, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-Admin-Prefetch': '1',
+        },
+      }).catch(() => {
+      });
+    };
+
+    links.forEach((link) => {
+      const href = appendTabSession(link.getAttribute('href'));
+      if (!href) {
+        return;
+      }
+
+      link.setAttribute('href', href);
+
+      link.addEventListener('mouseenter', () => prefetchPage(href), { passive: true });
+      link.addEventListener('focus', () => prefetchPage(href), { passive: true });
+
+      link.addEventListener('click', (event) => {
+        if (
+          event.defaultPrevented
+          || event.metaKey
+          || event.ctrlKey
+          || event.shiftKey
+          || event.altKey
+          || link.target === '_blank'
+        ) {
+          return;
+        }
+
+        const latestUrl = new URL(window.location.href);
+        const nextUrl = new URL(href, window.location.origin);
+        if (latestUrl.pathname === nextUrl.pathname && latestUrl.search === nextUrl.search) {
+          return;
+        }
+
+        ensureOverlay().classList.add('is-visible');
+      });
+    });
+
+    window.addEventListener('pageshow', () => {
+      if (overlay) {
+        overlay.classList.remove('is-visible');
+      }
+    });
+  })();
+</script>

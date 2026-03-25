@@ -494,11 +494,14 @@ class EmployeeStoreController extends Controller
             'participant_user_id' => 'required|integer|exists:users,id',
             'conversation_id' => 'nullable|integer|exists:conversations,id',
             'body' => 'required|string|max:4000',
+            'tab_session' => 'nullable|string|max:120',
         ]);
 
         $authUser = Auth::user();
         if (!$authUser) {
-            return redirect()->route('login_display');
+            return redirect()->route('login_display', array_filter([
+                'tab_session' => $request->input('tab_session'),
+            ]));
         }
 
         $participant = User::query()->findOrFail((int) $attrs['participant_user_id']);
@@ -522,6 +525,7 @@ class EmployeeStoreController extends Controller
         return redirect()->route('employee.employeeCommunication', [
             'conversation' => $conversation->id,
             'user' => $participant->id,
+            'tab_session' => $request->input('tab_session'),
         ])->with('success', 'Message sent.');
     }
 

@@ -9,6 +9,7 @@
     ])));
     $adminName = $adminName !== '' ? $adminName : 'Admin User';
     $adminInitials = strtoupper(substr(trim((string) ($adminUser?->first_name ?? 'A')), 0, 1).substr(trim((string) ($adminUser?->last_name ?? 'D')), 0, 1));
+    $tabSession = trim((string) request()->query('tab_session', ''));
     $adminNotificationItems = collect($adminNotificationItems ?? []);
     $adminNotificationStats = $adminNotificationStats ?? [];
     $pendingEmployeeApprovalCount = isset($employee) ? (int) collect($employee)->count() : (int) ($adminNotificationStats['approvals'] ?? 0);
@@ -55,6 +56,18 @@
     ])->filter(fn ($item) => $item['count'] > 0)->values();
     $adminNotificationItems = $adminNotificationItems->map(function ($item) {
         $category = strtolower((string) ($item['category'] ?? ''));
+        $itemDate = $item['date'] ?? null;
+        $resolvedDate = null;
+
+        if ($itemDate instanceof \Carbon\CarbonInterface) {
+            $resolvedDate = $itemDate->copy()->setTimezone(config('app.timezone'));
+        } elseif (!empty($itemDate)) {
+            try {
+                $resolvedDate = \Carbon\Carbon::parse($itemDate)->setTimezone(config('app.timezone'));
+            } catch (\Throwable $exception) {
+                $resolvedDate = null;
+            }
+        }
 
         return array_merge([
             'href' => route('admin.adminNotifications'),
@@ -87,6 +100,8 @@
             'label' => $item['label'] ?? ($item['title'] ?? 'Admin update'),
             'description' => $item['description'] ?? ($item['message'] ?? ''),
             'count' => (int) ($item['count'] ?? 1),
+            'date' => $resolvedDate?->toIso8601String(),
+            'date_human' => $resolvedDate?->diffForHumans(),
         ], $item);
     })->values();
     $adminNotificationTotal = (int) ($adminNotificationStats['total'] ?? $adminNotificationItems->sum('count'));
@@ -179,9 +194,15 @@
                                         <div class="min-w-0 flex-1">
                                             <div class="flex items-center justify-between gap-3">
                                                 <p class="truncate text-sm font-semibold text-slate-900">{{ $item['label'] }}</p>
-                                                <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $item['badgeClass'] }}">{{ number_format($item['count']) }}</span>
+                                                <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $item['badgeClass'] }}">{{ $item['badge'] ?? number_format($item['count']) }}</span>
                                             </div>
                                             <p class="mt-1 text-xs leading-5 text-slate-500">{{ $item['description'] }}</p>
+                                            <p class="mt-1 text-[11px] font-medium text-slate-400">
+                                                <span
+                                                    data-admin-relative-time
+                                                    @if(!empty($item['date'])) data-time="{{ $item['date'] }}" @endif
+                                                >{{ $item['date_human'] ?? 'Live' }}</span>
+                                            </p>
                                         </div>
                                     </a>
                                 @endforeach
@@ -215,12 +236,19 @@
                             <i class="fa-regular fa-user text-slate-400"></i>
                             My Profile
                         </button>
-                        <a href="{{ route('admin.adminHome') }}" class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50">
+                        <a href="{{ route('admin.adminHome', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50">
                             <i class="fa-solid fa-house text-slate-400"></i>
                             Dashboard
                         </a>
+                        <a href="{{ route('admin.adminAttendance', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50">
+                            <i class="fa-solid fa-clipboard-list text-slate-400"></i>
+                            Logs
+                        </a>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
+                            @if($tabSession !== '')
+                                <input type="hidden" name="tab_session" value="{{ $tabSession }}">
+                            @endif
                             <button type="submit" class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-rose-600 hover:bg-rose-50">
                                 <i class="fa fa-sign-out text-rose-500"></i>
                                 Logout
@@ -324,5 +352,51 @@
             }
         });
         window.setInterval(syncBadge, 30000);
+    })();
+
+    (function () {
+        const timeNodes = Array.from(document.querySelectorAll('[data-admin-relative-time]'));
+        if (!timeNodes.length) {
+            return;
+        }
+
+        const formatRelativeTime = (value) => {
+            if (!value) {
+                return 'Live';
+            }
+
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return 'Live';
+            }
+
+            const diffSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+            if (diffSeconds < 10) return 'Just now';
+            if (diffSeconds < 60) return `${diffSeconds} second${diffSeconds === 1 ? '' : 's'} ago`;
+
+            const diffMinutes = Math.floor(diffSeconds / 60);
+            if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+
+            const diffHours = Math.floor(diffMinutes / 60);
+            if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+
+            const diffDays = Math.floor(diffHours / 24);
+            if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+
+            const diffMonths = Math.floor(diffDays / 30);
+            if (diffMonths < 12) return `${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
+
+            const diffYears = Math.floor(diffMonths / 12);
+            return `${diffYears} year${diffYears === 1 ? '' : 's'} ago`;
+        };
+
+        const renderTimes = () => {
+            timeNodes.forEach((node) => {
+                node.textContent = formatRelativeTime(node.getAttribute('data-time'));
+            });
+        };
+
+        renderTimes();
+        window.setInterval(renderTimes, 60000);
     })();
 </script>

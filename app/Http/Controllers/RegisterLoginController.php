@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesTabSession;
 use App\Models\Applicant;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Log;
 
 class RegisterLoginController extends Controller
 {
+    use ResolvesTabSession;
+
     public function register_store(Request $request){
         Log::info($request);
         $attrs = $request->validate([
@@ -65,6 +68,7 @@ class RegisterLoginController extends Controller
         $attrs = $request->validate([
             'email'    => 'required|email|exists:users,email',
             'password' => 'required|string',
+            'tab_session' => 'nullable|string|max:120',
         ]);
 
         $user = User::query()
@@ -84,15 +88,21 @@ class RegisterLoginController extends Controller
             'password' => $attrs['password'],
             'status'   => 'Approved',
         ])) {
-
-            $request->session()->regenerate();
-
             $user = Auth::user();
+            $tabSession = $this->resolveTabSessionKey($request);
+            $tabAuthUsers = $request->session()->get('tab_auth_users', []);
+
+            if ($tabSession !== '' && $user) {
+                $tabAuthUsers[$tabSession] = (int) $user->id;
+                $request->session()->put('tab_auth_users', $tabAuthUsers);
+            }
+
+            Auth::logout();
 
             return match ($user->role) {
-                'Employee' => redirect()->route('employee.employeeHome'),
-                'Admin'    => redirect()->route('admin.adminHome'),
-                default    => redirect()->route('login')->with('error', 'Unauthorized role'),
+                'Employee' => redirect()->route('employee.employeeHome', $tabSession !== '' ? ['tab_session' => $tabSession] : []),
+                'Admin'    => redirect()->route('admin.adminHome', $tabSession !== '' ? ['tab_session' => $tabSession] : []),
+                default    => redirect()->route('login_display')->with('error', 'Unauthorized role'),
             };
         }
 
@@ -105,12 +115,19 @@ class RegisterLoginController extends Controller
 
     public function logout(Request $request)
     {
-        Auth::logout();
+        $tabSession = $this->resolveTabSessionKey($request);
+        $tabAuthUsers = $request->session()->get('tab_auth_users', []);
+        if ($tabSession !== '') {
+            unset($tabAuthUsers[$tabSession]);
+            $request->session()->put('tab_auth_users', $tabAuthUsers);
+        } else {
+            $request->session()->forget('tab_auth_users');
+        }
 
-        $request->session()->invalidate();
+        Auth::logout();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login_display');
+        return redirect()->route('login_display', $tabSession !== '' ? ['tab_session' => $tabSession] : []);
     }
 
 }

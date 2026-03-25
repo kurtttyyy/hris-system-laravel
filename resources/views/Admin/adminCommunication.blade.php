@@ -92,7 +92,7 @@
                                 @if ($isSelfEmployeeCard)
                                     <span class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-400"><i class="fa-solid fa-ban"></i>Current Account</span>
                                 @else
-                                    <a href="{{ route('admin.adminCommunication', ['user' => $employee->id]) }}#admin-chat-panel" class="relative inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                                    <a href="{{ route('admin.adminCommunication', array_filter(['user' => $employee->id, 'tab_session' => request()->query('tab_session')])) }}#admin-chat-panel" class="relative inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
                                         @if ($employeeHasUnreadMessages)
                                             <span class="absolute -right-2 -top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
                                                 {{ $employeeUnreadCount > 99 ? '99+' : $employeeUnreadCount }}
@@ -126,7 +126,7 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-3 text-violet-400">
-                                        <a href="{{ route('admin.adminCommunication', ['reset_chat' => 1]) }}" class="text-violet-400"><i class="fa-solid fa-xmark"></i></a>
+                                        <a href="{{ route('admin.adminCommunication', array_filter(['reset_chat' => 1, 'tab_session' => request()->query('tab_session')])) }}" class="text-violet-400"><i class="fa-solid fa-xmark"></i></a>
                                     </div>
                                 </div>
                             </div>
@@ -157,6 +157,9 @@
                             </div>
                             <form method="POST" action="{{ route('admin.communication.send') }}" class="border-t border-slate-700 bg-[#1f1f1f] px-4 py-3">
                                 @csrf
+                                @if (request()->filled('tab_session'))
+                                    <input type="hidden" name="tab_session" value="{{ request()->query('tab_session') }}">
+                                @endif
                                 <input type="hidden" name="participant_user_id" value="{{ $selectedParticipant->id }}">
                                 @if ($selectedConversation)<input type="hidden" name="conversation_id" value="{{ $selectedConversation->id }}">@endif
                                 <div class="flex items-end gap-3">

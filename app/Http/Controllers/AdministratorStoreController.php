@@ -47,15 +47,20 @@ class AdministratorStoreController extends Controller
             'participant_user_id' => 'required|integer|exists:users,id',
             'conversation_id' => 'nullable|integer|exists:conversations,id',
             'body' => 'required|string|max:4000',
+            'tab_session' => 'nullable|string|max:120',
         ]);
 
         $authUser = Auth::user();
         if (!$authUser) {
-            return redirect()->route('login_display');
+            return redirect()->route('login_display', array_filter([
+                'tab_session' => $request->input('tab_session'),
+            ]));
         }
 
         if (!in_array(strtolower(trim((string) ($authUser->role ?? ''))), ['admin', 'administrator'], true)) {
-            return redirect()->route('employee.employeeCommunication')
+            return redirect()->route('employee.employeeCommunication', array_filter([
+                    'tab_session' => $request->input('tab_session'),
+                ]))
                 ->withErrors(['body' => 'You must be logged in as an admin account to send messages from the admin communication page.']);
         }
 
@@ -80,6 +85,7 @@ class AdministratorStoreController extends Controller
         return redirect()->route('admin.adminCommunication', [
             'conversation' => $conversation->id,
             'user' => $participant->id,
+            'tab_session' => $request->input('tab_session'),
         ])->with('success', 'Message sent.');
     }
 
@@ -3095,6 +3101,11 @@ class AdministratorStoreController extends Controller
             return 'Active';
         }
 
+        $user = User::query()->find($userId);
+        if (!$user) {
+            return 'Active';
+        }
+
         $hasApprovedOrCompletedResignation = Resignation::query()
             ->where('user_id', $userId)
             ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) IN (?, ?)", ['approved', 'completed'])
@@ -3102,6 +3113,12 @@ class AdministratorStoreController extends Controller
 
         if ($hasApprovedOrCompletedResignation) {
             return 'Inactive';
+        }
+
+        if (strcasecmp(trim((string) ($user->role ?? '')), 'employee') !== 0) {
+            return trim((string) ($user->account_status ?? '')) !== ''
+                ? (string) $user->account_status
+                : 'Active';
         }
 
         $today = Carbon::today();

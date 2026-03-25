@@ -566,6 +566,59 @@ class AdministratorPageController extends Controller
         $pendingLeaveRequests = collect($pendingLeaveRequests ?? []);
         $departments = collect($departments ?? []);
         $pendingResignations = collect($pendingResignations ?? []);
+        $appTimezone = config('app.timezone');
+
+        $latestHiringActivityAt = Applicant::query()
+            ->select(['created_at', 'updated_at'])
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->first();
+
+        $latestHiringDate = null;
+        if ($latestHiringActivityAt) {
+            $latestHiringDate = collect([
+                $latestHiringActivityAt->updated_at,
+                $latestHiringActivityAt->created_at,
+            ])->filter()->map(function ($date) use ($appTimezone) {
+                return Carbon::parse($date)->setTimezone($appTimezone);
+            })->sortByDesc(fn (Carbon $date) => $date->timestamp)->first();
+        }
+
+        $resolveDepartmentName = function (User $user): string {
+            $userDepartment = trim((string) ($user->department ?? ''));
+            if ($userDepartment !== '') {
+                return $userDepartment;
+            }
+
+            $employeeDepartment = trim((string) (optional($user->employee)->department ?? ''));
+            if ($employeeDepartment !== '') {
+                return $employeeDepartment;
+            }
+
+            $applicantDepartment = trim((string) (optional(optional($user->applicant)->position)->department ?? ''));
+            return $applicantDepartment !== '' ? $applicantDepartment : 'Unassigned';
+        };
+
+        $departmentActivityDates = User::with(['employee', 'applicant.position:id,department'])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
+            ->get()
+            ->groupBy(function (User $user) use ($resolveDepartmentName) {
+                return Str::lower($resolveDepartmentName($user));
+            })
+            ->map(function ($group) use ($appTimezone) {
+                return $group
+                    ->map(function (User $user) use ($appTimezone) {
+                        return collect([$user->updated_at, $user->created_at])
+                            ->filter()
+                            ->map(fn ($date) => Carbon::parse($date)->setTimezone($appTimezone))
+                            ->sortByDesc(fn (Carbon $date) => $date->timestamp)
+                            ->first();
+                    })
+                    ->filter()
+                    ->sortByDesc(fn (Carbon $date) => $date->timestamp)
+                    ->first();
+            });
 
         $approvalNotifications = $pendingEmployees
             ->take(6)
@@ -623,7 +676,7 @@ class AdministratorPageController extends Controller
                 'category' => 'Hiring',
                 'title' => 'Active hiring pipeline',
                 'message' => number_format($openPositionApplicationsCount).' applicant'.($openPositionApplicationsCount === 1 ? '' : 's').' are attached to open roles.',
-                'date' => null,
+                'date' => $latestHiringDate,
                 'href' => route('admin.adminApplicant'),
                 'badge' => 'Pipeline',
                 'tone' => 'sky',
@@ -652,14 +705,16 @@ class AdministratorPageController extends Controller
         $coverageNotifications = $departments
             ->sortByDesc('count')
             ->take(4)
-            ->map(function ($department) {
+            ->map(function ($department) use ($departmentActivityDates) {
                 $count = (int) ($department['count'] ?? 0);
+                $departmentName = trim((string) ($department['name'] ?? 'Department'));
+                $departmentDate = $departmentActivityDates->get(Str::lower($departmentName));
 
                 return [
                     'category' => 'Workforce',
                     'title' => 'Department coverage snapshot',
-                    'message' => trim((string) ($department['name'] ?? 'Department')).' currently has '.number_format($count).' active employee'.($count === 1 ? '' : 's').'.',
-                    'date' => null,
+                    'message' => $departmentName.' currently has '.number_format($count).' active employee'.($count === 1 ? '' : 's').'.',
+                    'date' => $departmentDate,
                     'href' => route('admin.adminHome'),
                     'badge' => 'Coverage',
                     'tone' => 'slate',

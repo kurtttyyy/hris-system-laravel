@@ -32,26 +32,26 @@
     @include('components.adminHeader.interviewHeader')
 
     <div class="space-y-6 p-4 pt-20 md:p-8">
-      <section class="relative overflow-hidden rounded-[2rem] border border-white/80 bg-[linear-gradient(135deg,rgba(15,23,42,0.94),rgba(30,41,59,0.92),rgba(14,165,233,0.86))] px-6 py-7 text-white shadow-[0_25px_70px_rgba(15,23,42,0.16)] md:px-8">
+      <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/60 bg-[linear-gradient(135deg,rgba(3,19,29,0.96),rgba(5,47,42,0.94),rgba(17,97,73,0.92))] px-6 py-7 text-white shadow-[0_25px_70px_rgba(3,19,29,0.2)] md:px-8">
         <div class="absolute -right-14 -top-16 h-44 w-44 rounded-full bg-white/10 blur-2xl"></div>
         <div class="absolute bottom-0 right-24 h-28 w-28 rounded-full bg-emerald-300/20 blur-2xl"></div>
 
         <div class="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div class="max-w-3xl">
-            <div class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-100">
+            <div class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-100">
               Interview Command Center
             </div>
             <h1 class="mt-4 text-3xl font-black tracking-tight md:text-4xl">Keep every candidate conversation organized, visible, and on time.</h1>
-            <p class="mt-3 max-w-2xl text-sm text-slate-200 md:text-base">
+            <p class="mt-3 max-w-2xl text-sm text-emerald-50/85 md:text-base">
               Review today's activity, follow the next interview in line, and reschedule sessions from one focused dashboard.
             </p>
           </div>
 
           <div class="flex flex-col gap-3 sm:flex-row xl:items-center">
             <div class="rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-4 backdrop-blur">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-200">Today</p>
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">Today</p>
               <p class="mt-2 text-lg font-bold">{{ now()->format('F j, Y') }}</p>
-              <p class="text-sm text-slate-200">{{ now()->format('l') }}</p>
+              <p class="text-sm text-emerald-50/80">{{ now()->format('l') }}</p>
             </div>
 
             <button
@@ -59,7 +59,7 @@
               onclick="openEmptyScheduleModal()"
               class="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 shadow-lg shadow-slate-950/10 transition hover:-translate-y-0.5 hover:bg-slate-100"
             >
-              <i class="fa-solid fa-calendar-plus text-sky-600"></i>
+              <i class="fa-solid fa-calendar-plus text-emerald-600"></i>
               Schedule Interview
             </button>
           </div>

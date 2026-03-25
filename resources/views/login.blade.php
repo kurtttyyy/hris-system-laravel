@@ -11,19 +11,129 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #14532d 0%, #15803d 45%, #4ade80 100%);
+            overflow-x: hidden;
+        }
+
+        .login-auth-shell {
+            perspective: 1600px;
+        }
+
+        .login-showcase-card {
+            opacity: 0;
+            transform: translateX(72px) scale(0.985);
+            transform-origin: right center;
+            animation: login-showcase-swap 0.72s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+        }
+
+        .login-form-card {
+            opacity: 0;
+            transform: translateX(-72px) scale(0.985);
+            transform-origin: left center;
+            animation: login-form-swap 0.72s cubic-bezier(0.22, 0.9, 0.2, 1) 0.08s forwards;
+        }
+
+        .login-auth-shell.is-exiting .login-showcase-card,
+        .login-auth-shell.is-exiting .login-form-card {
+            animation-duration: 0.78s;
+            animation-timing-function: cubic-bezier(0.16, 0.84, 0.24, 1);
+            animation-delay: 0s;
+            animation-fill-mode: forwards;
+        }
+
+        .login-auth-shell.is-exiting-left .login-showcase-card {
+            animation-name: login-showcase-swap-to-right;
+        }
+
+        .login-auth-shell.is-exiting-left .login-form-card {
+            animation-name: login-form-swap-to-left;
+        }
+
+        .login-auth-shell.is-entering-from-left .login-showcase-card {
+            animation-name: login-showcase-enter-from-right;
+        }
+
+        .login-auth-shell.is-entering-from-left .login-form-card {
+            animation-name: login-form-enter-from-left;
+        }
+
+        @keyframes login-showcase-swap {
+            from {
+                opacity: 0;
+                transform: translateX(72px) scale(0.985);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        @keyframes login-form-swap {
+            from {
+                opacity: 0;
+                transform: translateX(-72px) scale(0.985);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        @keyframes login-showcase-swap-to-right {
+            from {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+            to {
+                opacity: 0.28;
+                transform: translateX(calc(100% + 1.2rem)) scale(0.975);
+            }
+        }
+
+        @keyframes login-form-swap-to-left {
+            from {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+            to {
+                opacity: 0.28;
+                transform: translateX(calc(-100% - 1.2rem)) scale(0.975);
+            }
+        }
+
+        @keyframes login-showcase-enter-from-right {
+            from {
+                opacity: 0;
+                transform: translateX(calc(100% + 2rem)) scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        @keyframes login-form-enter-from-left {
+            from {
+                opacity: 0;
+                transform: translateX(calc(-100% - 2rem)) scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="min-h-screen flex items-center justify-center
+<div data-auth-root class="login-auth-shell min-h-screen flex items-center justify-center
      bg-gradient-to-br from-green-900 via-green-700 to-green-500 px-6">
 
 
     <div class="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8">
 
         <!-- LEFT CARD -->
-        <div class="bg-white/95 rounded-3xl p-10 shadow-2xl flex flex-col justify-between">
+        <div class="login-showcase-card bg-white/95 rounded-3xl p-10 shadow-2xl flex flex-col justify-between">
 
             <!-- Logo -->
         <div class="flex items-center gap-3 mb-10">
@@ -112,7 +222,7 @@
         </div>
 
         <!-- RIGHT CARD -->
-        <div class="bg-white rounded-3xl p-10 shadow-2xl flex items-center">
+        <div class="login-form-card bg-white rounded-3xl p-10 shadow-2xl flex items-center">
 
             <div class="w-full max-w-md mx-auto">
                 <h2 class="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
@@ -144,7 +254,7 @@
 
                 <p class="text-center text-sm text-gray-500 mt-8">
                     Don’t have an account?
-                    <a href="{{ route('register')}}" class="text-green-800 font-semibold hover:underline">
+                    <a href="{{ route('register')}}" data-auth-link="register" class="text-green-800 font-semibold hover:underline">
                         Create one now
                     </a>
                 </p>
@@ -154,6 +264,40 @@
 
     </div>
 </div>
+
+<script>
+    (function () {
+        const root = document.querySelector('[data-auth-root]');
+        if (!root) {
+            return;
+        }
+
+        const transitionKey = 'auth_transition_state_v1';
+        const savedState = sessionStorage.getItem(transitionKey);
+        if (savedState === 'from-register') {
+            root.classList.add('is-entering-from-left');
+            sessionStorage.removeItem(transitionKey);
+        }
+
+        document.querySelectorAll('[data-auth-link]').forEach((link) => {
+            link.addEventListener('click', function (event) {
+                const href = this.getAttribute('href');
+                if (!href || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                    return;
+                }
+
+                event.preventDefault();
+                sessionStorage.setItem(transitionKey, 'to-register');
+                root.classList.remove('is-entering-from-left');
+                root.classList.add('is-exiting', 'is-exiting-left');
+
+                window.setTimeout(() => {
+                    window.location.href = href;
+                }, 700);
+            });
+        });
+    })();
+</script>
 
 </body>
 </html>

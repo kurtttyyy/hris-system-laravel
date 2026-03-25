@@ -115,7 +115,7 @@
                             </div>
                             <div class="mt-6 flex flex-wrap gap-3">
                                 <a href="mailto:{{ $email }}" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white"><i class="fa fa-user"></i>View Profile</a>
-                                <a href="{{ route('employee.employeeCommunication', ['user' => $admin->id]) }}#chat-panel" class="relative inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">
+                                <a href="{{ route('employee.employeeCommunication', array_filter(['user' => $admin->id, 'tab_session' => request()->query('tab_session')])) }}#chat-panel" class="relative inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">
                                     @if ($adminHasUnreadMessages)
                                         <span class="absolute -right-2 -top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{{ $adminUnreadCount > 99 ? '99+' : $adminUnreadCount }}</span>
                                     @endif
@@ -177,6 +177,9 @@
                             </div>
                             <form method="POST" action="{{ route('employee.communication.send') }}" class="border-t border-slate-700 bg-[#1f1f1f] px-4 py-3">
                                 @csrf
+                                @if (request()->filled('tab_session'))
+                                    <input type="hidden" name="tab_session" value="{{ request()->query('tab_session') }}">
+                                @endif
                                 <input type="hidden" name="participant_user_id" value="{{ $selectedParticipant->id }}">
                                 @if ($selectedConversation)<input type="hidden" name="conversation_id" value="{{ $selectedConversation->id }}">@endif
                                 <div class="flex items-end gap-3">
