@@ -116,13 +116,16 @@
                         </button>
 
                         <div class="absolute right-0 z-50 mt-3 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl opacity-0 invisible transition-all duration-200 group-hover:visible group-hover:opacity-100">
-                            <a href="{{ route('employee.employeeProfile') }}" class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">
+                            <a href="{{ route('employee.employeeProfile', array_filter(['tab_session' => request()->query('tab_session')])) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 transition hover:bg-slate-50">
                                 <i class="fa fa-user text-slate-500"></i>
                                 My Profile
                             </a>
 
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
+                                @if (request()->filled('tab_session'))
+                                    <input type="hidden" name="tab_session" value="{{ request()->query('tab_session') }}">
+                                @endif
                                 <button type="submit" class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-rose-600 transition hover:bg-rose-50">
                                     <i class="fa fa-sign-out text-rose-500"></i>
                                     Logout
@@ -132,7 +135,7 @@
                     </div>
                 </div>
 
-                <a href="{{ route('employee.employeeProfile') }}" class="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:-translate-y-0.5 hover:bg-emerald-50">
+                <a href="{{ route('employee.employeeProfile', array_filter(['tab_session' => request()->query('tab_session')])) }}" class="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:-translate-y-0.5 hover:bg-emerald-50">
                     <i class="fa fa-pen"></i>
                     Edit Profile
                 </a>

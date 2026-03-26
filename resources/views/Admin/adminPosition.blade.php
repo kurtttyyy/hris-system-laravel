@@ -184,7 +184,7 @@
                     @php
                         $lines = preg_split("/\r\n|\n|\r/", $open->job_description ?? '');
                         $descriptionPreview = collect(array_slice($lines, 0, 3))
-                            ->map(fn ($line) => \Illuminate\Support\Str::limit(ltrim($line, "-* "), 150, '...'))
+                            ->map(fn ($line) => \Illuminate\Support\Str::limit(trim(preg_replace('/^[\s\-\*\x{2022}\x{2023}\x{25E6}\x{2043}]+/u', '', (string) $line)), 150, '...'))
                             ->filter(fn ($line) => trim((string) $line) !== '')
                             ->values();
                     @endphp
@@ -236,7 +236,7 @@
                         </div>
 
                         <div class="mt-5 rounded-[1.5rem] border border-slate-200 bg-slate-50/70 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Role Snapshot</p>
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Role</p>
                             <ul class="mt-3 space-y-2 text-sm leading-6 text-slate-600">
                                 @forelse ($descriptionPreview as $previewLine)
                                     <li class="flex gap-2">

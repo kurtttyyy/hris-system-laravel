@@ -812,12 +812,15 @@ class AdministratorPageController extends Controller
                         'user_id',
                         'leave_type',
                         'number_of_working_days',
+                        'inclusive_dates',
                         'beginning_vacation',
                         'beginning_sick',
                         'earned_vacation',
                         'earned_sick',
+                        'applied_total',
                         'ending_vacation',
                         'ending_sick',
+                        'days_with_pay',
                         'status',
                         'filing_date',
                         'created_at',
@@ -2660,6 +2663,8 @@ class AdministratorPageController extends Controller
     }
 
     public function display_applicant(){
+        $this->syncFinishedInterviewApplicantStatuses();
+
         $applicant = Applicant::with(
             'position:id,title,department,employment,collage_name,work_mode,job_description,responsibilities,requirements,experience_level,location,skills,benifits,job_type,one,two,passionate'
         )->latest('created_at')->get();
@@ -2678,6 +2683,8 @@ class AdministratorPageController extends Controller
     }
 
     public function display_applicant_ID($id){
+        $this->syncFinishedInterviewApplicantStatuses();
+
         $app = Applicant::with(
             'documents:id,filename,applicant_id',
             'position:id,title,department,employment,collage_name,work_mode,job_description,responsibilities,requirements,experience_level,location,skills,benifits,job_type,one,two,passionate'
@@ -2792,7 +2799,7 @@ class AdministratorPageController extends Controller
     private function syncFinishedInterviewApplicantStatuses(): void
     {
         $allInterviews = Interviewer::query()
-            ->select(['applicant_id', 'date', 'time', 'duration'])
+            ->select(['applicant_id', 'interview_type', 'date', 'time', 'duration'])
             ->whereNotNull('applicant_id')
             ->get();
 
@@ -2811,24 +2818,27 @@ class AdministratorPageController extends Controller
             })
             ->filter();
 
-        $completedApplicantIds = $latestByApplicant
+        $completedLatestInterviews = $latestByApplicant
             ->filter(function ($item) {
                 $start = Carbon::parse($item->date->format('Y-m-d').' '.$item->time);
                 $end = (clone $start)->addMinutes($this->durationToMinutes($item->duration));
                 return now()->gte($end);
-            })
-            ->keys()
-            ->values()
-            ->all();
+            });
 
-        if (empty($completedApplicantIds)) {
+        if ($completedLatestInterviews->isEmpty()) {
             return;
         }
 
-        Applicant::query()
-            ->whereIn('id', $completedApplicantIds)
-            ->whereIn('application_status', ['Initial Interview', 'Final Interview'])
-            ->update(['application_status' => 'Completed']);
+        $completedLatestInterviews->each(function ($interview, $applicantId) {
+            $nextStatus = strcasecmp(trim((string) ($interview->interview_type ?? '')), 'Final Interview') === 0
+                ? 'Passing Document'
+                : 'Final Interview';
+
+            Applicant::query()
+                ->where('id', $applicantId)
+                ->whereIn('application_status', ['Initial Interview', 'Final Interview'])
+                ->update(['application_status' => $nextStatus]);
+        });
     }
 
     private function durationToMinutes(?string $duration): int

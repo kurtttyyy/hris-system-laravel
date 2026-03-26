@@ -148,7 +148,7 @@
                         </button>
 
                         <div class="invisible absolute right-0 z-50 mt-3 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
-                            <a href="{{ route('employee.employeeProfile') }}"
+                            <a href="{{ route('employee.employeeProfile', array_filter(['tab_session' => request()->query('tab_session')])) }}"
                                class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50">
                                 <i class="fa fa-user"></i>
                                 My Profile
@@ -163,6 +163,9 @@
 
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
+                                @if (request()->filled('tab_session'))
+                                    <input type="hidden" name="tab_session" value="{{ request()->query('tab_session') }}">
+                                @endif
                                 <button
                                     type="submit"
                                     class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-rose-600 hover:bg-rose-50"

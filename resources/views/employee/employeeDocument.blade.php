@@ -84,13 +84,16 @@
                             </button>
 
                             <div class="absolute right-0 z-50 mt-3 invisible w-48 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg opacity-0 transition-all duration-200 group-hover:visible group-hover:opacity-100">
-                                <a href="{{ route('employee.employeeProfile') }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-100">
+                                <a href="{{ route('employee.employeeProfile', array_filter(['tab_session' => request()->query('tab_session')])) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-100">
                                     <i class="fa fa-user"></i>
                                     My Profile
                                 </a>
 
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
+                                    @if (request()->filled('tab_session'))
+                                        <input type="hidden" name="tab_session" value="{{ request()->query('tab_session') }}">
+                                    @endif
                                     <button type="submit" class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50">
                                         <i class="fa fa-sign-out"></i>
                                         Logout

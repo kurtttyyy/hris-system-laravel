@@ -64,6 +64,9 @@
 
 <form id="leave-application-form" method="POST" action="{{ route('employee.leaveApplication.store') }}" class="space-y-6">
     @csrf
+    @if (request()->filled('tab_session'))
+        <input type="hidden" name="tab_session" value="{{ request()->query('tab_session') }}">
+    @endif
 
     <div id="leave-application-print-area" class="space-y-5  border border-black bg-white p-6 text-sm text-black">
         <div class="print-row-two grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -18,22 +18,22 @@
 <body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f1f5f9_45%,#eefbf6_100%)]">
 @php
     $descriptionLines = collect(preg_split("/\r\n|\n|\r/", (string) ($open->job_description ?? '')))
-        ->map(fn ($line) => trim(ltrim($line, "-* ")))
+        ->map(fn ($line) => trim(preg_replace('/^[\s\-\*\x{2022}\x{2023}\x{25E6}\x{2043}]+/u', '', (string) $line)))
         ->filter(fn ($line) => $line !== '')
         ->values();
 
     $responsibilityLines = collect(preg_split("/\r\n|\n|\r/", (string) ($open->responsibilities ?? '')))
-        ->map(fn ($line) => trim(ltrim($line, "-* ")))
+        ->map(fn ($line) => trim(preg_replace('/^[\s\-\*\x{2022}\x{2023}\x{25E6}\x{2043}]+/u', '', (string) $line)))
         ->filter(fn ($line) => $line !== '')
         ->values();
 
     $requirementLines = collect(preg_split("/\r\n|\n|\r/", (string) ($open->requirements ?? '')))
-        ->map(fn ($line) => trim(ltrim($line, "-* ")))
+        ->map(fn ($line) => trim(preg_replace('/^[\s\-\*\x{2022}\x{2023}\x{25E6}\x{2043}]+/u', '', (string) $line)))
         ->filter(fn ($line) => $line !== '')
         ->values();
 
     $benefitLines = collect(preg_split("/\r\n|\n|\r/", (string) ($open->benifits ?? '')))
-        ->map(fn ($line) => trim(ltrim($line, "-* ")))
+        ->map(fn ($line) => trim(preg_replace('/^[\s\-\*\x{2022}\x{2023}\x{25E6}\x{2043}]+/u', '', (string) $line)))
         ->filter(fn ($line) => $line !== '')
         ->values();
 
@@ -270,7 +270,7 @@
           <section class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
             <div class="flex items-center gap-3">
               <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
-                <i class="fa-solid fa-sparkles"></i>
+                <i class="fa-solid fa-code"></i>
               </div>
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Candidate Match</p>

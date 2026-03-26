@@ -12,8 +12,20 @@ class TabSessionAuth
     public function handle(Request $request, Closure $next)
     {
         $tabSession = trim((string) ($request->input('tab_session') ?? $request->query('tab_session') ?? ''));
+        $tabSessionScope = $this->resolveTabSessionScope($request);
+
+        if ($tabSession === '') {
+            $tabSession = $this->resolveStoredTabSession($request, $tabSessionScope);
+        }
+
         if ($tabSession !== '') {
+            $request->merge(['tab_session' => $tabSession]);
+            if (!$request->query('tab_session')) {
+                $request->query->set('tab_session', $tabSession);
+            }
             $request->attributes->set('tab_session', $tabSession);
+            $request->session()->put('last_tab_session_'.$tabSessionScope, $tabSession);
+            $request->session()->put('last_tab_session', $tabSession);
 
             $tabAuthMap = $request->session()->get('tab_auth_users', []);
             $userId = (int) ($tabAuthMap[$tabSession] ?? 0);
@@ -30,5 +42,48 @@ class TabSessionAuth
         }
 
         return $next($request);
+    }
+
+    protected function resolveTabSessionScope(Request $request): string
+    {
+        $path = ltrim($request->path(), '/');
+        $routeName = (string) optional($request->route())->getName();
+
+        if (
+            str_starts_with($path, 'system/')
+            || str_starts_with($path, 'admin/')
+            || str_starts_with($routeName, 'admin.')
+        ) {
+            return 'admin';
+        }
+
+        if (
+            str_starts_with($path, 'employee/')
+            || str_starts_with($routeName, 'employee.')
+        ) {
+            return 'employee';
+        }
+
+        return 'web';
+    }
+
+    protected function resolveStoredTabSession(Request $request, string $tabSessionScope): string
+    {
+        $session = $request->session();
+
+        $candidates = array_filter([
+            $session->get('last_tab_session_'.$tabSessionScope, ''),
+            $tabSessionScope !== 'web' ? $session->get('last_tab_session', '') : '',
+            $tabSessionScope === 'admin' ? $session->get('last_tab_session_web', '') : '',
+        ], static fn ($value) => trim((string) $value) !== '');
+
+        foreach ($candidates as $candidate) {
+            $candidate = trim((string) $candidate);
+            if ($candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        return '';
     }
 }

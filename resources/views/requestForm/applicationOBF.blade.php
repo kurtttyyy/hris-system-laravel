@@ -56,6 +56,9 @@
 
         <form id="application-obf-form" method="POST" action="{{ route('employee.leaveApplication.store') }}" class="space-y-6">
             @csrf
+            @if (request()->filled('tab_session'))
+                <input type="hidden" name="tab_session" value="{{ request()->query('tab_session') }}">
+            @endif
 
             <!-- APPLICATION FORM FOR OFFICIAL BUSINESS AND OFFICIAL TIME -->
             <div id="application-obf-print-area" class="border border-black p-6  space-y-4 ">

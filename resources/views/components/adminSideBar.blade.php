@@ -61,9 +61,71 @@
   details.matrix-menu > summary { list-style: none; }
   details.matrix-menu > summary::-webkit-details-marker { display: none; }
   details.matrix-menu[open] .matrix-chevron { transform: rotate(90deg); }
+
+  .admin-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+  }
+
+  .admin-sidebar-overlay.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (max-width: 1024px) {
+    .admin-sidebar {
+      width: 18rem !important;
+      transform: translateX(-100%);
+      transition: transform 220ms ease;
+    }
+
+    .admin-sidebar.is-open {
+      transform: translateX(0);
+    }
+
+    .admin-sidebar ~ main {
+      margin-left: 0 !important;
+      width: 100%;
+    }
+
+    .admin-sidebar .admin-sidebar-text {
+      max-width: 100% !important;
+      opacity: 1 !important;
+    }
+  }
+
+  @media (min-width: 1025px) {
+    [data-admin-sidebar-toggle],
+    [data-admin-sidebar-overlay] {
+      display: none !important;
+    }
+
+    .admin-sidebar {
+      transform: none !important;
+    }
+  }
 </style>
 
-<aside class="admin-sidebar group fixed left-0 top-0 h-screen text-slate-200 flex flex-col w-16 hover:w-72 transition-all duration-300 overflow-x-hidden overflow-y-auto z-50" x-data>
+<button
+  type="button"
+  data-admin-sidebar-toggle
+  class="fixed left-4 top-4 z-[70] inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-200 bg-white/95 text-emerald-700 shadow-lg shadow-slate-900/10 backdrop-blur"
+  aria-label="Open admin menu"
+  aria-controls="admin-sidebar"
+  aria-expanded="false"
+>
+  <i class="fa-solid fa-bars"></i>
+</button>
+
+<div data-admin-sidebar-overlay class="admin-sidebar-overlay"></div>
+
+<aside id="admin-sidebar" class="admin-sidebar group fixed left-0 top-0 h-screen text-slate-200 flex flex-col w-16 hover:w-72 transition-all duration-300 overflow-x-hidden overflow-y-auto z-50" x-data>
   <div class="px-3 py-4 flex items-center gap-3 border-b border-slate-800/90">
     <div class="flex items-center justify-center">
       <!-- Small square icon visible when collapsed -->
@@ -71,7 +133,7 @@
       <!-- Full logo visible when sidebar expanded -->
       <img src="{{ asset('images/logo.webp') }}" alt="HR Logo Full" class="hidden group-hover:block h-16">
     </div>
-    <span class="text-lg font-semibold inline-block whitespace-nowrap max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ml-2">HR PORTAL</span>
+    <span class="admin-sidebar-text text-lg font-semibold inline-block whitespace-nowrap max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ml-2">HR PORTAL</span>
   </div>
 
   <nav class="flex-1 px-2 group-hover:px-3 py-4 space-y-1.5">
@@ -84,7 +146,7 @@
         ? 'bg-green-600 text-white'
         : 'text-white hover:bg-green-600/30' }}">
       <i class="fa-solid fa-house"></i>
-      <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Dashboard</span>
+      <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Dashboard</span>
     </a>
 
     <!-- Employees -->
@@ -95,7 +157,7 @@
         ? 'bg-green-600 text-white'
         : 'text-white hover:bg-green-600/30' }}">
       <i class="fa-solid fa-users"></i>
-      <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Employees</span>
+      <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Employees</span>
     </a>
 
     <!-- Attendance -->
@@ -106,7 +168,7 @@
         ? 'bg-green-600 text-white'
         : 'text-white hover:bg-green-600/30' }}">
       <i class="fa-solid fa-calendar-check"></i>
-      <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Attendance</span>
+      <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Attendance</span>
     </a>
 
     <!-- Leave -->
@@ -117,7 +179,7 @@
         ? 'bg-green-600 text-white'
         : 'text-white hover:bg-green-600/30' }}">
       <i class="fa-solid fa-clipboard"></i>
-      <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Leave Management</span>
+      <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Leave Management</span>
     </a>
 
     <!-- ✅ Hiring Dropdown (FIXED) -->
@@ -129,7 +191,7 @@
         ? 'bg-green-600 text-white'
         : 'text-white hover:bg-green-600/30' }}">
       <i class="fa-solid fa-file-invoice-dollar"></i>
-      <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Payslip</span>
+      <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Payslip</span>
     </a>
 
     <a href="{{ route('admin.adminCommunication', array_filter(['reset_chat' => 1, 'tab_session' => $tabSession !== '' ? $tabSession : null])) }}"
@@ -144,7 +206,7 @@
           <span class="absolute -right-2 -top-2 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white group-hover:hidden">{{ $adminUnreadMessages > 9 ? '9+' : $adminUnreadMessages }}</span>
         @endif
       </span>
-      <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Communication</span>
+      <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Communication</span>
       @if ($adminUnreadMessages > 0)
         <span class="ml-auto hidden min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white group-hover:inline-flex">{{ $adminUnreadMessages > 99 ? '99+' : $adminUnreadMessages }}</span>
       @endif
@@ -156,7 +218,7 @@
       >
         <span class="flex items-center gap-0 group-hover:gap-3 justify-center group-hover:justify-start">
           <i class="fa-solid fa-briefcase"></i>
-          <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Hiring</span>
+          <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Hiring</span>
         </span>
 
         <i class="fa-solid fa-chevron-down hidden group-hover:inline-block transition-all duration-200 hiring-chevron"></i>
@@ -172,7 +234,7 @@
                 ? 'bg-green-600 text-white'
                 : 'text-white hover:bg-green-600/30' }}">
           <i class="fa-solid fa-user-check"></i>
-          <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Applicant</span>
+          <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Applicant</span>
         </a>
 
         <a href="{{ route('admin.adminPosition', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
@@ -182,7 +244,7 @@
                 ? 'bg-green-600 text-white'
                 : 'text-white hover:bg-green-600/30' }}">
           <i class="fa-solid fa-briefcase"></i>
-          <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Job Position</span>
+          <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Job Position</span>
         </a>
 
         <a href="{{ route('admin.adminInterview', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
@@ -192,7 +254,7 @@
                 ? 'bg-green-600 text-white'
                 : 'text-white hover:bg-green-600/30' }}">
           <i class="fa-solid fa-comments"></i>
-          <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Interview</span>
+          <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Interview</span>
         </a>
 
       </div>
@@ -206,7 +268,7 @@
           ? 'bg-green-600 text-white'
           : 'text-white hover:bg-green-600/30' }}">
         <i class="fa-solid fa-chart-line"></i>
-        <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Reports</span>
+          <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Reports</span>
       </a>
     @endif
 
@@ -217,7 +279,7 @@
       >
         <span class="flex items-center gap-0 group-hover:gap-3 justify-center group-hover:justify-start">
           <i class="fa-solid fa-ellipsis"></i>
-          <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">More</span>
+          <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">More</span>
         </span>
         <i class="fa-solid fa-chevron-down hidden group-hover:inline-block transition-all duration-200 more-chevron"></i>
       </summary>
@@ -230,7 +292,7 @@
                 ? 'bg-green-600 text-white'
                 : 'text-white hover:bg-green-600/30' }}">
           <i class="fa-solid fa-calendar-days"></i>
-          <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Calendar</span>
+          <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Calendar</span>
         </a>
 
         <a href="{{ route('admin.adminLoads', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
@@ -240,7 +302,7 @@
                 ? 'bg-green-600 text-white'
                 : 'text-white hover:bg-green-600/30' }}">
           <i class="fa-solid fa-book-open-reader"></i>
-          <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Loads</span>
+          <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Loads</span>
         </a>
 
         <details class="space-y-1 matrix-menu">
@@ -249,7 +311,7 @@
           >
             <span class="flex items-center gap-0 group-hover:gap-2 justify-center group-hover:justify-start">
               <i class="fa-solid fa-folder"></i>
-              <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Matrix</span>
+              <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Matrix</span>
             </span>
             <i class="fa-solid fa-chevron-right hidden group-hover:inline-block transition-all duration-200 matrix-chevron"></i>
           </summary>
@@ -262,7 +324,7 @@
                     ? 'bg-green-600 text-white'
                     : 'text-white hover:bg-green-600/30' }}">
               <i class="fa-regular fa-file"></i>
-              <span class="hidden group-hover:block leading-tight break-words">School Administrator</span>
+              <span class="admin-sidebar-text hidden group-hover:block leading-tight break-words">School Administrator</span>
             </a>
 
             <a href="{{ route('admin.nonTeachingMatrix', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
@@ -272,7 +334,7 @@
                     ? 'bg-green-600 text-white'
                     : 'text-white hover:bg-green-600/30' }}">
               <i class="fa-regular fa-file"></i>
-              <span class="hidden group-hover:block leading-tight break-words">Academic Non-Teaching</span>
+              <span class="admin-sidebar-text hidden group-hover:block leading-tight break-words">Academic Non-Teaching</span>
             </a>
 
             <a href="{{ route('admin.teachingMatrix', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
@@ -282,7 +344,7 @@
                     ? 'bg-green-600 text-white'
                     : 'text-white hover:bg-green-600/30' }}">
               <i class="fa-regular fa-file"></i>
-              <span class="hidden group-hover:block leading-tight break-words">Academic Staff / Teaching</span>
+              <span class="admin-sidebar-text hidden group-hover:block leading-tight break-words">Academic Staff / Teaching</span>
             </a>
           </div>
         </details>
@@ -294,7 +356,7 @@
                 ? 'bg-green-600 text-white'
                 : 'text-white hover:bg-green-600/30' }}">
           <i class="fa-solid fa-user-minus"></i>
-          <span class="whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Resignations</span>
+          <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Resignations</span>
         </a>
 
       </div>
@@ -305,7 +367,7 @@
   <!-- Profile -->
   <div class="px-3 group-hover:px-6 py-4 border-t border-slate-800/90 flex items-center gap-3 justify-center group-hover:justify-start">
     <div class="w-9 h-9 min-w-9 min-h-9 max-w-9 max-h-9 shrink-0 rounded-full bg-emerald-500 flex items-center justify-center text-white font-semibold leading-none">{{ $adminInitials }}</div>
-    <div class="text-sm inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">
+    <div class="admin-sidebar-text text-sm inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">
       <div class="flex items-center gap-2">
         <p class="font-medium truncate">{{ $adminDisplayName }}</p>
         <form method="POST" action="{{ route('logout') }}" class="inline-flex">
@@ -382,9 +444,12 @@
 <script>
   (function () {
     const links = Array.from(document.querySelectorAll('[data-admin-nav]'));
+    const sidebar = document.querySelector('.admin-sidebar');
+    const sidebarToggle = document.querySelector('[data-admin-sidebar-toggle]');
+    const sidebarOverlay = document.querySelector('[data-admin-sidebar-overlay]');
     const currentUrl = new URL(window.location.href);
     const tabSession = currentUrl.searchParams.get('tab_session') || '';
-    if (!links.length && !tabSession) {
+    if (!links.length && !tabSession && !sidebarToggle) {
       return;
     }
 
@@ -502,6 +567,59 @@
       if (overlay) {
         overlay.classList.remove('is-visible');
       }
+    });
+
+    const isCompactViewport = () => window.matchMedia('(max-width: 1024px)').matches;
+
+    const closeSidebar = () => {
+      if (!sidebar || !sidebarOverlay || !sidebarToggle) {
+        return;
+      }
+
+      sidebar.classList.remove('is-open');
+      sidebarOverlay.classList.remove('is-visible');
+      sidebarToggle.setAttribute('aria-expanded', 'false');
+    };
+
+    const openSidebar = () => {
+      if (!sidebar || !sidebarOverlay || !sidebarToggle) {
+        return;
+      }
+
+      sidebar.classList.add('is-open');
+      sidebarOverlay.classList.add('is-visible');
+      sidebarToggle.setAttribute('aria-expanded', 'true');
+    };
+
+    if (sidebarToggle && sidebar && sidebarOverlay) {
+      sidebarToggle.addEventListener('click', () => {
+        if (!isCompactViewport()) {
+          return;
+        }
+
+        const isOpen = sidebar.classList.contains('is-open');
+        if (isOpen) {
+          closeSidebar();
+        } else {
+          openSidebar();
+        }
+      });
+
+      sidebarOverlay.addEventListener('click', closeSidebar);
+
+      window.addEventListener('resize', () => {
+        if (!isCompactViewport()) {
+          closeSidebar();
+        }
+      });
+    }
+
+    links.forEach((link) => {
+      link.addEventListener('click', () => {
+        if (isCompactViewport()) {
+          closeSidebar();
+        }
+      });
     });
   })();
 </script>

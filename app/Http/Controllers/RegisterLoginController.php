@@ -26,7 +26,11 @@ class RegisterLoginController extends Controller
         ]);
 
         if($attrs['password'] != $attrs['confirmation_password']){
-            return redirect()->back()->with('error', 'Password does not match.');
+            return redirect()->back()
+                ->withErrors([
+                    'confirmation_password' => 'Password confirmation does not match.',
+                ])
+                ->withInput($request->except(['password', 'confirmation_password']));
         }
 
         $status = 'Pending';
@@ -35,12 +39,25 @@ class RegisterLoginController extends Controller
 
         $hire = 'hired';
 
-        $find = Applicant::where('email', $attrs['email'])
-                            ->whereRaw('LOWER(application_status) = ?', [$hire])
-                            ->exists();
+        $matchingApplicant = Applicant::query()
+            ->whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim((string) $attrs['email']))])
+            ->latest('id')
+            ->first();
 
-        if(!$find){
-            return redirect()->back()->with('error', 'Registration not valid.');
+        if (!$matchingApplicant) {
+            return redirect()->back()
+                ->withErrors([
+                    'email' => 'We could not find an application linked to this email address.',
+                ])
+                ->withInput($request->except(['password', 'confirmation_password']));
+        }
+
+        if (strtolower(trim((string) ($matchingApplicant->application_status ?? ''))) !== $hire) {
+            return redirect()->back()
+                ->withErrors([
+                    'email' => 'Your account is not eligible for registration yet. You can create an account once your application status is marked as Hired by HR.',
+                ])
+                ->withInput($request->except(['password', 'confirmation_password']));
         }
 
         $user = User::create([

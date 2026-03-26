@@ -463,6 +463,12 @@ class EmployeePageController extends Controller
 
     public function display_profile(){
         $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login_display')->withErrors([
+                'email' => 'Please sign in to continue.',
+            ]);
+        }
+
         $emp = User::with([
             'employee',
             'applicant.documents',

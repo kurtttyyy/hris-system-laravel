@@ -2184,6 +2184,8 @@ class AdministratorStoreController extends Controller
             'application_status' => $attrs['status'],
         ]);
 
+        $this->syncDepartmentHeadFromApplicant($review->fresh(['position']));
+
         Mail::to($review->email)
                 ->send(new ApplicationUpdatedMail($review));
 
@@ -2243,11 +2245,59 @@ class AdministratorStoreController extends Controller
 
         $open = User::findOrFail($id);
 
-        $open->update([
+        $payload = [
             'status' => 'Approved',
-        ]);
+        ];
+
+        if ($this->shouldAutoApproveDepartmentHead(
+            $open->position,
+            optional($open->applicant)->position->title ?? null
+        )) {
+            $payload['department_head'] = 'Approved';
+        }
+
+        $open->update($payload);
 
         return redirect()->back()->with('success','Employee can now login');
+    }
+
+    private function syncDepartmentHeadFromApplicant(?Applicant $applicant): void
+    {
+        if (!$applicant) {
+            return;
+        }
+
+        $userId = (int) ($applicant->user_id ?? 0);
+        if ($userId <= 0) {
+            return;
+        }
+
+        if (strcasecmp(trim((string) ($applicant->application_status ?? '')), 'Hired') !== 0) {
+            return;
+        }
+
+        $positionTitle = trim((string) (optional($applicant->position)->title ?? ''));
+        if (!$this->shouldAutoApproveDepartmentHead($positionTitle)) {
+            return;
+        }
+
+        User::query()
+            ->where('id', $userId)
+            ->update([
+                'department_head' => 'Approved',
+            ]);
+    }
+
+    private function shouldAutoApproveDepartmentHead(?string ...$positionCandidates): bool
+    {
+        foreach ($positionCandidates as $positionCandidate) {
+            $position = strtolower(trim((string) ($positionCandidate ?? '')));
+            if ($position !== '' && str_contains($position, 'director')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function update_service_record(Request $request)
@@ -3237,6 +3287,7 @@ class AdministratorStoreController extends Controller
         $attrs = $request->validate([
             //User Model
             'user_id' => 'required|exists:users,id',
+            'tab_session' => 'nullable|string|max:120',
             'first' => 'required|string|max:255',
             'middle' => 'nullable|string|max:255',
             'last' => 'required|string|max:255',
@@ -3557,7 +3608,11 @@ class AdministratorStoreController extends Controller
             );
         }
 
-        return redirect()->back()->with('success', 'Save Successfully');
+        return redirect()->route('admin.adminEmployee', array_filter([
+            'user_id' => (int) $attrs['user_id'],
+            'tab' => 'biometric',
+            'tab_session' => $attrs['tab_session'] ?? null,
+        ]))->with('success', 'Save Successfully');
     }
 
     private function normalizeEmployeeJobType($value): ?string

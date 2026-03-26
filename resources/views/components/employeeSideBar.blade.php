@@ -1,5 +1,6 @@
 @php
     $employeeUser = auth()->user();
+    $showDepartmentHeadMore = strtolower(trim((string) ($employeeUser->department_head ?? ''))) === 'approved';
     $employeeUnreadMessages = 0;
     if (
         $employeeUser
@@ -19,8 +20,22 @@
     }
 @endphp
 
+<button
+    type="button"
+    data-employee-sidebar-toggle
+    class="fixed left-4 top-4 z-[70] inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-200 bg-white/95 text-emerald-700 shadow-lg shadow-slate-900/10 backdrop-blur"
+    aria-label="Open employee menu"
+    aria-controls="employee-sidebar"
+    aria-expanded="false"
+>
+    <i class="fa fa-bars text-lg"></i>
+</button>
+
+<div data-employee-sidebar-overlay class="employee-sidebar-overlay"></div>
+
 <aside
-    class="group fixed left-0 top-0 h-screen bg-gray-900 border-r border-gray-700
+    id="employee-sidebar"
+    class="employee-sidebar group fixed left-0 top-0 h-screen bg-gray-900 border-r border-gray-700
            w-16 hover:w-56 transition-all duration-300 overflow-hidden z-50"
 >
 
@@ -32,7 +47,7 @@
             </div>
 
             <!-- Logo text -->
-            <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                 <h1 class="text-sm font-bold text-white">
                     Northeastern College
                 </h1>
@@ -56,7 +71,7 @@
 
             <i class="fa fa-dashboard text-lg w-6 text-center"></i>
 
-            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                 Dashboard
             </span>
         </a>
@@ -71,7 +86,7 @@
 
             <i class="fa fa-calendar text-lg w-6 text-center"></i>
 
-            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                 Leave Requests
             </span>
         </a>
@@ -86,7 +101,7 @@
 
             <i class="fa fa-file-text-o text-lg w-6 text-center"></i>
 
-            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                 Payslips
             </span>
         </a>
@@ -101,7 +116,7 @@
 
             <i class="fa fa-folder text-lg w-6 text-center"></i>
 
-            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                 Documents
             </span>
         </a>
@@ -121,7 +136,7 @@
                 @endif
             </span>
 
-            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                 Communication
             </span>
             @if ($employeeUnreadMessages > 0)
@@ -139,10 +154,48 @@
 
             <i class="fa fa-user-times text-lg w-6 text-center"></i>
 
-            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                 Resignation
             </span>
         </a>
+
+        @if ($showDepartmentHeadMore)
+            <div class="space-y-1">
+                <button type="button"
+                    data-employee-more-toggle
+                    aria-expanded="false"
+                    class="flex w-full items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition text-gray-300 hover:bg-green-600/20 hover:text-white">
+
+                    <i class="fa fa-ellipsis-h text-lg w-6 text-center"></i>
+
+                    <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        More
+                    </span>
+
+                    <i class="fa fa-chevron-down employee-more-icon ml-auto text-xs opacity-0 transition-all duration-300 group-hover:opacity-100"
+                       data-employee-more-icon></i>
+                </button>
+
+                <div class="hidden space-y-1 pl-3"
+                     data-employee-more-menu>
+                    <a href="#"
+                       class="flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium text-gray-300 transition hover:bg-green-600/20 hover:text-white">
+                        <i class="fa fa-building-o text-base w-6 text-center"></i>
+                        <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
+                            Department
+                        </span>
+                    </a>
+
+                    <a href="#"
+                       class="flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium text-gray-300 transition hover:bg-green-600/20 hover:text-white">
+                        <i class="fa fa-line-chart text-base w-6 text-center"></i>
+                        <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
+                            Evaluation
+                        </span>
+                    </a>
+                </div>
+            </div>
+        @endif
 
     </nav>
 
@@ -153,6 +206,59 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
 <style>
+    .employee-more-icon.is-open {
+        transform: rotate(180deg);
+    }
+
+    .employee-sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 45;
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(4px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+    }
+
+    .employee-sidebar-overlay.is-visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    @media (max-width: 1024px) {
+        .employee-sidebar {
+            width: 16rem !important;
+            transform: translateX(-100%);
+            transition: transform 220ms ease;
+        }
+
+        .employee-sidebar.is-open {
+            transform: translateX(0);
+        }
+
+        .employee-sidebar ~ main {
+            margin-left: 0 !important;
+            width: 100%;
+        }
+
+        .employee-sidebar .employee-sidebar-label {
+            opacity: 1 !important;
+            max-width: 100% !important;
+        }
+    }
+
+    @media (min-width: 1025px) {
+        [data-employee-sidebar-toggle],
+        [data-employee-sidebar-overlay] {
+            display: none !important;
+        }
+
+        .employee-sidebar {
+            transform: none !important;
+        }
+    }
+
     .employee-nav-overlay {
         position: fixed;
         inset: 0;
@@ -208,9 +314,15 @@
 <script>
     (function () {
         const links = Array.from(document.querySelectorAll('[data-employee-nav]'));
+        const sidebar = document.querySelector('.employee-sidebar');
+        const sidebarToggle = document.querySelector('[data-employee-sidebar-toggle]');
+        const sidebarOverlay = document.querySelector('[data-employee-sidebar-overlay]');
+        const moreToggle = document.querySelector('[data-employee-more-toggle]');
+        const moreMenu = document.querySelector('[data-employee-more-menu]');
+        const moreIcon = document.querySelector('[data-employee-more-icon]');
         const currentUrl = new URL(window.location.href);
         const tabSession = currentUrl.searchParams.get('tab_session') || '';
-        if (!links.length && !tabSession) {
+        if (!links.length && !tabSession && !moreToggle) {
             return;
         }
 
@@ -328,6 +440,70 @@
             if (overlay) {
                 overlay.classList.remove('is-visible');
             }
+        });
+
+        const isCompactViewport = () => window.matchMedia('(max-width: 1024px)').matches;
+
+        const closeSidebar = () => {
+            if (!sidebar || !sidebarOverlay || !sidebarToggle) {
+                return;
+            }
+
+            sidebar.classList.remove('is-open');
+            sidebarOverlay.classList.remove('is-visible');
+            sidebarToggle.setAttribute('aria-expanded', 'false');
+        };
+
+        const openSidebar = () => {
+            if (!sidebar || !sidebarOverlay || !sidebarToggle) {
+                return;
+            }
+
+            sidebar.classList.add('is-open');
+            sidebarOverlay.classList.add('is-visible');
+            sidebarToggle.setAttribute('aria-expanded', 'true');
+        };
+
+        if (sidebarToggle && sidebar && sidebarOverlay) {
+            sidebarToggle.addEventListener('click', () => {
+                if (!isCompactViewport()) {
+                    return;
+                }
+
+                const isOpen = sidebar.classList.contains('is-open');
+                if (isOpen) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            });
+
+            sidebarOverlay.addEventListener('click', closeSidebar);
+
+            window.addEventListener('resize', () => {
+                if (!isCompactViewport()) {
+                    closeSidebar();
+                }
+            });
+        }
+
+        if (moreToggle && moreMenu) {
+            moreToggle.addEventListener('click', () => {
+                const isOpen = !moreMenu.classList.contains('hidden');
+                moreMenu.classList.toggle('hidden', isOpen);
+                moreToggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                if (moreIcon) {
+                    moreIcon.classList.toggle('is-open', !isOpen);
+                }
+            });
+        }
+
+        links.forEach((link) => {
+            link.addEventListener('click', () => {
+                if (isCompactViewport()) {
+                    closeSidebar();
+                }
+            });
         });
     })();
 </script>

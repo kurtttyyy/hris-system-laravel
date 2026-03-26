@@ -98,6 +98,14 @@
       return [$startDate, $endDate];
     };
     $resolveDisplayAccountStatus = function ($emp) use ($resolveLeaveRange) {
+      $accountStatus = strtolower(trim((string) (data_get($emp, 'account_status') ?? '')));
+      if ($accountStatus === 'inactive') {
+        return 'Inactive';
+      }
+      if ($accountStatus === 'on leave') {
+        return 'On Leave';
+      }
+
       $hasApprovedOrCompletedResignation = collect(data_get($emp, 'resignations', []))
         ->contains(function ($row) {
           $status = strtolower(trim((string) (data_get($row, 'status') ?? '')));
@@ -299,6 +307,9 @@
           if (accountStatus !== '') {
             if (accountStatus.toLowerCase() === 'inactive') {
               return 'Inactive';
+            }
+            if (accountStatus.toLowerCase() === 'on leave') {
+              return 'On Leave';
             }
           }
 
@@ -1001,6 +1012,14 @@
         return [$startDate, $endDate];
       };
       $resolveDisplayAccountStatus = function ($emp) use ($resolveLeaveRange) {
+        $accountStatus = strtolower(trim((string) (data_get($emp, 'account_status') ?? '')));
+        if ($accountStatus === 'inactive') {
+          return 'Inactive';
+        }
+        if ($accountStatus === 'on leave') {
+          return 'On Leave';
+        }
+
         $hasApprovedOrCompletedResignation = collect(data_get($emp, 'resignations', []))
           ->contains(function ($row) {
             $status = strtolower(trim((string) (data_get($row, 'status') ?? '')));

@@ -423,6 +423,9 @@
     <form action="{{ route('admin.updateBio')}}" method="POST" enctype="multipart/form-data" class="max-h-[calc(92vh-72px)] overflow-y-auto px-6 py-6 space-y-6">
       @csrf
       <input type="hidden" name="user_id" :value="selectedEmployee?.id">
+      @if (request()->filled('tab_session'))
+        <input type="hidden" name="tab_session" value="{{ request()->query('tab_session') }}">
+      @endif
 
       <section class="edit-section">
         <h3 class="edit-section-title">Personal Information</h3>

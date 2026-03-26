@@ -183,17 +183,36 @@
                     <h2 class="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
                     <p class="text-gray-500 mb-8">Sign in to continue to your account</p>
 
+                    @if ($errors->has('email'))
+                        <div class="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                            {{ $errors->first('email') }}
+                        </div>
+                    @endif
+
                     <form class="space-y-6" method="POST" action="{{ route('login') }}">
                         @csrf
                         <input type="hidden" name="tab_session" value="{{ $tabSession }}">
                         <div>
                             <label class="text-sm font-medium text-gray-700">Email Address</label>
-                            <input type="email" name="email" placeholder="john@example.com" class="mt-2 w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
+                            <input type="email" name="email" value="{{ old('email') }}" placeholder="john@example.com" class="mt-2 w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
                         </div>
 
                         <div>
                             <label class="text-sm font-medium text-gray-700">Password</label>
-                            <input type="password" name="password" placeholder="........" class="mt-2 w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
+                            <div class="relative mt-2">
+                                <input type="password" name="password" placeholder="........" class="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none" data-password-input>
+                                <button type="button" class="absolute inset-y-0 right-3 inline-flex items-center text-gray-400 transition hover:text-green-700" data-password-toggle aria-label="Show password">
+                                    <svg data-password-icon-show xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7Z" />
+                                        <circle cx="12" cy="12" r="3" />
+                                    </svg>
+                                    <svg data-password-icon-hide xmlns="http://www.w3.org/2000/svg" class="hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.585 10.587A2 2 0 0 0 13.414 13.4" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.88 5.09A10.94 10.94 0 0 1 12 5c4.478 0 8.268 2.943 9.542 7a10.94 10.94 0 0 1-4.043 5.138M6.228 6.228A10.945 10.945 0 0 0 2.458 12c1.274 4.057 5.065 7 9.542 7a10.94 10.94 0 0 0 5.772-1.686" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
                         <button class="w-full py-3 rounded-xl bg-gradient-to-r from-green-800 via-green-600 to-green-800 text-white font-semibold hover:opacity-95 transition">
@@ -213,18 +232,50 @@
                     <h2 class="text-3xl font-bold text-gray-900 mb-2">Create Account</h2>
                     <p class="text-gray-500 mb-8">Register to access the HRMS</p>
 
+                    @if ($errors->has('confirmation_password') || ($errors->has('email') && (($mode ?? 'login') === 'register')))
+                        <div class="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                            {{ $errors->first('confirmation_password') ?: $errors->first('email') }}
+                        </div>
+                    @endif
+
                     <form class="space-y-5" method="POST" action="{{ route('register.store') }}">
                         @csrf
                         <input type="hidden" name="tab_session" value="{{ $tabSession }}">
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <input type="text" placeholder="First Name" name="first_name" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
-                            <input type="text" placeholder="Middle Name" name="middle_name" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
+                            <input type="text" placeholder="First Name" name="first_name" value="{{ old('first_name') }}" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
+                            <input type="text" placeholder="Middle Name" name="middle_name" value="{{ old('middle_name') }}" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
                         </div>
 
-                        <input type="text" placeholder="Last Name" name="last_name" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
-                        <input type="email" placeholder="Email Address" name="email" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
-                        <input type="password" placeholder="Password" name="password" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
-                        <input type="password" placeholder="Confirm Password" name="confirmation_password" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
+                        <input type="text" placeholder="Last Name" name="last_name" value="{{ old('last_name') }}" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
+                        <input type="email" placeholder="Email Address" name="email" value="{{ old('email') }}" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none">
+                        <div class="relative">
+                            <input type="password" placeholder="Password" name="password" class="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none" data-password-input>
+                            <button type="button" class="absolute inset-y-0 right-3 inline-flex items-center text-gray-400 transition hover:text-green-700" data-password-toggle aria-label="Show password">
+                                <svg data-password-icon-show xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7Z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                <svg data-password-icon-hide xmlns="http://www.w3.org/2000/svg" class="hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.585 10.587A2 2 0 0 0 13.414 13.4" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.88 5.09A10.94 10.94 0 0 1 12 5c4.478 0 8.268 2.943 9.542 7a10.94 10.94 0 0 1-4.043 5.138M6.228 6.228A10.945 10.945 0 0 0 2.458 12c1.274 4.057 5.065 7 9.542 7a10.94 10.94 0 0 0 5.772-1.686" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="relative">
+                            <input type="password" placeholder="Confirm Password" name="confirmation_password" class="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:ring-2 focus:ring-green-600 focus:outline-none" data-password-input>
+                            <button type="button" class="absolute inset-y-0 right-3 inline-flex items-center text-gray-400 transition hover:text-green-700" data-password-toggle aria-label="Show password">
+                                <svg data-password-icon-show xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7Z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                <svg data-password-icon-hide xmlns="http://www.w3.org/2000/svg" class="hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.585 10.587A2 2 0 0 0 13.414 13.4" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.88 5.09A10.94 10.94 0 0 1 12 5c4.478 0 8.268 2.943 9.542 7a10.94 10.94 0 0 1-4.043 5.138M6.228 6.228A10.945 10.945 0 0 0 2.458 12c1.274 4.057 5.065 7 9.542 7a10.94 10.94 0 0 0 5.772-1.686" />
+                                </svg>
+                            </button>
+                        </div>
 
                         <button type="submit" class="w-full bg-gradient-to-r from-green-800 via-green-600 to-green-800 text-white font-semibold py-3 rounded-xl transition hover:opacity-95">
                             Create Account
@@ -330,6 +381,24 @@
                 : 'login';
 
             setMode(nextMode, false);
+        });
+
+        document.querySelectorAll('[data-password-toggle]').forEach((toggle) => {
+            toggle.addEventListener('click', () => {
+                const wrapper = toggle.parentElement;
+                const input = wrapper ? wrapper.querySelector('[data-password-input]') : null;
+                const showIcon = toggle.querySelector('[data-password-icon-show]');
+                const hideIcon = toggle.querySelector('[data-password-icon-hide]');
+                if (!input || !showIcon || !hideIcon) {
+                    return;
+                }
+
+                const showing = input.getAttribute('type') === 'text';
+                input.setAttribute('type', showing ? 'password' : 'text');
+                showIcon.classList.toggle('hidden', !showing);
+                hideIcon.classList.toggle('hidden', showing);
+                toggle.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+            });
         });
     })();
 </script>
