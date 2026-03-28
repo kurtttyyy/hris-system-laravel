@@ -99,11 +99,20 @@
                                         <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
                                         {{ $employmentStatus ?? 'Active' }}
                                     </span>
+                                    @if(!empty($rehireMeta['is_rehire']))
+                                        <span class="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700">
+                                            <i class="fa fa-rotate-left"></i>
+                                            Rehired
+                                        </span>
+                                    @endif
                                     <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600">
                                         <i class="fa fa-id-badge"></i>
                                         {{ $employeeId }}
                                     </span>
                                 </div>
+                                @if(!empty($rehireMeta['label']))
+                                    <p class="mt-3 text-sm font-medium text-violet-700">{{ $rehireMeta['label'] }}</p>
+                                @endif
                             </div>
                         </div>
 

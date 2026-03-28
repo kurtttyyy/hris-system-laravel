@@ -448,7 +448,9 @@
                             }
                             $relativePath = trim(str_replace('\\', '/', (string) ($document->filepath ?? '')), '/');
                             $folderBadge = '';
+                            $currentFolderKey = '';
                             if (preg_match('#^uploads/applicant-documents/\d+/([^/]+)/#', $relativePath, $matches)) {
+                                $currentFolderKey = (($matches[1] ?? '') === 'unfiled') ? '' : (string) ($matches[1] ?? '');
                                 if (($matches[1] ?? '') !== 'unfiled') {
                                     $matchedFolder = $folders->firstWhere('key', $matches[1]);
                                     $folderBadge = is_array($matchedFolder) ? (string) ($matchedFolder['name'] ?? '') : '';
@@ -459,7 +461,7 @@
                             draggable="true"
                             data-document-drag
                             data-document-id="{{ $document->id }}"
-                            data-current-folder-key="{{ $matches[1] ?? '' }}"
+                            data-current-folder-key="{{ $currentFolderKey }}"
                             class="rounded-[1.5rem] border border-gray-200 bg-gradient-to-r from-white to-slate-50 p-4 shadow-sm transition hover:border-sky-200 hover:shadow-md"
                         >
                             <div class="flex items-center gap-4">
@@ -469,6 +471,12 @@
                             <div class="flex-1">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <p class="font-medium text-gray-800">{{ $document->type ?: ($document->filename ?? 'Document') }}</p>
+                                    @if(!empty($document->is_new))
+                                        <span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">New</span>
+                                    @endif
+                                    @if(!empty($document->is_previous_application))
+                                        <span class="rounded-full border border-slate-300 bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">Previous Application</span>
+                                    @endif
                                     @if($folderBadge !== '' && $selectedFolderKey === 'all')
                                         <span class="rounded-full bg-sky-100 px-2 py-1 text-[11px] font-medium text-sky-700">{{ $folderBadge }}</span>
                                     @endif

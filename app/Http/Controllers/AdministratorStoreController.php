@@ -2180,6 +2180,10 @@ class AdministratorStoreController extends Controller
 
         $review = Applicant::findOrFail($attrs['reviewId']);
 
+        if (strcasecmp(trim((string) $attrs['status']), 'Hired') === 0) {
+            $this->reactivateResignedEmployeeAccountForApplicant($review);
+        }
+
         $review->update([
             'application_status' => $attrs['status'],
         ]);
@@ -2395,6 +2399,12 @@ class AdministratorStoreController extends Controller
             ->values()
             ->all();
 
+        $user = User::query()->findOrFail((int) $attrs['user_id']);
+        $existingApplicantRecord = Applicant::query()
+            ->where('user_id', (int) $attrs['user_id'])
+            ->orderByDesc('id')
+            ->first();
+
         $rowCollection = collect($serviceRows);
         $firstRow = $rowCollection->first() ?? [];
         $latestActionableRow = $rowCollection
@@ -2426,7 +2436,10 @@ class AdministratorStoreController extends Controller
             ?? ($latestCurrentRow['designation'] ?? null)
             ?? ($latestActionableRow['designation'] ?? null);
 
-        $effectiveDateHired = $attrs['date_hired'] ?? ($firstRow['from_date'] ?? null);
+        $effectiveDateHired = $attrs['date_hired']
+            ?? optional($existingApplicantRecord?->date_hired)->toDateString()
+            ?? optional($existingApplicantRecord?->created_at)->toDateString()
+            ?? ($firstRow['from_date'] ?? null);
         $effectivePosition = $attrs['position']
             ?? $latestResolvedTitle
             ?? ($firstRow['designation'] ?? null);
@@ -2485,7 +2498,6 @@ class AdministratorStoreController extends Controller
         }
         $hasClassificationSalaryColumn = Schema::hasColumn('employees', 'classification_salary');
 
-        $user = User::query()->findOrFail((int) $attrs['user_id']);
         $existingEmployeeForHistory = Employee::query()->where('user_id', (int) $attrs['user_id'])->first();
         $oldPositionForHistory = trim((string) ($existingEmployeeForHistory?->position ?? $user->position ?? ''));
         $oldDepartmentForHistory = trim((string) ($existingEmployeeForHistory?->department ?? $user->department ?? ''));
@@ -3156,13 +3168,38 @@ class AdministratorStoreController extends Controller
             return 'Active';
         }
 
-        $hasApprovedOrCompletedResignation = Resignation::query()
+        $latestApprovedOrCompletedResignation = Resignation::query()
             ->where('user_id', $userId)
             ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) IN (?, ?)", ['approved', 'completed'])
-            ->exists();
+            ->orderByDesc(DB::raw('COALESCE(effective_date, processed_at, submitted_at, created_at)'))
+            ->orderByDesc('id')
+            ->first();
 
-        if ($hasApprovedOrCompletedResignation) {
-            return 'Inactive';
+        if ($latestApprovedOrCompletedResignation) {
+            $latestResignationDate = $latestApprovedOrCompletedResignation->processed_at
+                ?? $latestApprovedOrCompletedResignation->submitted_at
+                ?? $latestApprovedOrCompletedResignation->created_at;
+            $latestResignationEffectiveDate = $latestApprovedOrCompletedResignation->effective_date;
+
+            $rehiredAfterResignation = Applicant::query()
+                ->where('user_id', $userId)
+                ->whereRaw("LOWER(TRIM(COALESCE(application_status, ''))) = ?", ['hired'])
+                ->where(function ($query) use ($latestResignationDate, $latestResignationEffectiveDate) {
+                    $query->where('created_at', '>', $latestResignationDate);
+
+                    if ($latestResignationDate) {
+                        $query->orWhere('date_hired', '>', Carbon::parse($latestResignationDate)->toDateString());
+                    }
+
+                    if ($latestResignationEffectiveDate) {
+                        $query->orWhere('date_hired', '>', Carbon::parse($latestResignationEffectiveDate)->toDateString());
+                    }
+                })
+                ->exists();
+
+            if (!$rehiredAfterResignation) {
+                return 'Inactive';
+            }
         }
 
         if (strcasecmp(trim((string) ($user->role ?? '')), 'employee') !== 0) {
@@ -3183,6 +3220,56 @@ class AdministratorStoreController extends Controller
         }
 
         return 'Active';
+    }
+
+    private function reactivateResignedEmployeeAccountForApplicant(Applicant $applicant): void
+    {
+        $normalizedEmail = strtolower(trim((string) ($applicant->email ?? '')));
+        if ($normalizedEmail === '') {
+            return;
+        }
+
+        $existingUser = User::query()
+            ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$existingUser) {
+            return;
+        }
+
+        $hasApprovedResignation = Resignation::query()
+            ->where('user_id', (int) $existingUser->id)
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) IN (?, ?)", ['approved', 'completed'])
+            ->exists();
+
+        if (!$hasApprovedResignation) {
+            return;
+        }
+
+        $payload = [
+            'role' => 'Employee',
+            'status' => 'Approved',
+            'account_status' => 'Active',
+            'email' => $applicant->email,
+        ];
+
+        if (trim((string) ($applicant->first_name ?? '')) !== '') {
+            $payload['first_name'] = $applicant->first_name;
+        }
+
+        if (trim((string) ($applicant->last_name ?? '')) !== '') {
+            $payload['last_name'] = $applicant->last_name;
+        }
+
+        $existingUser->update($payload);
+
+        if ((int) ($applicant->user_id ?? 0) !== (int) $existingUser->id) {
+            $applicant->forceFill([
+                'user_id' => (int) $existingUser->id,
+            ])->save();
+        }
     }
 
     private function isLeaveApplicationActiveOnDate(LeaveApplication $leaveApplication, ?Carbon $targetDate = null): bool

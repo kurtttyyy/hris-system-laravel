@@ -851,6 +851,11 @@ class AdministratorPageController extends Controller
             },
             ])->where('role','Employee')->get();
 
+        $employee->each(function (User $row) {
+            $this->attachApplicantComparisonMeta($row->applicant);
+            $row->setAttribute('leave_summary', $this->buildAdminEmployeeLeaveSummary($row, now()->format('Y-m')));
+        });
+
         $this->attachSubjectLoadsToEmployees($employee);
 
         Log::info($employee);
@@ -2686,9 +2691,11 @@ class AdministratorPageController extends Controller
         $this->syncFinishedInterviewApplicantStatuses();
 
         $app = Applicant::with(
-            'documents:id,filename,applicant_id',
+            'documents:id,filename,applicant_id,filepath,type,created_at',
+            'degrees:id,applicant_id,degree_level,degree_name,school_name,year_finished,sort_order',
             'position:id,title,department,employment,collage_name,work_mode,job_description,responsibilities,requirements,experience_level,location,skills,benifits,job_type,one,two,passionate'
             )->findOrFail($id);
+        $comparison = $this->buildApplicantComparisonMeta($app);
 
         return response()->json([
             'id' => $app->id,
@@ -2710,11 +2717,14 @@ class AdministratorPageController extends Controller
             'skills' => $app->skills_n_expertise,
             'number' => $app->phone,
             'star' => $app->starRatings,
-            'documents' => $app->documents->map(function ($doc) {
+            'comparison' => $comparison,
+            'documents' => $app->documents->map(function ($doc) use ($comparison) {
                 return [
                     'id' => $doc->id,
                     'name' => $doc->filename,
                     'type' => $doc->type,
+                    'url' => asset('storage/'.ltrim((string) ($doc->filepath ?? ''), '/')),
+                    'is_new' => (bool) ($comparison['is_rehire'] ?? false),
                 ];
             }),
         ]);
@@ -2932,7 +2942,33 @@ class AdministratorPageController extends Controller
             },
         ])->where('role', 'Employee')->findOrFail($id);
 
-        $storedItems = $employee->applicant?->documents?->values() ?? collect();
+        $currentApplicant = $employee->applicant;
+        $comparison = $this->buildApplicantComparisonMeta($currentApplicant);
+        $previousApplicant = null;
+        if (!empty($comparison['previous_applicant_id'])) {
+            $previousApplicant = Applicant::with([
+                'documents' => function ($query) use ($requiredPrefix, $noticeType, $folderType) {
+                    $query->select([
+                        'id',
+                        'applicant_id',
+                        'filename',
+                        'filepath',
+                        'type',
+                        'mime_type',
+                        'size',
+                        'created_at',
+                    ])
+                    ->where('type', 'not like', $requiredPrefix.'%')
+                    ->where('type', '!=', $noticeType)
+                    ->orderByDesc('created_at');
+                },
+            ])->find((int) $comparison['previous_applicant_id']);
+        }
+
+        $storedItems = collect()
+            ->concat($currentApplicant?->documents?->values() ?? collect())
+            ->concat($previousApplicant?->documents?->values() ?? collect())
+            ->values();
         $folders = $storedItems
             ->filter(fn (ApplicantDocument $document) => $this->isFolderDocumentRecord($document))
             ->map(function (ApplicantDocument $document) use ($storedItems) {
@@ -2953,12 +2989,15 @@ class AdministratorPageController extends Controller
 
         $allDocuments = $storedItems
             ->reject(fn (ApplicantDocument $document) => $this->isFolderDocumentRecord($document))
+            ->sortByDesc(function (ApplicantDocument $document) {
+                return optional($document->created_at)->timestamp ?? 0;
+            })
             ->values();
         $documents = $allDocuments;
         $unfiledCount = $allDocuments
             ->filter(fn (ApplicantDocument $document) => $this->folderKeyFromFileRecord($document) === '')
             ->count();
-        $applicantId = (int) ($employee->applicant?->id ?? 0);
+        $applicantId = (int) ($currentApplicant?->id ?? 0);
         $requiredConfig = $this->getRequiredDocumentConfigForApplicant($applicantId);
         $requiredDocuments = collect($requiredConfig['required_documents'] ?? [])
             ->map(fn ($item) => trim((string) $item))
@@ -2983,6 +3022,9 @@ class AdministratorPageController extends Controller
             ->values()
             ->all();
 
+        $documents = $this->decorateApplicantDocumentsForHistory($documents, $currentApplicant, $previousApplicant, $comparison);
+        $allDocuments = $this->decorateApplicantDocumentsForHistory($allDocuments, $currentApplicant, $previousApplicant, $comparison);
+
         return response()->json([
             'documents' => $documents,
             'all_documents' => $allDocuments,
@@ -2993,6 +3035,7 @@ class AdministratorPageController extends Controller
             'required_documents_text' => implode("\n", $requiredDocuments),
             'document_notice' => (string) ($requiredConfig['document_notice'] ?? ''),
             'missing_documents' => $missingDocuments,
+            'comparison' => $comparison,
         ]);
     }
 
@@ -3270,6 +3313,304 @@ class AdministratorPageController extends Controller
         }
 
         return $folderKey;
+    }
+
+    private function attachApplicantComparisonMeta(?Applicant $applicant): void
+    {
+        if (!$applicant) {
+            return;
+        }
+
+        $applicant->setAttribute('comparison', $this->buildApplicantComparisonMeta($applicant));
+    }
+
+    private function buildApplicantComparisonMeta(?Applicant $applicant): array
+    {
+        if (!$applicant) {
+            return [
+                'is_rehire' => false,
+                'previous_applicant_id' => null,
+                'changed_fields' => [],
+                'changed_degree_levels' => [],
+            ];
+        }
+
+        $previousApplicant = $this->resolvePreviousComparableApplicant($applicant);
+        if (!$previousApplicant) {
+            return [
+                'is_rehire' => false,
+                'previous_applicant_id' => null,
+                'changed_fields' => [],
+                'changed_degree_levels' => [],
+            ];
+        }
+
+        $changedFields = [];
+        $fieldComparisons = [
+            'first_name' => [$applicant->first_name, $previousApplicant->first_name],
+            'last_name' => [$applicant->last_name, $previousApplicant->last_name],
+            'phone' => [$applicant->phone, $previousApplicant->phone],
+            'address' => [$applicant->address, $previousApplicant->address],
+            'skills_n_expertise' => [$applicant->skills_n_expertise, $previousApplicant->skills_n_expertise],
+            'work_position' => [$applicant->work_position, $previousApplicant->work_position],
+            'work_employer' => [$applicant->work_employer, $previousApplicant->work_employer],
+            'work_location' => [$applicant->work_location, $previousApplicant->work_location],
+            'work_duration' => [$applicant->work_duration, $previousApplicant->work_duration],
+            'university_address' => [$applicant->university_address, $previousApplicant->university_address],
+            'position' => [$applicant->open_position_id, $previousApplicant->open_position_id],
+        ];
+
+        foreach ($fieldComparisons as $field => [$currentValue, $previousValue]) {
+            if ($this->normalizeComparisonValue($currentValue) !== $this->normalizeComparisonValue($previousValue)) {
+                $changedFields[] = $field;
+            }
+        }
+
+        $changedDegreeLevels = [];
+        foreach (['bachelor', 'master', 'doctorate'] as $level) {
+            if ($this->normalizedDegreeLevelValue($applicant, $level) !== $this->normalizedDegreeLevelValue($previousApplicant, $level)) {
+                $changedDegreeLevels[] = $level;
+            }
+        }
+
+        return [
+            'is_rehire' => true,
+            'previous_applicant_id' => (int) $previousApplicant->id,
+            'changed_fields' => $changedFields,
+            'changed_degree_levels' => $changedDegreeLevels,
+        ];
+    }
+
+    private function decorateApplicantDocumentsForHistory($documents, ?Applicant $currentApplicant, ?Applicant $previousApplicant, array $comparison)
+    {
+        $documents = collect($documents)->values();
+        $currentApplicantId = (int) ($currentApplicant?->id ?? 0);
+        $previousApplicantId = (int) ($previousApplicant?->id ?? 0);
+        $isRehire = (bool) ($comparison['is_rehire'] ?? false);
+        $currentApplicantCreatedAt = $this->rawTimestampValue(
+            $currentApplicant?->getRawOriginal('created_at') ?? $currentApplicant?->created_at
+        );
+
+        $currentReplacementTypes = $documents
+            ->filter(function (ApplicantDocument $document) use ($currentApplicantId, $currentApplicantCreatedAt) {
+                if ($currentApplicantId <= 0 || (int) $document->applicant_id !== $currentApplicantId) {
+                    return false;
+                }
+
+                $documentCreatedAt = $this->rawTimestampValue($document->getRawOriginal('created_at') ?? $document->created_at);
+
+                return $currentApplicantCreatedAt === null
+                    || $documentCreatedAt === null
+                    || $documentCreatedAt->greaterThanOrEqualTo($currentApplicantCreatedAt);
+            })
+            ->map(fn (ApplicantDocument $document) => $this->normalizeDocumentLabel((string) ($document->type ?: $document->filename)))
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $documents->map(function (ApplicantDocument $document) use (
+            $currentApplicantId,
+            $previousApplicantId,
+            $isRehire,
+            $currentApplicantCreatedAt,
+            $currentReplacementTypes
+        ) {
+            $documentType = $this->normalizeDocumentLabel((string) ($document->type ?: $document->filename));
+            $documentCreatedAt = $this->rawTimestampValue($document->getRawOriginal('created_at') ?? $document->created_at);
+            $isCurrentApplicationDocument = $currentApplicantId > 0 && (int) $document->applicant_id === $currentApplicantId;
+            $isPreviousApplicationDocument = $previousApplicantId > 0 && (int) $document->applicant_id === $previousApplicantId;
+            $isOlderDuplicateInCurrentApplication = $isRehire
+                && $isCurrentApplicationDocument
+                && $documentType !== ''
+                && $currentReplacementTypes->contains($documentType)
+                && $currentApplicantCreatedAt !== null
+                && $documentCreatedAt !== null
+                && $documentCreatedAt->lt($currentApplicantCreatedAt);
+
+            if ($isOlderDuplicateInCurrentApplication) {
+                $isCurrentApplicationDocument = false;
+                $isPreviousApplicationDocument = true;
+            }
+
+            $document->setAttribute('is_new', $isRehire && $isCurrentApplicationDocument);
+            $document->setAttribute('is_previous_application', $isPreviousApplicationDocument);
+            $document->setAttribute('history_label', $isPreviousApplicationDocument ? 'Previous Application' : 'Current Application');
+
+            return $document;
+        })->values();
+    }
+
+    private function resolvePreviousComparableApplicant(Applicant $applicant): ?Applicant
+    {
+        $normalizedEmail = strtolower(trim((string) ($applicant->email ?? '')));
+        $userId = (int) ($applicant->user_id ?? 0);
+
+        $query = Applicant::query()
+            ->with([
+                'degrees:id,applicant_id,degree_level,degree_name,school_name,year_finished,sort_order',
+            ])
+            ->where('id', '!=', (int) $applicant->id)
+            ->whereRaw("LOWER(TRIM(COALESCE(application_status, ''))) = ?", ['hired'])
+            ->where(function ($innerQuery) use ($normalizedEmail, $userId) {
+                if ($userId > 0) {
+                    $innerQuery->orWhere('user_id', $userId);
+                }
+
+                if ($normalizedEmail !== '') {
+                    $innerQuery->orWhereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail]);
+                }
+            })
+            ->orderByDesc('date_hired')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        return $query->first();
+    }
+
+    private function normalizeComparisonValue($value): string
+    {
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+
+        return strtolower(trim((string) preg_replace('/\s+/', ' ', (string) ($value ?? ''))));
+    }
+
+    private function normalizedDegreeLevelValue(Applicant $applicant, string $level): string
+    {
+        $rows = collect($applicant->degrees ?? [])
+            ->filter(function ($row) use ($level) {
+                return strtolower(trim((string) ($row->degree_level ?? ''))) === $level;
+            })
+            ->sortBy('sort_order')
+            ->map(function ($row) {
+                return implode('|', [
+                    $this->normalizeComparisonValue($row->degree_name ?? ''),
+                    $this->normalizeComparisonValue($row->school_name ?? ''),
+                    $this->normalizeComparisonValue($row->year_finished ?? ''),
+                ]);
+            })
+            ->values();
+
+        if ($rows->isNotEmpty()) {
+            return $rows->implode('||');
+        }
+
+        return match ($level) {
+            'bachelor' => implode('|', [
+                $this->normalizeComparisonValue($applicant->bachelor_degree ?? ''),
+                $this->normalizeComparisonValue($applicant->bachelor_school_name ?? ''),
+                $this->normalizeComparisonValue($applicant->bachelor_year_finished ?? ''),
+            ]),
+            'master' => implode('|', [
+                $this->normalizeComparisonValue($applicant->master_degree ?? ''),
+                $this->normalizeComparisonValue($applicant->master_school_name ?? ''),
+                $this->normalizeComparisonValue($applicant->master_year_finished ?? ''),
+            ]),
+            default => implode('|', [
+                $this->normalizeComparisonValue($applicant->doctoral_degree ?? ''),
+                $this->normalizeComparisonValue($applicant->doctoral_school_name ?? ''),
+                $this->normalizeComparisonValue($applicant->doctoral_year_finished ?? ''),
+            ]),
+        };
+    }
+
+    private function buildAdminEmployeeLeaveSummary(User $user, string $selectedMonth): array
+    {
+        try {
+            $monthCursor = Carbon::createFromFormat('Y-m', $selectedMonth)->startOfMonth();
+        } catch (\Throwable $e) {
+            $monthCursor = now()->startOfMonth();
+        }
+
+        $isTeaching = strcasecmp((string) ($user?->employee?->job_type ?? ''), 'Teaching') === 0;
+        $joinDate = null;
+        try {
+            if ($isTeaching && !empty($user?->applicant?->date_hired)) {
+                $joinDate = Carbon::parse($user->applicant->date_hired);
+            } elseif (!empty($user?->employee?->employement_date)) {
+                $joinDate = Carbon::parse($user->employee->employement_date);
+            } elseif (!empty($user?->applicant?->date_hired)) {
+                $joinDate = Carbon::parse($user->applicant->date_hired);
+            }
+        } catch (\Throwable $e) {
+            $joinDate = null;
+        }
+
+        $resetCycleMonths = $isTeaching ? 10 : 12;
+        $equalHalfEarnedDays = round(
+            $this->calculateAdminEmployeeEarnedLeaveDays($joinDate, $monthCursor, $resetCycleMonths) / 2,
+            1
+        );
+
+        $vacationLimit = $equalHalfEarnedDays;
+        $sickLimit = $equalHalfEarnedDays;
+        $vacationAvailable = max($vacationLimit, 0);
+        $sickAvailable = max($sickLimit, 0);
+
+        $leaveRows = collect($user->leaveApplications ?? [])
+            ->filter(function ($row) {
+                $status = strtolower(trim((string) ($row->status ?? '')));
+                return in_array($status, ['approved', 'completed'], true);
+            })
+            ->sortByDesc(function ($row) {
+                return optional($row->filing_date ?? $row->created_at)?->timestamp ?? 0;
+            })
+            ->values();
+
+        $latestLeaveApplication = $leaveRows->first();
+        if ($latestLeaveApplication) {
+            $vacationLimit = round((float) ($latestLeaveApplication->beginning_vacation ?? 0) + (float) ($latestLeaveApplication->earned_vacation ?? 0), 1);
+            $sickLimit = round((float) ($latestLeaveApplication->beginning_sick ?? 0) + (float) ($latestLeaveApplication->earned_sick ?? 0), 1);
+            $vacationAvailable = round((float) ($latestLeaveApplication->ending_vacation ?? 0), 1);
+            $sickAvailable = round((float) ($latestLeaveApplication->ending_sick ?? 0), 1);
+        }
+
+        return [
+            'vacation_limit' => max($vacationLimit, 0),
+            'vacation_available' => max($vacationAvailable, 0),
+            'sick_limit' => max($sickLimit, 0),
+            'sick_available' => max($sickAvailable, 0),
+        ];
+    }
+
+    private function calculateAdminEmployeeEarnedLeaveDays(?Carbon $joinDate, Carbon $monthCursor, ?int $resetCycleMonths = null): int
+    {
+        if (!$joinDate) {
+            return 0;
+        }
+
+        $accrualStartDate = $joinDate->copy()->addYear()->startOfDay();
+        $accrualStartMonth = $accrualStartDate->copy()->startOfMonth();
+        $selectedMonthEnd = $monthCursor->copy()->endOfMonth();
+        $todayEnd = now()->endOfDay();
+        $accrualCutoff = $selectedMonthEnd->lte($todayEnd) ? $selectedMonthEnd : $todayEnd;
+
+        if ($accrualCutoff->lt($accrualStartDate)) {
+            return 0;
+        }
+
+        $months = $accrualStartMonth->diffInMonths($accrualCutoff->copy()->startOfMonth()) + 1;
+        $months = max(0, $months);
+
+        if (!is_null($resetCycleMonths) && $resetCycleMonths > 0 && $months > 0) {
+            $months = (($months - 1) % $resetCycleMonths) + 1;
+        }
+
+        return $months;
+    }
+
+    private function rawTimestampValue($value): ?Carbon
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return $value instanceof Carbon ? $value->copy() : Carbon::parse($value);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
 }

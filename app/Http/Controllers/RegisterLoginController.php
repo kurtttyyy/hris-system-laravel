@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResolvesTabSession;
 use App\Models\Applicant;
+use App\Models\Resignation;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +21,7 @@ class RegisterLoginController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'middle_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email|max:255',
             'password' => 'required|string|max:255',
             'confirmation_password' => 'required|string|max:255',
         ]);
@@ -33,14 +34,11 @@ class RegisterLoginController extends Controller
                 ->withInput($request->except(['password', 'confirmation_password']));
         }
 
-        $status = 'Pending';
-        $role = 'Employee';
-        $account_status = 'Active';
-
         $hire = 'hired';
+        $normalizedEmail = strtolower(trim((string) $attrs['email']));
 
         $matchingApplicant = Applicant::query()
-            ->whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim((string) $attrs['email']))])
+            ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
             ->latest('id')
             ->first();
 
@@ -60,18 +58,47 @@ class RegisterLoginController extends Controller
                 ->withInput($request->except(['password', 'confirmation_password']));
         }
 
-        $user = User::create([
-            'first_name' => $attrs['first_name'],
-            'last_name' => $attrs['last_name'],
-            'middle_name' => $attrs['middle_name'],
-            'role' => $role,
-            'status' => $status,
-            'account_status' => $account_status,
-            'email' => $attrs['email'],
-            'password' => Hash::make($attrs['password']),
-        ]);
+        $existingUser = User::query()
+            ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
+            ->first();
 
-        Applicant::where('email', $user->email)
+        $rehireUser = $this->resolveRehireUser($matchingApplicant, $existingUser);
+
+        if ($existingUser && !$rehireUser) {
+            return redirect()->back()
+                ->withErrors([
+                    'email' => 'An account with this email already exists. Please log in instead.',
+                ])
+                ->withInput($request->except(['password', 'confirmation_password']));
+        }
+
+        if ($rehireUser) {
+            $rehireUser->update([
+                'first_name' => $attrs['first_name'],
+                'last_name' => $attrs['last_name'],
+                'middle_name' => $attrs['middle_name'],
+                'role' => 'Employee',
+                'status' => 'Approved',
+                'account_status' => 'Active',
+                'email' => $attrs['email'],
+                'password' => Hash::make($attrs['password']),
+            ]);
+
+            $user = $rehireUser->fresh();
+        } else {
+            $user = User::create([
+                'first_name' => $attrs['first_name'],
+                'last_name' => $attrs['last_name'],
+                'middle_name' => $attrs['middle_name'],
+                'role' => 'Employee',
+                'status' => 'Pending',
+                'account_status' => 'Active',
+                'email' => $attrs['email'],
+                'password' => Hash::make($attrs['password']),
+            ]);
+        }
+
+        Applicant::whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
                     ->whereRaw('LOWER(application_status) = ?', [$hire])
                     ->update([
                         'user_id' => $user->id,
@@ -147,4 +174,38 @@ class RegisterLoginController extends Controller
         return redirect()->route('login_display', $tabSession !== '' ? ['tab_session' => $tabSession] : []);
     }
 
+    private function resolveRehireUser(?Applicant $matchingApplicant, ?User $existingUser): ?User
+    {
+        if (!$matchingApplicant) {
+            return null;
+        }
+
+        if ($existingUser && $this->userHasApprovedResignation((int) $existingUser->id)) {
+            return $existingUser;
+        }
+
+        $linkedUserId = (int) ($matchingApplicant->user_id ?? 0);
+        if ($linkedUserId <= 0) {
+            return null;
+        }
+
+        $linkedUser = User::query()->find($linkedUserId);
+        if ($linkedUser && $this->userHasApprovedResignation((int) $linkedUser->id)) {
+            return $linkedUser;
+        }
+
+        return null;
+    }
+
+    private function userHasApprovedResignation(int $userId): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+
+        return Resignation::query()
+            ->where('user_id', $userId)
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) IN (?, ?)", ['approved', 'completed'])
+            ->exists();
+    }
 }

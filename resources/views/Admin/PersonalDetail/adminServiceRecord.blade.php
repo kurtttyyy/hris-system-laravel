@@ -25,7 +25,7 @@
         <p
           class="font-semibold mt-1"
           x-text="(() => {
-            const raw = selectedEmployee?.applicant?.date_hired || selectedEmployee?.employee?.employement_date;
+            const raw = currentServiceStartRaw();
             if (!raw) return '-';
             const datePart = raw.toString().split('T')[0];
             const [year, month, day] = datePart.split('-').map(Number);
@@ -53,7 +53,7 @@
         <p
           class="text-3xl font-bold"
           x-html="(() => {
-            const raw = selectedEmployee?.applicant?.date_hired || selectedEmployee?.employee?.employement_date;
+            const raw = currentServiceStartRaw();
             if (!raw) return `0<span class='text-sm align-baseline ml-1'>Y</span> 0<span class='text-sm align-baseline ml-1'>M</span> 0<span class='text-sm align-baseline ml-1'>D</span>`;
             const datePart = raw.toString().split('T')[0];
             const [year, month, day] = datePart.split('-').map(Number);

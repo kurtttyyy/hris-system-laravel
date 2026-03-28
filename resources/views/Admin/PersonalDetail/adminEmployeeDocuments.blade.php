@@ -251,6 +251,18 @@
                                         <span class="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
                                             Uploaded
                                         </span>
+                                        <span
+                                            x-show="documentIsNew(doc)"
+                                            class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700"
+                                        >
+                                            New
+                                        </span>
+                                        <span
+                                            x-show="documentIsPreviousApplication(doc)"
+                                            class="inline-flex rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700"
+                                        >
+                                            Previous Application
+                                        </span>
                                     </div>
                                     <p class="mt-1 break-all text-xs text-slate-500 underline-offset-2" x-text="doc.filename"></p>
                                     <div class="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">

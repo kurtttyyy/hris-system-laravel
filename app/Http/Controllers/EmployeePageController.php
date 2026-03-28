@@ -78,6 +78,125 @@ class EmployeePageController extends Controller
         ]);
     }
 
+    public function display_hierarchy()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login_display');
+        }
+
+        $departmentName = $this->resolveEmployeeDepartmentName($user);
+
+        $departmentEmployees = User::with([
+            'employee',
+            'applicant.position',
+            'applicant.documents:id,applicant_id,filename,filepath,mime_type,type',
+        ])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
+            ->get()
+            ->filter(function (User $employeeUser) use ($departmentName) {
+                return strcasecmp(
+                    $this->resolveEmployeeDepartmentName($employeeUser),
+                    $departmentName
+                ) === 0;
+            })
+            ->values();
+
+        if ($departmentEmployees->isEmpty()) {
+            $departmentEmployees = collect([$user]);
+        }
+
+        $head = $departmentEmployees->first(function (User $employeeUser) {
+            return strtolower(trim((string) ($employeeUser->department_head ?? ''))) === 'approved';
+        });
+
+        if (!$head) {
+            $head = $departmentEmployees
+                ->sortByDesc(fn (User $employeeUser) => $this->hierarchyManagerScore($employeeUser))
+                ->first();
+        }
+
+        $remainingEmployees = $departmentEmployees
+            ->reject(fn (User $employeeUser) => (int) $employeeUser->id === (int) optional($head)->id)
+            ->values();
+
+        $managerCandidates = $remainingEmployees
+            ->filter(fn (User $employeeUser) => $this->hierarchyManagerScore($employeeUser) > 0)
+            ->sortByDesc(fn (User $employeeUser) => $this->hierarchyManagerScore($employeeUser))
+            ->values();
+
+        if ($managerCandidates->isEmpty() && $remainingEmployees->isNotEmpty()) {
+            $managerCandidates = $remainingEmployees->take(min(3, $remainingEmployees->count()))->values();
+        }
+
+        $staffPool = $remainingEmployees
+            ->reject(function (User $employeeUser) use ($managerCandidates) {
+                return $managerCandidates->contains(fn (User $manager) => (int) $manager->id === (int) $employeeUser->id);
+            })
+            ->values();
+
+        $managerNodes = $managerCandidates->map(function (User $manager) {
+            return [
+                'id' => (int) $manager->id,
+                'name' => $this->buildHierarchyDisplayName($manager),
+                'initials' => $manager->initials ?: $this->buildHierarchyFallbackInitials($manager),
+                'photo_url' => $this->resolveEmployeeProfilePhotoUrl($manager),
+                'title' => $this->resolveEmployeePositionName($manager, 'Team Lead'),
+                'team' => $this->resolveEmployeeDepartmentName($manager),
+                'employee_id' => $this->resolveHierarchyEmployeeId($manager),
+                'email' => $this->resolveHierarchyEmployeeEmail($manager),
+                'status' => $this->resolveHierarchyEmploymentStatus($manager),
+                'employees' => collect(),
+            ];
+        })->values();
+
+        $staffPool->values()->each(function (User $employeeUser, int $index) use (&$managerNodes) {
+            if ($managerNodes->isEmpty()) {
+                return;
+            }
+
+            $managerIndex = $index % $managerNodes->count();
+            $managerNodes[$managerIndex]['employees'] = $managerNodes[$managerIndex]['employees']->push([
+                'id' => (int) $employeeUser->id,
+                'name' => $this->buildHierarchyDisplayName($employeeUser),
+                'initials' => $employeeUser->initials ?: $this->buildHierarchyFallbackInitials($employeeUser),
+                'photo_url' => $this->resolveEmployeeProfilePhotoUrl($employeeUser),
+                'title' => $this->resolveEmployeePositionName($employeeUser, 'Staff Member'),
+                'team' => $this->resolveEmployeeDepartmentName($employeeUser),
+                'employee_id' => $this->resolveHierarchyEmployeeId($employeeUser),
+                'email' => $this->resolveHierarchyEmployeeEmail($employeeUser),
+                'status' => $this->resolveHierarchyEmploymentStatus($employeeUser),
+            ]);
+        });
+
+        $managerNodes = $managerNodes->map(function (array $managerNode) {
+            $managerNode['employees'] = $managerNode['employees']->values();
+            return $managerNode;
+        })->values();
+
+        $headNode = $head
+            ? [
+                'id' => (int) $head->id,
+                'name' => $this->buildHierarchyDisplayName($head),
+                'initials' => $head->initials ?: $this->buildHierarchyFallbackInitials($head),
+                'photo_url' => $this->resolveEmployeeProfilePhotoUrl($head),
+                'title' => $this->resolveEmployeePositionName($head, 'Head of Department'),
+                'team' => $this->resolveEmployeeDepartmentName($head),
+            ]
+            : null;
+
+        return view('employee.employeeHierarchy', [
+            'user' => $user,
+            'departmentName' => $departmentName,
+            'headNode' => $headNode,
+            'managerNodes' => $managerNodes,
+            'departmentEmployeeCount' => (int) $departmentEmployees->count(),
+            'managerCount' => (int) $managerNodes->count(),
+            'staffCount' => (int) $staffPool->count(),
+        ]);
+    }
+
     private function buildEmployeeNotifications($user): array
     {
 
@@ -544,6 +663,27 @@ class EmployeePageController extends Controller
             });
         $employmentStatus = $isOnLeaveToday ? 'On Leave' : 'Active';
         $employmentStatusClass = $isOnLeaveToday ? 'text-amber-600' : 'text-emerald-600';
+        $comparison = $this->buildApplicantComparisonMeta($emp?->applicant);
+        $rehireMeta = [
+            'is_rehire' => (bool) ($comparison['is_rehire'] ?? false),
+            'label' => null,
+        ];
+
+        if ($rehireMeta['is_rehire'] && !empty($comparison['previous_applicant_id'])) {
+            $rehireDate = null;
+            try {
+                $rehireDateValue = $emp?->applicant?->date_hired
+                    ?: ($emp?->applicant?->getRawOriginal('created_at') ?? $emp?->applicant?->created_at);
+                if (!empty($rehireDateValue)) {
+                    $rehireDate = Carbon::parse($rehireDateValue)->format('M j, Y');
+                }
+            } catch (\Throwable $e) {
+                $rehireDate = null;
+            }
+
+            $rehireMeta['label'] = $rehireDate ? 'Rehired on '.$rehireDate : 'Rehired Employee';
+        }
+
         $profilePhotoDocument = optional($emp?->applicant)->documents
             ?->first(function ($doc) {
                 return strtoupper(trim((string) ($doc->type ?? ''))) === 'PROFILE_PHOTO' && !empty($doc->filepath);
@@ -569,7 +709,8 @@ class EmployeePageController extends Controller
             'leaveDaysUsed',
             'employmentStatus',
             'employmentStatusClass',
-            'profilePhotoUrl'
+            'profilePhotoUrl',
+            'rehireMeta'
         ));
     }
 
@@ -670,6 +811,7 @@ class EmployeePageController extends Controller
         $user_id = Auth::id();
         $applicant = Applicant::where('user_id', $user_id)
                                 ->where('application_status','Hired')
+                                ->latest('id')
                                 ->first();
 
         $documents = collect();
@@ -685,7 +827,18 @@ class EmployeePageController extends Controller
         if ($applicant) {
             $requiredPrefix = '__REQUIRED__::';
             $noticeType = '__NOTICE__';
-            $storedItems = ApplicantDocument::where('applicant_id', $applicant->id)
+            $comparison = $this->buildApplicantComparisonMeta($applicant);
+            $previousApplicant = null;
+            if (!empty($comparison['previous_applicant_id'])) {
+                $previousApplicant = Applicant::query()->find((int) $comparison['previous_applicant_id']);
+            }
+
+            $applicantIds = collect([(int) $applicant->id]);
+            if ($previousApplicant) {
+                $applicantIds->push((int) $previousApplicant->id);
+            }
+
+            $storedItems = ApplicantDocument::whereIn('applicant_id', $applicantIds->filter()->unique()->values()->all())
                 ->where('type', 'not like', $requiredPrefix.'%')
                 ->where('type', '!=', $noticeType)
                 ->latest('created_at')
@@ -708,9 +861,14 @@ class EmployeePageController extends Controller
                 ->sortBy('name')
                 ->values();
 
-            $allDocuments = $storedItems
-                ->reject(fn (ApplicantDocument $document) => $this->isFolderDocument($document))
-                ->values();
+            $allDocuments = $this->decorateApplicantDocumentsForHistory(
+                $storedItems
+                    ->reject(fn (ApplicantDocument $document) => $this->isFolderDocument($document))
+                    ->values(),
+                $applicant,
+                $previousApplicant,
+                $comparison
+            );
             $unfiledCount = $allDocuments
                 ->filter(fn (ApplicantDocument $document) => $this->folderKeyFromFileDocument($document) === '')
                 ->count();
@@ -781,14 +939,16 @@ class EmployeePageController extends Controller
         $userId = Auth::id();
         $applicant = Applicant::where('user_id', $userId)
             ->where('application_status', 'Hired')
+            ->latest('id')
             ->first();
 
         if (!$applicant) {
             abort(403);
         }
 
+        $allowedApplicantIds = $this->documentAccessibleApplicantIds($applicant);
         $document = ApplicantDocument::where('id', $id)
-            ->where('applicant_id', $applicant->id)
+            ->whereIn('applicant_id', $allowedApplicantIds)
             ->firstOrFail();
         if ($this->isFolderDocument($document)) {
             abort(404);
@@ -836,14 +996,16 @@ class EmployeePageController extends Controller
         $userId = Auth::id();
         $applicant = Applicant::where('user_id', $userId)
             ->where('application_status', 'Hired')
+            ->latest('id')
             ->first();
 
         if (!$applicant) {
             abort(403);
         }
 
+        $allowedApplicantIds = $this->documentAccessibleApplicantIds($applicant);
         $document = ApplicantDocument::where('id', $id)
-            ->where('applicant_id', $applicant->id)
+            ->whereIn('applicant_id', $allowedApplicantIds)
             ->firstOrFail();
         if ($this->isFolderDocument($document)) {
             abort(404);
@@ -1023,6 +1185,126 @@ class EmployeePageController extends Controller
         }
 
         return null;
+    }
+
+    private function resolveEmployeeDepartmentName(?User $user, string $fallback = 'Unassigned Department'): string
+    {
+        $department = trim((string) ($user?->department ?? ''));
+        if ($department !== '') {
+            return $department;
+        }
+
+        $employeeDepartment = trim((string) ($user?->employee?->department ?? ''));
+        if ($employeeDepartment !== '') {
+            return $employeeDepartment;
+        }
+
+        $applicantDepartment = trim((string) (optional($user?->applicant?->position)->department ?? ''));
+        if ($applicantDepartment !== '') {
+            return $applicantDepartment;
+        }
+
+        return $fallback;
+    }
+
+    private function resolveEmployeePositionName(?User $user, string $fallback = 'Employee'): string
+    {
+        $position = trim((string) ($user?->position ?? ''));
+        if ($position !== '') {
+            return $position;
+        }
+
+        $employeePosition = trim((string) ($user?->employee?->position ?? ''));
+        if ($employeePosition !== '') {
+            return $employeePosition;
+        }
+
+        $applicantPosition = trim((string) (optional($user?->applicant?->position)->title ?? ''));
+        if ($applicantPosition !== '') {
+            return $applicantPosition;
+        }
+
+        return $fallback;
+    }
+
+    private function buildHierarchyDisplayName(?User $user): string
+    {
+        $first = trim((string) ($user?->first_name ?? ''));
+        $middle = trim((string) ($user?->middle_name ?? ''));
+        $last = trim((string) ($user?->last_name ?? ''));
+        $name = trim(implode(' ', array_filter([$first, $middle, $last], fn ($value) => $value !== '')));
+
+        return $name !== '' ? $name : 'Employee';
+    }
+
+    private function buildHierarchyFallbackInitials(?User $user): string
+    {
+        $parts = array_values(array_filter([
+            substr(trim((string) ($user?->first_name ?? '')), 0, 1),
+            substr(trim((string) ($user?->last_name ?? '')), 0, 1),
+        ], fn ($value) => $value !== ''));
+
+        if (empty($parts)) {
+            return 'EM';
+        }
+
+        return strtoupper(implode('', $parts));
+    }
+
+    private function resolveEmployeeProfilePhotoUrl(?User $user): ?string
+    {
+        $profilePhotoDocument = optional($user?->applicant)->documents
+            ?->first(function ($doc) {
+                return strtoupper(trim((string) ($doc->type ?? ''))) === 'PROFILE_PHOTO' && !empty($doc->filepath);
+            });
+
+        if (!$profilePhotoDocument) {
+            $profilePhotoDocument = optional($user?->applicant)->documents
+                ?->first(function ($doc) {
+                    $mime = strtolower(trim((string) ($doc->mime_type ?? '')));
+                    $filename = strtolower(trim((string) ($doc->filename ?? '')));
+
+                    return !empty($doc->filepath) && (str_starts_with($mime, 'image/') || preg_match('/\.(png|jpe?g|gif|webp)$/i', $filename));
+                });
+        }
+
+        return $profilePhotoDocument?->filepath ? asset('storage/'.$profilePhotoDocument->filepath) : null;
+    }
+
+    private function resolveHierarchyEmployeeId(?User $user): string
+    {
+        return trim((string) ($user?->employee?->employee_id ?? $user?->employee_id ?? '')) ?: 'Not set';
+    }
+
+    private function resolveHierarchyEmployeeEmail(?User $user): string
+    {
+        return trim((string) (optional($user?->applicant)->email_address ?? $user?->email ?? '')) ?: 'No email';
+    }
+
+    private function resolveHierarchyEmploymentStatus(?User $user): string
+    {
+        $status = trim((string) ($user?->employee?->account_status ?? $user?->account_status ?? ''));
+        return $status !== '' ? $status : 'Active';
+    }
+
+    private function hierarchyManagerScore(?User $user): int
+    {
+        $position = strtolower($this->resolveEmployeePositionName($user, ''));
+        if ($position === '') {
+            return 0;
+        }
+
+        return match (true) {
+            str_contains($position, 'head') => 5,
+            str_contains($position, 'director') => 4,
+            str_contains($position, 'manager') => 4,
+            str_contains($position, 'supervisor') => 3,
+            str_contains($position, 'lead') => 3,
+            str_contains($position, 'chief') => 3,
+            str_contains($position, 'coordinator') => 2,
+            str_contains($position, 'officer') => 1,
+            default => 0,
+        };
     }
 
     private function getSharedLeaveRecords()
@@ -1880,6 +2162,143 @@ class EmployeePageController extends Controller
         }
 
         return $folderKey;
+    }
+
+    private function documentAccessibleApplicantIds(?Applicant $applicant): array
+    {
+        if (!$applicant) {
+            return [];
+        }
+
+        $ids = collect([(int) $applicant->id]);
+        $comparison = $this->buildApplicantComparisonMeta($applicant);
+        if (!empty($comparison['previous_applicant_id'])) {
+            $ids->push((int) $comparison['previous_applicant_id']);
+        }
+
+        return $ids
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function buildApplicantComparisonMeta(?Applicant $applicant): array
+    {
+        if (!$applicant) {
+            return [
+                'is_rehire' => false,
+                'previous_applicant_id' => null,
+            ];
+        }
+
+        $previousApplicant = $this->resolvePreviousComparableApplicant($applicant);
+        if (!$previousApplicant) {
+            return [
+                'is_rehire' => false,
+                'previous_applicant_id' => null,
+            ];
+        }
+
+        return [
+            'is_rehire' => true,
+            'previous_applicant_id' => (int) $previousApplicant->id,
+        ];
+    }
+
+    private function decorateApplicantDocumentsForHistory($documents, ?Applicant $currentApplicant, ?Applicant $previousApplicant, array $comparison)
+    {
+        $documents = collect($documents)->values();
+        $currentApplicantId = (int) ($currentApplicant?->id ?? 0);
+        $previousApplicantId = (int) ($previousApplicant?->id ?? 0);
+        $isRehire = (bool) ($comparison['is_rehire'] ?? false);
+        $currentApplicantCreatedAt = $this->rawTimestampValue(
+            $currentApplicant?->getRawOriginal('created_at') ?? $currentApplicant?->created_at
+        );
+
+        $currentReplacementTypes = $documents
+            ->filter(function (ApplicantDocument $document) use ($currentApplicantId, $currentApplicantCreatedAt) {
+                if ($currentApplicantId <= 0 || (int) $document->applicant_id !== $currentApplicantId) {
+                    return false;
+                }
+
+                $documentCreatedAt = $this->rawTimestampValue($document->getRawOriginal('created_at') ?? $document->created_at);
+
+                return $currentApplicantCreatedAt === null
+                    || $documentCreatedAt === null
+                    || $documentCreatedAt->greaterThanOrEqualTo($currentApplicantCreatedAt);
+            })
+            ->map(fn (ApplicantDocument $document) => $this->normalizeDocumentLabel((string) ($document->type ?: $document->filename)))
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $documents->map(function (ApplicantDocument $document) use (
+            $currentApplicantId,
+            $previousApplicantId,
+            $isRehire,
+            $currentApplicantCreatedAt,
+            $currentReplacementTypes
+        ) {
+            $documentType = $this->normalizeDocumentLabel((string) ($document->type ?: $document->filename));
+            $documentCreatedAt = $this->rawTimestampValue($document->getRawOriginal('created_at') ?? $document->created_at);
+            $isCurrentApplicationDocument = $currentApplicantId > 0 && (int) $document->applicant_id === $currentApplicantId;
+            $isPreviousApplicationDocument = $previousApplicantId > 0 && (int) $document->applicant_id === $previousApplicantId;
+            $isOlderDuplicateInCurrentApplication = $isRehire
+                && $isCurrentApplicationDocument
+                && $documentType !== ''
+                && $currentReplacementTypes->contains($documentType)
+                && $currentApplicantCreatedAt !== null
+                && $documentCreatedAt !== null
+                && $documentCreatedAt->lt($currentApplicantCreatedAt);
+
+            if ($isOlderDuplicateInCurrentApplication) {
+                $isCurrentApplicationDocument = false;
+                $isPreviousApplicationDocument = true;
+            }
+
+            $document->setAttribute('is_new', $isRehire && $isCurrentApplicationDocument);
+            $document->setAttribute('is_previous_application', $isPreviousApplicationDocument);
+            $document->setAttribute('history_label', $isPreviousApplicationDocument ? 'Previous Application' : 'Current Application');
+
+            return $document;
+        })->values();
+    }
+
+    private function rawTimestampValue($value): ?Carbon
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return $value instanceof Carbon ? $value->copy() : Carbon::parse($value);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private function resolvePreviousComparableApplicant(Applicant $applicant): ?Applicant
+    {
+        $normalizedEmail = strtolower(trim((string) ($applicant->email ?? '')));
+        $userId = (int) ($applicant->user_id ?? 0);
+
+        return Applicant::query()
+            ->where('id', '!=', (int) $applicant->id)
+            ->whereRaw("LOWER(TRIM(COALESCE(application_status, ''))) = ?", ['hired'])
+            ->where(function ($innerQuery) use ($normalizedEmail, $userId) {
+                if ($userId > 0) {
+                    $innerQuery->orWhere('user_id', $userId);
+                }
+
+                if ($normalizedEmail !== '') {
+                    $innerQuery->orWhereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail]);
+                }
+            })
+            ->orderByDesc('date_hired')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->first();
     }
 
 }

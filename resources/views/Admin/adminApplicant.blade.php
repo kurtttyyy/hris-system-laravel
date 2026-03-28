@@ -288,6 +288,7 @@
 
           <div class="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
             <h4 class="text-base font-bold text-slate-900">Documents</h4>
+            <div id="rehireSummary" class="mt-3 hidden rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800"></div>
             <div id="documents" class="mt-4 space-y-3"></div>
           </div>
 
@@ -691,7 +692,22 @@
         renderSkills(data.skills);
 
         const docsContainer = document.getElementById('documents');
+        const rehireSummary = document.getElementById('rehireSummary');
         docsContainer.innerHTML = '';
+        if (rehireSummary) {
+          const changedFields = Array.isArray(data?.comparison?.changed_fields) ? data.comparison.changed_fields : [];
+          const changedDegrees = Array.isArray(data?.comparison?.changed_degree_levels) ? data.comparison.changed_degree_levels : [];
+          if (data?.comparison?.is_rehire) {
+            const count = changedFields.length + changedDegrees.length;
+            rehireSummary.classList.remove('hidden');
+            rehireSummary.innerText = count > 0
+              ? `Rehire application detected. ${count} updated field${count === 1 ? '' : 's'} marked as new, and uploaded documents are labeled New.`
+              : 'Rehire application detected. Uploaded documents are labeled New for this returning employee.';
+          } else {
+            rehireSummary.classList.add('hidden');
+            rehireSummary.innerText = '';
+          }
+        }
 
         if (data.documents && data.documents.length > 0) {
           docsContainer.innerHTML = data.documents.map(doc => `
@@ -701,7 +717,10 @@
                   <i class="fa-regular fa-file"></i>
                 </div>
                 <div>
-                  <p class="text-sm font-semibold text-slate-800">${doc.name}</p>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <p class="text-sm font-semibold text-slate-800">${doc.name}</p>
+                    ${doc.is_new ? '<span class="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">New</span>' : ''}
+                  </div>
                   <p class="text-xs text-slate-400">${doc.type ?? ''}</p>
                 </div>
               </div>

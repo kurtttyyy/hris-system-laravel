@@ -75,7 +75,8 @@ class User extends Authenticatable
 
     public function applicant(){
         return $this->hasOne(Applicant::class, 'user_id', 'id')
-                    ->whereRaw('LOWER(application_status) = ?', ['hired']);
+                    ->whereRaw('LOWER(application_status) = ?', ['hired'])
+                    ->latestOfMany();
     }
 
     public function scopeAdmins($query)

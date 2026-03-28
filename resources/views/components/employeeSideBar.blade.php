@@ -1,6 +1,7 @@
 @php
     $employeeUser = auth()->user();
     $showDepartmentHeadMore = strtolower(trim((string) ($employeeUser->department_head ?? ''))) === 'approved';
+    $employeeMoreOpen = request()->routeIs('employee.employeeHierarchy');
     $employeeUnreadMessages = 0;
     if (
         $employeeUser
@@ -163,8 +164,8 @@
             <div class="space-y-1">
                 <button type="button"
                     data-employee-more-toggle
-                    aria-expanded="false"
-                    class="flex w-full items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition text-gray-300 hover:bg-green-600/20 hover:text-white">
+                    aria-expanded="{{ $employeeMoreOpen ? 'true' : 'false' }}"
+                    class="flex w-full items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition {{ $employeeMoreOpen ? 'bg-green-600/20 text-white' : 'text-gray-300 hover:bg-green-600/20 hover:text-white' }}">
 
                     <i class="fa fa-ellipsis-h text-lg w-6 text-center"></i>
 
@@ -172,17 +173,18 @@
                         More
                     </span>
 
-                    <i class="fa fa-chevron-down employee-more-icon ml-auto text-xs opacity-0 transition-all duration-300 group-hover:opacity-100"
+                    <i class="fa fa-chevron-down employee-more-icon ml-auto text-xs transition-all duration-300 {{ $employeeMoreOpen ? 'is-open opacity-100' : 'opacity-0 group-hover:opacity-100' }}"
                        data-employee-more-icon></i>
                 </button>
 
-                <div class="hidden space-y-1 pl-3"
+                <div class="{{ $employeeMoreOpen ? '' : 'hidden' }} space-y-1 pl-3"
                      data-employee-more-menu>
-                    <a href="#"
-                       class="flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium text-gray-300 transition hover:bg-green-600/20 hover:text-white">
+                    <a href="{{ route('employee.employeeHierarchy') }}"
+                       data-employee-nav
+                       class="flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium transition {{ request()->routeIs('employee.employeeHierarchy') ? 'bg-green-600 text-white hover:bg-green-700' : 'text-gray-300 hover:bg-green-600/20 hover:text-white' }}">
                         <i class="fa fa-building-o text-base w-6 text-center"></i>
                         <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
-                            Department
+                            Employee Hierarchy
                         </span>
                     </a>
 
@@ -206,6 +208,39 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
 <style>
+    @media (min-width: 1025px) {
+        .employee-sidebar:not(:hover) > div:first-child {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
+        .employee-sidebar:not(:hover) > div:first-child > div {
+            justify-content: center;
+        }
+
+        .employee-sidebar:not(:hover) > nav > a,
+        .employee-sidebar:not(:hover) > nav > div > button {
+            justify-content: center;
+            gap: 0;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+
+        .employee-sidebar:not(:hover) > nav > a > .employee-sidebar-label,
+        .employee-sidebar:not(:hover) > nav > div > button > span:not(.relative),
+        .employee-sidebar:not(:hover) > nav > div > button > .employee-more-icon {
+            display: none !important;
+        }
+
+        .employee-sidebar:not(:hover) [data-employee-more-menu] {
+            display: none !important;
+        }
+
+        .employee-sidebar:not(:hover) nav .ml-auto {
+            margin-left: 0 !important;
+        }
+    }
+
     .employee-more-icon.is-open {
         transform: rotate(180deg);
     }

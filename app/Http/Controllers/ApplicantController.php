@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Applicant;
 use App\Models\ApplicantDegree;
 use App\Models\ApplicantDocument;
+use App\Models\Resignation;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -131,8 +133,21 @@ class ApplicantController extends Controller
         // Keep applicant identity in session so vacancy pages can hide jobs already applied to.
         session(['applicant_email' => $attrs['email']]);
 
-        $existingApplication = Applicant::whereRaw('LOWER(email) = ?', [Str::lower($attrs['email'])])
+        $normalizedEmail = Str::lower(trim((string) $attrs['email']));
+        $rehireUser = $this->findLatestResignedEmployeeByEmail($normalizedEmail);
+
+        $existingApplication = Applicant::whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
             ->where('open_position_id', $attrs['position'])
+            ->when($rehireUser, function ($query) use ($rehireUser) {
+                $latestResignationDate = $this->latestApprovedResignationDateForUser((int) $rehireUser->id);
+                if ($latestResignationDate) {
+                    $query->where(function ($innerQuery) use ($latestResignationDate) {
+                        $innerQuery
+                            ->whereNull('created_at')
+                            ->orWhere('created_at', '>', $latestResignationDate);
+                    });
+                }
+            })
             ->exists();
 
         if ($existingApplication) {
@@ -142,6 +157,13 @@ class ApplicantController extends Controller
         }
 
         DB::transaction(function () use ($request, $attrs, $primaryBachelor, $normalizedBachelorDegrees, $normalizedMasterDegrees, $normalizedDoctoralDegrees, $primaryMaster, $primaryDoctoral) {
+            $normalizedEmail = Str::lower(trim((string) ($attrs['email'] ?? '')));
+            $rehireUser = $this->findLatestResignedEmployeeByEmail($normalizedEmail);
+
+            if ($rehireUser) {
+                $this->releaseApplicantEmailForRehire($normalizedEmail);
+            }
+
             $applicant_store = Applicant::create([
                 'first_name' => $attrs['first_name'],
                 'last_name' => $attrs['last_name'],
@@ -271,15 +293,146 @@ class ApplicantController extends Controller
 
         session(['applicant_email' => $attrs['email']]);
 
-        if (!Applicant::where('email', $attrs['email'])->exists()) {
+        $applicantsQuery = Applicant::with([
+            'position',
+            'degrees' => function ($query) {
+                $query->orderBy('degree_level')->orderBy('sort_order');
+            },
+            'documents' => function ($query) {
+                $query->orderByDesc('created_at');
+            },
+        ]);
+        $this->applyApplicantEmailHistoryFilter($applicantsQuery, (string) $attrs['email']);
+
+        if (!(clone $applicantsQuery)->exists()) {
             return redirect('/');
         }
 
-        $applicants = Applicant::with(
-            'position'
-        )->where('email', $attrs['email'])->get();
+        $applicants = $applicantsQuery
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (Applicant $applicant) use ($attrs) {
+                $applicant->setAttribute(
+                    'is_email_history_match',
+                    strtolower(trim((string) ($applicant->email ?? ''))) !== strtolower(trim((string) ($attrs['email'] ?? '')))
+                );
+
+                return $applicant;
+            });
 
 
         return view('guest.Application', compact('applicants'));
+    }
+
+    private function findLatestResignedEmployeeByEmail(string $email): ?User
+    {
+        if ($email === '') {
+            return null;
+        }
+
+        return User::query()
+            ->whereRaw('LOWER(TRIM(email)) = ?', [$email])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('resignations')
+                    ->whereColumn('resignations.user_id', 'users.id')
+                    ->whereRaw("LOWER(TRIM(COALESCE(resignations.status, ''))) IN (?, ?)", ['approved', 'completed']);
+            })
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    private function latestApprovedResignationDateForUser(int $userId)
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+
+        $resignation = Resignation::query()
+            ->where('user_id', $userId)
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) IN (?, ?)", ['approved', 'completed'])
+            ->orderByDesc(DB::raw('COALESCE(effective_date, processed_at, submitted_at, created_at)'))
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$resignation) {
+            return null;
+        }
+
+        return $resignation->effective_date
+            ?? $resignation->processed_at
+            ?? $resignation->submitted_at
+            ?? $resignation->created_at;
+    }
+
+    private function releaseApplicantEmailForRehire(string $email): void
+    {
+        if ($email === '') {
+            return;
+        }
+
+        Applicant::query()
+            ->whereRaw('LOWER(TRIM(email)) = ?', [$email])
+            ->orderByDesc('id')
+            ->get()
+            ->each(function (Applicant $applicant) {
+                $archivedEmail = $this->buildArchivedApplicantEmail(
+                    (string) ($applicant->email ?? ''),
+                    (int) $applicant->id
+                );
+
+                if ($archivedEmail !== '' && $archivedEmail !== $applicant->email) {
+                    $applicant->forceFill([
+                        'email' => $archivedEmail,
+                    ])->save();
+                }
+            });
+    }
+
+    private function buildArchivedApplicantEmail(string $email, int $applicantId): string
+    {
+        $trimmedEmail = trim($email);
+        if ($trimmedEmail === '' || $applicantId <= 0) {
+            return $trimmedEmail;
+        }
+
+        $parts = explode('@', $trimmedEmail, 2);
+        $local = trim((string) ($parts[0] ?? ''));
+        $domain = trim((string) ($parts[1] ?? 'archived.local'));
+        if ($local === '') {
+            $local = 'archived-applicant';
+        }
+        if ($domain === '') {
+            $domain = 'archived.local';
+        }
+
+        $suffix = '.archived.'.$applicantId;
+        $maxLocalLength = max(1, 255 - strlen($domain) - 1 - strlen($suffix));
+        $safeLocal = substr($local, 0, $maxLocalLength);
+
+        return $safeLocal.$suffix.'@'.$domain;
+    }
+
+    private function applyApplicantEmailHistoryFilter($query, string $email): void
+    {
+        $normalizedEmail = strtolower(trim($email));
+        if ($normalizedEmail === '') {
+            $query->whereRaw('1 = 0');
+            return;
+        }
+
+        $parts = explode('@', $normalizedEmail, 2);
+        $local = trim((string) ($parts[0] ?? ''));
+        $domain = trim((string) ($parts[1] ?? ''));
+
+        $query->where(function ($innerQuery) use ($normalizedEmail, $local, $domain) {
+            $innerQuery->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail]);
+
+            if ($local !== '' && $domain !== '') {
+                $innerQuery->orWhereRaw('LOWER(TRIM(email)) LIKE ?', [$local.'.archived.%@'.$domain]);
+            }
+        });
     }
 }

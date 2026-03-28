@@ -148,7 +148,10 @@
               <span class="block space-y-1">
                 <template x-for="(row, idx) in degreeRows('bachelor')" :key="`bachelor-${row?.id ?? idx}`">
                   <span class="block">
-                    <span class="block edu-title" x-text="formatGraduateDegreeTitle(row?.degree_name)"></span>
+                    <span class="block edu-title">
+                      <span x-text="formatGraduateDegreeTitle(row?.degree_name)"></span>
+                      <span x-show="degreeLevelIsNew('bachelor')" class="ml-2 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">New</span>
+                    </span>
                     <span class="block text-[11px] text-gray-700 edu-meta" x-text="`${row?.school_name ?? 'School N/A'}, ${row?.year_finished ?? 'Year N/A'}`"></span>
                   </span>
                 </template>
@@ -156,7 +159,10 @@
             </template>
             <template x-if="!hasDegreeRows('bachelor')">
               <span class="block">
-                <span class="block edu-title" x-text="selectedEmployee?.education?.bachelor ?? '-'"></span>
+                <span class="block edu-title">
+                  <span x-text="selectedEmployee?.education?.bachelor ?? '-'"></span>
+                  <span x-show="degreeLevelIsNew('bachelor')" class="ml-2 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">New</span>
+                </span>
                 <span
                   class="block text-[11px] text-gray-700 edu-meta"
                   x-text="`${selectedEmployee?.applicant?.bachelor_school_name ?? 'School N/A'}, ${selectedEmployee?.applicant?.bachelor_year_finished ?? 'Year N/A'}`"
@@ -172,7 +178,10 @@
               <span class="block space-y-1">
                 <template x-for="(row, idx) in degreeRows('master')" :key="`master-${row?.id ?? idx}`">
                   <span class="block">
-                    <span class="block edu-title" x-text="formatGraduateDegreeTitle(row?.degree_name)"></span>
+                    <span class="block edu-title">
+                      <span x-text="formatGraduateDegreeTitle(row?.degree_name)"></span>
+                      <span x-show="degreeLevelIsNew('master')" class="ml-2 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">New</span>
+                    </span>
                     <span class="block text-[11px] text-gray-700 edu-meta" x-text="`${row?.school_name ?? 'School N/A'}, ${row?.year_finished ?? 'Year N/A'}`"></span>
                   </span>
                 </template>
@@ -180,7 +189,10 @@
             </template>
             <template x-if="!hasDegreeRows('master')">
               <span class="block">
-                <span class="block edu-title" x-text="formatGraduateDegreeTitle(selectedEmployee?.education?.master)"></span>
+                <span class="block edu-title">
+                  <span x-text="formatGraduateDegreeTitle(selectedEmployee?.education?.master)"></span>
+                  <span x-show="degreeLevelIsNew('master')" class="ml-2 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">New</span>
+                </span>
                 <span
                   class="block text-[11px] text-gray-700 edu-meta"
                   x-text="`${selectedEmployee?.applicant?.master_school_name ?? 'School N/A'}, ${selectedEmployee?.applicant?.master_year_finished ?? 'Year N/A'}`"
@@ -196,7 +208,10 @@
               <span class="block space-y-1">
                 <template x-for="(row, idx) in degreeRows('doctorate')" :key="`doctorate-${row?.id ?? idx}`">
                   <span class="block">
-                    <span class="block edu-title" x-text="formatGraduateDegreeTitle(row?.degree_name)"></span>
+                    <span class="block edu-title">
+                      <span x-text="formatGraduateDegreeTitle(row?.degree_name)"></span>
+                      <span x-show="degreeLevelIsNew('doctorate')" class="ml-2 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">New</span>
+                    </span>
                     <span class="block text-[11px] text-gray-700 edu-meta" x-text="`${row?.school_name ?? 'School N/A'}, ${row?.year_finished ?? 'Year N/A'}`"></span>
                   </span>
                 </template>
@@ -204,7 +219,10 @@
             </template>
             <template x-if="!hasDegreeRows('doctorate')">
               <span class="block">
-                <span class="block edu-title" x-text="formatGraduateDegreeTitle(selectedEmployee?.education?.doctorate)"></span>
+                <span class="block edu-title">
+                  <span x-text="formatGraduateDegreeTitle(selectedEmployee?.education?.doctorate)"></span>
+                  <span x-show="degreeLevelIsNew('doctorate')" class="ml-2 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">New</span>
+                </span>
                 <span
                   class="block text-[11px] text-gray-700 edu-meta"
                   x-text="`${selectedEmployee?.applicant?.doctoral_school_name ?? 'School N/A'}, ${selectedEmployee?.applicant?.doctoral_year_finished ?? 'Year N/A'}`"

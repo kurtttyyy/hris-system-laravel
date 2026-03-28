@@ -97,9 +97,53 @@
 
       return [$startDate, $endDate];
     };
-    $resolveDisplayAccountStatus = function ($emp) use ($resolveLeaveRange) {
+    $resolveLatestApprovedResignationDate = function ($emp) use ($parseLeaveStatusDate) {
+      return collect(data_get($emp, 'resignations', []))
+        ->filter(function ($row) {
+          $status = strtolower(trim((string) (data_get($row, 'status') ?? '')));
+          return in_array($status, ['approved', 'completed'], true);
+        })
+        ->map(function ($row) use ($parseLeaveStatusDate) {
+          return $parseLeaveStatusDate(data_get($row, 'effective_date'))
+            ?: $parseLeaveStatusDate(data_get($row, 'processed_at'))
+            ?: $parseLeaveStatusDate(data_get($row, 'submitted_at'))
+            ?: $parseLeaveStatusDate(data_get($row, 'created_at'));
+        })
+        ->filter()
+        ->sortByDesc(fn ($date) => $date->timestamp)
+        ->first();
+    };
+    $resolveLatestApprovedResignationDecisionDate = function ($emp) use ($parseLeaveStatusDate) {
+      return collect(data_get($emp, 'resignations', []))
+        ->filter(function ($row) {
+          $status = strtolower(trim((string) (data_get($row, 'status') ?? '')));
+          return in_array($status, ['approved', 'completed'], true);
+        })
+        ->map(function ($row) use ($parseLeaveStatusDate) {
+          return $parseLeaveStatusDate(data_get($row, 'processed_at'))
+            ?: $parseLeaveStatusDate(data_get($row, 'submitted_at'))
+            ?: $parseLeaveStatusDate(data_get($row, 'created_at'))
+            ?: $parseLeaveStatusDate(data_get($row, 'effective_date'));
+        })
+        ->filter()
+        ->sortByDesc(fn ($date) => $date->timestamp)
+        ->first();
+    };
+    $wasRehiredAfterResignation = function ($emp) use ($parseLeaveStatusDate, $resolveLatestApprovedResignationDecisionDate) {
+      $latestResignationDate = $resolveLatestApprovedResignationDecisionDate($emp);
+      if (!$latestResignationDate) {
+        return false;
+      }
+
+      $rehireReference = $parseLeaveStatusDate(data_get($emp, 'applicant.date_hired'))
+        ?: $parseLeaveStatusDate(data_get($emp, 'applicant.created_at'));
+
+      return $rehireReference && $rehireReference->gt($latestResignationDate);
+    };
+    $resolveDisplayAccountStatus = function ($emp) use ($resolveLeaveRange, $wasRehiredAfterResignation) {
       $accountStatus = strtolower(trim((string) (data_get($emp, 'account_status') ?? '')));
-      if ($accountStatus === 'inactive') {
+      $isRehiredAfterResignation = $wasRehiredAfterResignation($emp);
+      if ($accountStatus === 'inactive' && !$isRehiredAfterResignation) {
         return 'Inactive';
       }
       if ($accountStatus === 'on leave') {
@@ -112,7 +156,7 @@
           return in_array($status, ['approved', 'completed'], true);
         });
 
-      if ($hasApprovedOrCompletedResignation) {
+      if ($hasApprovedOrCompletedResignation && !$isRehiredAfterResignation) {
         return 'Inactive';
       }
 
@@ -305,7 +349,7 @@
         effectiveAccountStatus() {
           const accountStatus = (this.selectedEmployee?.account_status ?? '').toString().trim();
           if (accountStatus !== '') {
-            if (accountStatus.toLowerCase() === 'inactive') {
+            if (accountStatus.toLowerCase() === 'inactive' && !this.wasRehiredAfterResignation()) {
               return 'Inactive';
             }
             if (accountStatus.toLowerCase() === 'on leave') {
@@ -321,7 +365,7 @@
             return status === 'approved' || status === 'completed';
           });
 
-          if (hasApprovedOrCompletedResignation) {
+          if (hasApprovedOrCompletedResignation && !this.wasRehiredAfterResignation()) {
             return 'Inactive';
           }
 
@@ -350,6 +394,63 @@
 
           return 'Active';
         },
+        latestApprovedResignationDate() {
+          const resignationRows = Array.isArray(this.selectedEmployee?.resignations)
+            ? this.selectedEmployee.resignations
+            : [];
+
+          const dates = resignationRows
+            .filter((row) => {
+              const status = (row?.status ?? '').toString().trim().toLowerCase();
+              return status === 'approved' || status === 'completed';
+            })
+            .map((row) => this.parseDateValue(row?.effective_date || row?.processed_at || row?.submitted_at || row?.created_at))
+            .filter(Boolean)
+            .sort((a, b) => b.getTime() - a.getTime());
+
+          return dates[0] ?? null;
+        },
+        latestApprovedResignationDecisionDate() {
+          const resignationRows = Array.isArray(this.selectedEmployee?.resignations)
+            ? this.selectedEmployee.resignations
+            : [];
+
+          const dates = resignationRows
+            .filter((row) => {
+              const status = (row?.status ?? '').toString().trim().toLowerCase();
+              return status === 'approved' || status === 'completed';
+            })
+            .map((row) => this.parseDateValue(row?.processed_at || row?.submitted_at || row?.created_at || row?.effective_date))
+            .filter(Boolean)
+            .sort((a, b) => b.getTime() - a.getTime());
+
+          return dates[0] ?? null;
+        },
+        wasRehiredAfterResignation() {
+          const latestResignationDate = this.latestApprovedResignationDecisionDate();
+          if (!latestResignationDate) return false;
+
+          const rehireDate = this.parseDateValue(this.selectedEmployee?.applicant?.date_hired || this.selectedEmployee?.applicant?.created_at);
+          if (!rehireDate) return false;
+
+          return rehireDate.getTime() > latestResignationDate.getTime();
+        },
+        initialEmploymentStartRaw() {
+          return this.selectedEmployee?.employee?.employement_date
+            || this.selectedEmployee?.employee?.employment_date
+            || this.selectedEmployee?.applicant?.date_hired
+            || this.selectedEmployee?.applicant?.created_at
+            || '';
+        },
+        rehireDateRaw() {
+          if (!this.wasRehiredAfterResignation()) return '';
+          return this.selectedEmployee?.applicant?.date_hired
+            || this.selectedEmployee?.applicant?.created_at
+            || '';
+        },
+        currentServiceStartRaw() {
+          return this.rehireDateRaw() || this.initialEmploymentStartRaw();
+        },
         effectiveAccountStatusClass() {
           const status = this.effectiveAccountStatus().toLowerCase();
           if (status === 'active') return 'bg-green-100 text-green-700';
@@ -357,7 +458,7 @@
           return 'bg-red-100/70 text-red-700';
         },
         selectedEmployee: {
-          applicant: { documents: [], all_documents: [], folders: [], selected_folder_key: 'all', unfiled_count: 0, total_documents: 0, required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {} },
+          applicant: { documents: [], all_documents: [], folders: [], selected_folder_key: 'all', unfiled_count: 0, total_documents: 0, required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {}, comparison: { is_rehire: false, changed_fields: [], changed_degree_levels: [] } },
           employee: {},
           education: {},
           government: {},
@@ -470,13 +571,14 @@
 
           this.selectedEmployee = {
             ...emp,
-            applicant: { documents: [], all_documents: [], folders: [], selected_folder_key: 'all', unfiled_count: 0, total_documents: 0, required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {}, ...applicantData },
+            applicant: { documents: [], all_documents: [], folders: [], selected_folder_key: 'all', unfiled_count: 0, total_documents: 0, required_documents: [], required_documents_text: '', missing_documents: [], document_notice: '', position: {}, comparison: { is_rehire: false, changed_fields: [], changed_degree_levels: [] }, ...applicantData },
             employee: employeeData,
             education: educationData,
             government: emp?.government ?? {},
             license: emp?.license ?? {},
             salary: emp?.salary ?? {},
             leave_applications: Array.isArray(emp?.leave_applications) ? emp.leave_applications : [],
+            leave_summary: emp?.leave_summary ?? {},
             ui_theme: emp?.ui_theme ?? {},
           };
 
@@ -507,9 +609,28 @@
             this.selectedEmployee.applicant.required_documents_text = payload.required_documents_text ?? '';
             this.selectedEmployee.applicant.missing_documents = payload.missing_documents ?? [];
             this.selectedEmployee.applicant.document_notice = payload.document_notice ?? '';
+            this.selectedEmployee.applicant.comparison = payload.comparison ?? this.selectedEmployee.applicant.comparison ?? { is_rehire: false, changed_fields: [], changed_degree_levels: [] };
           } catch (error) {
             console.error('Unable to load employee documents.', error);
           }
+        },
+        hasApplicantChange(fieldKey) {
+          const changedFields = Array.isArray(this.selectedEmployee?.applicant?.comparison?.changed_fields)
+            ? this.selectedEmployee.applicant.comparison.changed_fields
+            : [];
+          return changedFields.includes((fieldKey ?? '').toString());
+        },
+        degreeLevelIsNew(level) {
+          const changedLevels = Array.isArray(this.selectedEmployee?.applicant?.comparison?.changed_degree_levels)
+            ? this.selectedEmployee.applicant.comparison.changed_degree_levels
+            : [];
+          return changedLevels.includes((level ?? '').toString());
+        },
+        documentIsNew(doc) {
+          return Boolean(doc?.is_new);
+        },
+        documentIsPreviousApplication(doc) {
+          return Boolean(doc?.is_previous_application);
         },
         documentFolderKeyFromPath(path) {
           const normalized = (path ?? '').toString().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
@@ -612,6 +733,10 @@
           return withSort[0]?.row ?? null;
         },
         leaveVacationLimit() {
+          const summary = this.selectedEmployee?.leave_summary ?? {};
+          if (summary?.vacation_limit != null) {
+            return Math.max(this.numberOrZero(summary.vacation_limit), 0);
+          }
           const row = this.latestLeaveBalanceRow();
           if (!row) return 0;
           return Math.max(
@@ -620,11 +745,19 @@
           );
         },
         leaveVacationAvailable() {
+          const summary = this.selectedEmployee?.leave_summary ?? {};
+          if (summary?.vacation_available != null) {
+            return Math.max(this.numberOrZero(summary.vacation_available), 0);
+          }
           const row = this.latestLeaveBalanceRow();
           if (!row) return 0;
           return Math.max(this.numberOrZero(row?.ending_vacation), 0);
         },
         leaveSickLimit() {
+          const summary = this.selectedEmployee?.leave_summary ?? {};
+          if (summary?.sick_limit != null) {
+            return Math.max(this.numberOrZero(summary.sick_limit), 0);
+          }
           const row = this.latestLeaveBalanceRow();
           if (!row) return 0;
           return Math.max(
@@ -633,6 +766,10 @@
           );
         },
         leaveSickAvailable() {
+          const summary = this.selectedEmployee?.leave_summary ?? {};
+          if (summary?.sick_available != null) {
+            return Math.max(this.numberOrZero(summary.sick_available), 0);
+          }
           const row = this.latestLeaveBalanceRow();
           if (!row) return 0;
           return Math.max(this.numberOrZero(row?.ending_sick), 0);
@@ -824,7 +961,8 @@
         },
         buildServiceTimeline() {
           const items = [];
-          const hiredRaw = this.selectedEmployee?.applicant?.date_hired || this.selectedEmployee?.employee?.employement_date;
+          const hiredRaw = this.initialEmploymentStartRaw();
+          const rehireRaw = this.rehireDateRaw();
           const positionTitle = this.selectedEmployee?.employee?.position || this.selectedEmployee?.applicant?.position?.title || this.selectedEmployee?.position || 'Employee';
 
           if (hiredRaw) {
@@ -837,6 +975,19 @@
               dateLabel: this.formatTimelineDate(hiredRaw),
               description: `Employee was hired as ${positionTitle}.`,
               sortKey: hiredRaw,
+            });
+          }
+
+          if (rehireRaw) {
+            items.push({
+              type: 'rehire',
+              badge: 'Rehired',
+              badgeClass: 'bg-violet-100 text-violet-700',
+              dotClass: 'bg-violet-500',
+              title: 'Employee Rehired',
+              dateLabel: this.formatTimelineDate(rehireRaw),
+              description: `Employee was rehired as ${positionTitle}. Service length restarted from this date.`,
+              sortKey: rehireRaw,
             });
           }
 
@@ -1011,9 +1162,10 @@
 
         return [$startDate, $endDate];
       };
-      $resolveDisplayAccountStatus = function ($emp) use ($resolveLeaveRange) {
+      $resolveDisplayAccountStatus = function ($emp) use ($resolveLeaveRange, $wasRehiredAfterResignation) {
         $accountStatus = strtolower(trim((string) (data_get($emp, 'account_status') ?? '')));
-        if ($accountStatus === 'inactive') {
+        $isRehiredAfterResignation = $wasRehiredAfterResignation($emp);
+        if ($accountStatus === 'inactive' && !$isRehiredAfterResignation) {
           return 'Inactive';
         }
         if ($accountStatus === 'on leave') {
@@ -1026,7 +1178,7 @@
             return in_array($status, ['approved', 'completed'], true);
           });
 
-        if ($hasApprovedOrCompletedResignation) {
+        if ($hasApprovedOrCompletedResignation && !$isRehiredAfterResignation) {
           return 'Inactive';
         }
 
@@ -1062,7 +1214,7 @@
         return $text;
       };
 
-      $employeeTableRecords = $employee->map(function ($emp, $index) use ($resolveDepartment, $blankTableValue, $resolveDisplayAccountStatus) {
+      $employeeTableRecords = $employee->map(function ($emp, $index) use ($resolveDepartment, $blankTableValue, $resolveDisplayAccountStatus, $wasRehiredAfterResignation) {
         $themeSeed = (string) ($emp->id ?? data_get($emp, 'employee.employee_id') ?? $index);
         $hue = ((int) sprintf('%u', crc32($themeSeed))) % 360;
         $headerStart = "hsl({$hue}, 78%, 58%)";
@@ -1100,17 +1252,33 @@
           }
         }
 
-        $employmentDateRaw = data_get($emp, 'applicant.date_hired')
-          ?: data_get($emp, 'employee.employement_date')
-          ?: data_get($emp, 'employee.employment_date')
-          ?: ($emp->date_hired ?? '');
+        $isRehiredAfterResignation = $wasRehiredAfterResignation($emp);
+        $employmentDateRaw = $isRehiredAfterResignation
+          ? (data_get($emp, 'applicant.date_hired')
+            ?: data_get($emp, 'applicant.created_at')
+            ?: data_get($emp, 'employee.employement_date')
+            ?: data_get($emp, 'employee.employment_date')
+            ?: ($emp->date_hired ?? ''))
+          : (data_get($emp, 'applicant.date_hired')
+            ?: data_get($emp, 'employee.employement_date')
+            ?: data_get($emp, 'employee.employment_date')
+            ?: ($emp->date_hired ?? ''));
         $employmentDateDisplay = '';
         $lengthOfService = '';
+        $dateResigned = collect(data_get($emp, 'resignations', []))
+          ->first(function ($row) {
+            return in_array(strtolower(trim((string) ($row->status ?? ''))), ['approved', 'completed'], true);
+          });
+        $resignationEndDateRaw = $dateResigned?->effective_date ?: $dateResigned?->processed_at;
+
         if (!empty($employmentDateRaw)) {
           try {
             $employmentDate = \Carbon\Carbon::parse($employmentDateRaw);
             $employmentDateDisplay = $employmentDate->format('F j, Y');
-            $lengthOfService = $employmentDate->diffForHumans(now(), [
+            $serviceEndDate = (!$isRehiredAfterResignation && !empty($resignationEndDateRaw))
+              ? \Carbon\Carbon::parse($resignationEndDateRaw)
+              : now();
+            $lengthOfService = $employmentDate->diffForHumans($serviceEndDate, [
               'parts' => 3,
               'short' => false,
               'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE,
@@ -1119,17 +1287,12 @@
             $employmentDateDisplay = trim((string) $employmentDateRaw);
           }
         }
-
-        $dateResigned = collect(data_get($emp, 'resignations', []))
-          ->first(function ($row) {
-            return in_array(strtolower(trim((string) ($row->status ?? ''))), ['approved', 'completed'], true);
-          });
         $dateResignedDisplay = '';
-        if (!empty($dateResigned?->effective_date)) {
+        if (!empty($resignationEndDateRaw)) {
           try {
-            $dateResignedDisplay = \Carbon\Carbon::parse($dateResigned->effective_date)->format('F j, Y');
+            $dateResignedDisplay = \Carbon\Carbon::parse($resignationEndDateRaw)->format('F j, Y');
           } catch (\Throwable $e) {
-            $dateResignedDisplay = trim((string) $dateResigned->effective_date);
+            $dateResignedDisplay = trim((string) $resignationEndDateRaw);
           }
         }
 
@@ -1786,9 +1949,11 @@
                             {{ $accountStatus }}
                         </span>
 
-                        <!--<span class="px-2 py-1 text-indigo-700 bg-indigo-100 rounded-full text-xs font-medium">
-                            Rehire
-                        </span>-->
+                        @if($wasRehiredAfterResignation($emp))
+                            <span class="px-2 py-1 rounded-full text-xs font-medium text-violet-700 bg-violet-100">
+                                Rehired
+                            </span>
+                        @endif
                     </div>
                     <button
                         type="button"
@@ -2042,6 +2207,14 @@
                 <span x-text="selectedEmployee?.job_role ?? selectedEmployee?.employee?.position ?? selectedEmployee?.position ?? selectedEmployee?.applicant?.position?.title ?? '-'"></span><br>
                 <span x-text="selectedEmployee?.employee?.department ?? selectedEmployee?.applicant?.position?.department ?? selectedEmployee?.department ?? '-'"></span>
               </p>
+              <template x-if="wasRehiredAfterResignation()">
+                <div class="mt-3">
+                  <span class="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    Rehired
+                  </span>
+                </div>
+              </template>
             </div>
             <span
               class="ml-auto text-xs px-3 py-1 rounded-full"
@@ -2110,7 +2283,7 @@
 </body>
 
 @php
-  $adminEmployeeExcelRecords = $employee->map(function ($emp) use ($blankTableValue, $resolveDisplayAccountStatus) {
+  $adminEmployeeExcelRecords = $employee->map(function ($emp) use ($blankTableValue, $resolveDisplayAccountStatus, $wasRehiredAfterResignation) {
     $classValue = trim((string) (data_get($emp, 'employee.classification') ?: data_get($emp, 'applicant.position.employment') ?: ($emp->classification ?? '')));
     $employmentCode = match (strtolower($classValue)) {
       'full-time', 'full time' => 'FT',
@@ -2144,17 +2317,33 @@
       }
     }
 
-    $employmentDateRaw = data_get($emp, 'applicant.date_hired')
-      ?: data_get($emp, 'employee.employement_date')
-      ?: data_get($emp, 'employee.employment_date')
-      ?: ($emp->date_hired ?? '');
+    $isRehiredAfterResignation = $wasRehiredAfterResignation($emp);
+    $employmentDateRaw = $isRehiredAfterResignation
+      ? (data_get($emp, 'applicant.date_hired')
+        ?: data_get($emp, 'applicant.created_at')
+        ?: data_get($emp, 'employee.employement_date')
+        ?: data_get($emp, 'employee.employment_date')
+        ?: ($emp->date_hired ?? ''))
+      : (data_get($emp, 'applicant.date_hired')
+        ?: data_get($emp, 'employee.employement_date')
+        ?: data_get($emp, 'employee.employment_date')
+        ?: ($emp->date_hired ?? ''));
     $employmentDateDisplay = '';
     $lengthOfService = '';
+    $dateResigned = collect(data_get($emp, 'resignations', []))
+      ->first(function ($row) {
+        return in_array(strtolower(trim((string) ($row->status ?? ''))), ['approved', 'completed'], true);
+      });
+    $resignationEndDateRaw = $dateResigned?->effective_date ?: $dateResigned?->processed_at;
+
     if (!empty($employmentDateRaw)) {
       try {
         $employmentDate = \Carbon\Carbon::parse($employmentDateRaw);
         $employmentDateDisplay = $employmentDate->format('F j, Y');
-        $lengthOfService = $employmentDate->diffForHumans(now(), [
+        $serviceEndDate = (!$isRehiredAfterResignation && !empty($resignationEndDateRaw))
+          ? \Carbon\Carbon::parse($resignationEndDateRaw)
+          : now();
+        $lengthOfService = $employmentDate->diffForHumans($serviceEndDate, [
           'parts' => 3,
           'short' => false,
           'syntax' => \Carbon\CarbonInterface::DIFF_ABSOLUTE,
@@ -2163,17 +2352,12 @@
         $employmentDateDisplay = trim((string) $employmentDateRaw);
       }
     }
-
-    $dateResigned = collect(data_get($emp, 'resignations', []))
-      ->first(function ($row) {
-        return in_array(strtolower(trim((string) ($row->status ?? ''))), ['approved', 'completed'], true);
-      });
     $dateResignedDisplay = '';
-    if (!empty($dateResigned?->effective_date)) {
+    if (!empty($resignationEndDateRaw)) {
       try {
-        $dateResignedDisplay = \Carbon\Carbon::parse($dateResigned->effective_date)->format('F j, Y');
+        $dateResignedDisplay = \Carbon\Carbon::parse($resignationEndDateRaw)->format('F j, Y');
       } catch (\Throwable $e) {
-        $dateResignedDisplay = trim((string) $dateResigned->effective_date);
+        $dateResignedDisplay = trim((string) $resignationEndDateRaw);
       }
     }
 

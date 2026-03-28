@@ -30,7 +30,9 @@ class EmployeeStoreController extends Controller
         $user = Auth::id();
 
         $applicant = Applicant::where('user_id', $user)
-                                    ->where('application_status', 'Hired')->first();
+                                    ->where('application_status', 'Hired')
+                                    ->latest('id')
+                                    ->first();
 
         if (!$applicant) {
             return redirect()->back()->with('error', 'No hired applicant record found.');
@@ -117,6 +119,7 @@ class EmployeeStoreController extends Controller
         $userId = Auth::id();
         $applicant = Applicant::where('user_id', $userId)
             ->where('application_status', 'Hired')
+            ->latest('id')
             ->first();
 
         if (!$applicant) {
@@ -151,6 +154,7 @@ class EmployeeStoreController extends Controller
         $userId = Auth::id();
         $applicant = Applicant::where('user_id', $userId)
             ->where('application_status', 'Hired')
+            ->latest('id')
             ->first();
 
         if (!$applicant) {
@@ -184,15 +188,17 @@ class EmployeeStoreController extends Controller
         $userId = Auth::id();
         $applicant = Applicant::where('user_id', $userId)
             ->where('application_status', 'Hired')
+            ->latest('id')
             ->first();
 
         if (!$applicant) {
             return redirect()->back()->withFragment('document-folder-area')->withErrors(['documents' => 'No hired applicant record found.']);
         }
 
+        $allowedApplicantIds = $this->documentAccessibleApplicantIds($applicant);
         $document = ApplicantDocument::query()
             ->where('id', $id)
-            ->where('applicant_id', $applicant->id)
+            ->whereIn('applicant_id', $allowedApplicantIds)
             ->where('type', '!=', self::FOLDER_TYPE)
             ->first();
 
@@ -246,6 +252,7 @@ class EmployeeStoreController extends Controller
         $userId = Auth::id();
         $applicant = Applicant::where('user_id', $userId)
             ->where('application_status', 'Hired')
+            ->latest('id')
             ->first();
 
         if (!$applicant) {
@@ -329,6 +336,48 @@ class EmployeeStoreController extends Controller
         }
 
         return '';
+    }
+
+    private function documentAccessibleApplicantIds(?Applicant $applicant): array
+    {
+        if (!$applicant) {
+            return [];
+        }
+
+        $ids = collect([(int) $applicant->id]);
+        $previousApplicant = $this->resolvePreviousComparableApplicant($applicant);
+        if ($previousApplicant) {
+            $ids->push((int) $previousApplicant->id);
+        }
+
+        return $ids
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function resolvePreviousComparableApplicant(Applicant $applicant): ?Applicant
+    {
+        $normalizedEmail = strtolower(trim((string) ($applicant->email ?? '')));
+        $userId = (int) ($applicant->user_id ?? 0);
+
+        return Applicant::query()
+            ->where('id', '!=', (int) $applicant->id)
+            ->whereRaw("LOWER(TRIM(COALESCE(application_status, ''))) = ?", ['hired'])
+            ->where(function ($innerQuery) use ($normalizedEmail, $userId) {
+                if ($userId > 0) {
+                    $innerQuery->orWhere('user_id', $userId);
+                }
+
+                if ($normalizedEmail !== '') {
+                    $innerQuery->orWhereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail]);
+                }
+            })
+            ->orderByDesc('date_hired')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->first();
     }
 
     private function normalizeFolderKey(string $value): string
