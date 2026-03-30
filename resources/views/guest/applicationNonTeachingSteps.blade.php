@@ -140,6 +140,7 @@
     }
 
     .upload-area {
+        position: relative;
         border-radius: 0.9rem;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
@@ -147,6 +148,41 @@
     .upload-area:hover {
         transform: translateY(-2px);
         box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
+    }
+
+    .upload-area.is-selected {
+        background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+        border-color: rgba(22, 163, 74, 0.45) !important;
+    }
+
+    .upload-clear-btn {
+        position: absolute;
+        top: 0.85rem;
+        right: 0.85rem;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        min-width: 2rem;
+        height: 2rem;
+        border: none;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.08);
+        color: #475569;
+        font-size: 1rem;
+        line-height: 1;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        z-index: 2;
+    }
+
+    .upload-clear-btn:hover {
+        background: rgba(220, 38, 38, 0.12);
+        color: #b91c1c;
+        transform: scale(1.05);
+    }
+
+    .upload-area.is-selected .upload-clear-btn {
+        display: inline-flex;
     }
 
     .step-actions {
@@ -972,21 +1008,49 @@ document.addEventListener('DOMContentLoaded', function () {
         const uploadArea = input.closest('.upload-area');
         const uploadText = uploadArea.querySelector('.upload-main-text');
         const uploadSubText = uploadArea.querySelector('.upload-sub-text');
+        const defaultMainText = uploadText.textContent;
+        const defaultSubText = uploadSubText.textContent;
+        const clearButton = document.createElement('button');
 
-        // ONLY handle change event, DO NOT trigger input.click()
+        clearButton.type = 'button';
+        clearButton.className = 'upload-clear-btn';
+        clearButton.setAttribute('aria-label', 'Remove selected file');
+        clearButton.textContent = 'x';
+        uploadArea.appendChild(clearButton);
+
+        function resetUploadState() {
+            input.value = '';
+            uploadText.textContent = defaultMainText;
+            uploadSubText.textContent = defaultSubText;
+            uploadArea.classList.remove('is-selected');
+        }
+
+        function setSelectedState(file) {
+            let fileName = file.name;
+
+            if (fileName.length > 30) {
+                const ext = fileName.split('.').pop();
+                fileName = fileName.substring(0, 25) + '...' + '.' + ext;
+            }
+
+            uploadText.textContent = fileName;
+            uploadSubText.textContent = 'File selected successfully';
+            uploadArea.classList.add('is-selected');
+        }
+
         input.addEventListener('change', function () {
             if (this.files && this.files.length > 0) {
-                let fileName = this.files[0].name;
-
-                // truncate long names
-                if (fileName.length > 30) {
-                    const ext = fileName.split('.').pop();
-                    fileName = fileName.substring(0, 25) + '...' + '.' + ext;
-                }
-
-                uploadText.textContent = fileName;
-                uploadSubText.textContent = 'File selected successfully';
+                setSelectedState(this.files[0]);
+                return;
             }
+
+            resetUploadState();
+        });
+
+        clearButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            resetUploadState();
         });
     });
 });

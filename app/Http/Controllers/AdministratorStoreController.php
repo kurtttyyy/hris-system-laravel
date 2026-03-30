@@ -261,10 +261,22 @@ class AdministratorStoreController extends Controller
             'application_status' => $this->resolveApplicantStatusFromInterviewType($attrs['interview_type']),
         ]);
 
-        Mail::to($store->applicant->email)
-                ->send(new ApplicationInterviewMail($store));
+        $successMessage = 'Success Added Interview';
 
-        return redirect()->back()->with('success','Success Added Interview');
+        try {
+            Mail::to($store->applicant->email)
+                    ->send(new ApplicationInterviewMail($store));
+        } catch (\Throwable $exception) {
+            Log::warning('Interview created but applicant email could not be sent.', [
+                'applicant_id' => $store->applicant?->id,
+                'email' => $store->applicant?->email,
+                'error' => $exception->getMessage(),
+            ]);
+
+            $successMessage .= ' Email notification was skipped because the mail server is currently unreachable.';
+        }
+
+        return redirect()->back()->with('success', $successMessage);
     }
 
     public function store_star_ratings(Request $request){
@@ -2190,10 +2202,23 @@ class AdministratorStoreController extends Controller
 
         $this->syncDepartmentHeadFromApplicant($review->fresh(['position']));
 
-        Mail::to($review->email)
-                ->send(new ApplicationUpdatedMail($review));
+        $successMessage = 'Success Update Application Status';
 
-        return redirect()->back()->with('success','Success Update Application Status');
+        try {
+            Mail::to($review->email)
+                    ->send(new ApplicationUpdatedMail($review));
+        } catch (\Throwable $exception) {
+            Log::warning('Applicant status updated but notification email could not be sent.', [
+                'applicant_id' => $review->id,
+                'email' => $review->email,
+                'status' => $attrs['status'],
+                'error' => $exception->getMessage(),
+            ]);
+
+            $successMessage .= ' Email notification was skipped because the mail server is currently unreachable.';
+        }
+
+        return redirect()->back()->with('success', $successMessage);
     }
 
     public function updated_interview(Request $request){
@@ -3702,6 +3727,54 @@ class AdministratorStoreController extends Controller
         ]))->with('success', 'Save Successfully');
     }
 
+    public function mark_employee_permanent(Request $request, $id)
+    {
+        $userId = (int) $id;
+        $employee = Employee::query()->where('user_id', $userId)->firstOrFail();
+
+        $oldClassification = trim((string) ($employee->classification ?? ''));
+        $oldPosition = trim((string) ($employee->position ?? ''));
+        $oldDepartment = trim((string) ($employee->department ?? ''));
+        $existingSalary = Salary::query()->where('user_id', $userId)->first();
+        $currentSalary = trim((string) ($existingSalary?->salary ?? ''));
+        $redirectParams = array_filter([
+            'user_id' => $userId,
+            'tab' => $request->input('tab') ?: 'overview',
+            'tab_session' => $request->input('tab_session'),
+        ]);
+
+        if ($this->isPermanentEmployeeClassification($oldClassification)) {
+            return redirect()->route('admin.adminEmployee', $redirectParams)
+                ->with('success', 'Employee is already marked as Permanent.');
+        }
+
+        $regularizationDate = $this->resolveEmployeeRegularizationDateForUser($userId);
+        if (!$regularizationDate || now()->startOfDay()->lt($regularizationDate->copy()->startOfDay())) {
+            return redirect()->route('admin.adminEmployee', $redirectParams)
+                ->withErrors(['permanent' => 'This employee is not yet eligible to be marked as Permanent.']);
+        }
+
+        $employee->update([
+            'classification' => 'Permanent',
+        ]);
+
+        $this->recordCareerProgressionIfChanged(
+            $userId,
+            $oldPosition,
+            trim((string) ($employee->position ?? '')),
+            $oldClassification,
+            'Permanent',
+            'Marked as Permanent by admin',
+            $oldDepartment,
+            trim((string) ($employee->department ?? '')),
+            $currentSalary,
+            $currentSalary
+        );
+
+        return redirect()->route('admin.adminEmployee', $redirectParams)
+            ->with('success', 'Employee marked as Permanent successfully.');
+    }
+
     private function normalizeEmployeeJobType($value): ?string
     {
         $normalized = strtolower(trim((string) $value));
@@ -3729,6 +3802,49 @@ class AdministratorStoreController extends Controller
         }
 
         return 'Non-Teaching';
+    }
+
+    private function isPermanentEmployeeClassification(?string $classification): bool
+    {
+        $normalized = strtolower(trim((string) $classification));
+
+        return $normalized !== ''
+            && (str_contains($normalized, 'permanent') || str_contains($normalized, 'regular'));
+    }
+
+    private function resolveEmployeeRegularizationDateForUser(int $userId): ?Carbon
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+
+        $user = User::query()
+            ->with(['employee', 'applicant.position:id,job_type'])
+            ->find($userId);
+        $employee = $user?->employee;
+
+        if (!$employee) {
+            return null;
+        }
+
+        $rawJoinDate = $employee->employement_date ?? $user?->applicant?->date_hired;
+        if (empty($rawJoinDate)) {
+            return null;
+        }
+
+        $jobTypeRaw = $employee->job_type ?: $user?->applicant?->position?->job_type;
+        $jobType = strtolower(trim((string) $jobTypeRaw));
+        $isNonTeaching = in_array($jobType, ['non-teaching', 'non teaching', 'nt', 'nonteaching'], true);
+
+        try {
+            $joinDate = Carbon::parse($rawJoinDate)->startOfDay();
+        } catch (\Throwable $exception) {
+            return null;
+        }
+
+        return $isNonTeaching
+            ? $joinDate->copy()->addMonths(6)
+            : $joinDate->copy()->addYears(3);
     }
 
     private function recordCareerProgressionIfChanged(

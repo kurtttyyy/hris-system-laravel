@@ -197,6 +197,19 @@ class EmployeePageController extends Controller
         ]);
     }
 
+    public function display_evaluation()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login_display');
+        }
+
+        return view('employee.employeeEvaluation', [
+            'user' => $user,
+            'notifications' => 0,
+        ]);
+    }
+
     private function buildEmployeeNotifications($user): array
     {
 

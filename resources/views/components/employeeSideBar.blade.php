@@ -1,7 +1,7 @@
 @php
     $employeeUser = auth()->user();
     $showDepartmentHeadMore = strtolower(trim((string) ($employeeUser->department_head ?? ''))) === 'approved';
-    $employeeMoreOpen = request()->routeIs('employee.employeeHierarchy');
+    $employeeMoreOpen = request()->routeIs('employee.employeeHierarchy') || request()->routeIs('employee.employeeEvaluation');
     $employeeUnreadMessages = 0;
     if (
         $employeeUser
@@ -188,8 +188,9 @@
                         </span>
                     </a>
 
-                    <a href="#"
-                       class="flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium text-gray-300 transition hover:bg-green-600/20 hover:text-white">
+                    <a href="{{ route('employee.employeeEvaluation') }}"
+                       data-employee-nav
+                       class="flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium transition {{ request()->routeIs('employee.employeeEvaluation') ? 'bg-green-600 text-white hover:bg-green-700' : 'text-gray-300 hover:bg-green-600/20 hover:text-white' }}">
                         <i class="fa fa-line-chart text-base w-6 text-center"></i>
                         <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                             Evaluation

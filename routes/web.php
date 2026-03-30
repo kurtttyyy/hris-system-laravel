@@ -42,6 +42,7 @@ Route::controller(EmployeePageController::class)->group(function () {
     Route::get('employee/notifications', 'display_notifications')->name('employee.employeeNotifications');
     Route::get('employee/notifications/summary', 'notification_summary')->name('employee.employeeNotifications.summary');
     Route::get('employee/hierarchy', 'display_hierarchy')->name('employee.employeeHierarchy');
+    Route::get('employee/evaluation', 'display_evaluation')->name('employee.employeeEvaluation');
     Route::get('employee/leave', 'display_leave')->name('employee.employeeLeave');
     Route::get('employee/profile', 'display_profile')->name('employee.employeeProfile');
     Route::get('employee/communication', 'display_communication')->name('employee.employeeCommunication');
@@ -127,6 +128,7 @@ Route::controller(AdministratorStoreController::class)->group(function () {
     Route::post('system/update/application/status', 'update_application_status')->name('admin.updateStatus');
     Route::post('system/update/interview', 'updated_interview')->name('admin.storeUpdatedInterview');
     Route::post('system/update/employee/{id}', 'update_employee')->name('admin.updateEmployee');
+    Route::post('system/employee/{id}/mark-permanent', 'mark_employee_permanent')->name('admin.markEmployeePermanent');
     Route::post('system/leave/request/{id}/status', 'update_leave_request_status')->name('admin.updateLeaveRequestStatus');
     Route::post('system/resignations/{id}/status', 'update_resignation_status')->name('admin.updateResignationStatus');
     Route::post('system/employee/update/biometric', 'update_bio')->name('admin.updateBio');

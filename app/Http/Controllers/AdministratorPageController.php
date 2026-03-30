@@ -567,6 +567,51 @@ class AdministratorPageController extends Controller
         $departments = collect($departments ?? []);
         $pendingResignations = collect($pendingResignations ?? []);
         $appTimezone = config('app.timezone');
+        $permanentStatusNotifications = User::query()
+            ->with(['employee', 'applicant.position:id,job_type'])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
+            ->get()
+            ->map(function (User $user) use ($appTimezone) {
+                $regularizationDate = $this->resolveEmployeeRegularizationDate($user);
+                if (!$regularizationDate) {
+                    return null;
+                }
+
+                $today = now()->setTimezone($appTimezone)->startOfDay();
+                $notificationDate = $regularizationDate->copy()->subWeek()->startOfDay();
+
+                $regularizationDay = $regularizationDate->copy()->startOfDay();
+                if ($today->lt($notificationDate)) {
+                    return null;
+                }
+
+                $fullName = trim(implode(' ', array_filter([
+                    $user->first_name ?? null,
+                    $user->middle_name ?? null,
+                    $user->last_name ?? null,
+                ])));
+
+                $isOverdue = $today->gt($regularizationDay);
+
+                return [
+                    'category' => 'Workforce',
+                    'title' => $isOverdue
+                        ? 'Employee regularization is overdue'
+                        : 'Employee regularization due in one week',
+                    'message' => $isOverdue
+                        ? (($fullName !== '' ? $fullName : 'An employee').' should have become permanent on '.$regularizationDate->format('F j, Y').'.')
+                        : (($fullName !== '' ? $fullName : 'An employee').' will become permanent on '.$regularizationDate->format('F j, Y').'.'),
+                    'date' => $regularizationDay,
+                    'href' => route('admin.adminEmployee'),
+                    'badge' => $isOverdue ? 'Overdue' : 'Upcoming',
+                    'tone' => $isOverdue ? 'rose' : 'sky',
+                ];
+            })
+            ->filter()
+            ->sortByDesc(fn ($item) => optional($item['date'] ?? null)->timestamp ?? 0)
+            ->take(6)
+            ->values();
 
         $latestHiringActivityAt = Applicant::query()
             ->select(['created_at', 'updated_at'])
@@ -726,6 +771,7 @@ class AdministratorPageController extends Controller
             ->concat($leaveNotifications)
             ->concat($hiringNotifications)
             ->concat($requestNotifications)
+            ->concat($permanentStatusNotifications)
             ->concat($coverageNotifications)
             ->sortByDesc(function ($item) {
                 return optional($item['date'] ?? null)->timestamp ?? 0;
@@ -748,10 +794,42 @@ class AdministratorPageController extends Controller
             'leave' => $leaveNotifications->count(),
             'hiring' => $hiringNotifications->count(),
             'requests' => $requestNotifications->count(),
-            'workforce' => $coverageNotifications->count(),
+            'workforce' => $coverageNotifications->count() + $permanentStatusNotifications->count(),
         ];
 
         return [$notificationItems, $notificationStats];
+    }
+
+    private function resolveEmployeeRegularizationDate(User $user): ?Carbon
+    {
+        $employee = $user->employee;
+        if (!$employee) {
+            return null;
+        }
+
+        $classification = Str::lower(trim((string) ($employee->classification ?? '')));
+        if ($classification !== '' && (str_contains($classification, 'permanent') || str_contains($classification, 'regular'))) {
+            return null;
+        }
+
+        $rawJoinDate = $employee->employement_date ?? optional($user->applicant)->date_hired;
+        if (empty($rawJoinDate)) {
+            return null;
+        }
+
+        $jobTypeRaw = $employee->job_type ?: optional(optional($user->applicant)->position)->job_type;
+        $jobType = Str::lower(trim((string) $jobTypeRaw));
+        $isNonTeaching = in_array($jobType, ['non-teaching', 'non teaching', 'nt', 'nonteaching'], true);
+
+        try {
+            $joinDate = Carbon::parse($rawJoinDate)->startOfDay();
+        } catch (\Throwable $exception) {
+            return null;
+        }
+
+        return $isNonTeaching
+            ? $joinDate->copy()->addMonths(6)
+            : $joinDate->copy()->addYears(3);
     }
 
     public function display_employee(){

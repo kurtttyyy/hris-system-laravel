@@ -451,6 +451,46 @@
         currentServiceStartRaw() {
           return this.rehireDateRaw() || this.initialEmploymentStartRaw();
         },
+        selectedEmployeeRegularizationDate() {
+          const start = this.parseDateValue(this.currentServiceStartRaw());
+          if (!start) return null;
+
+          const jobType = this.normalizeClassificationValue(
+            this.selectedEmployee?.employee?.job_type
+            || this.selectedEmployee?.applicant?.position?.job_type
+          );
+          const regularizationDate = new Date(start.getTime());
+
+          if (jobType === 'non teaching' || jobType === 'non-teaching' || jobType === 'nt' || jobType === 'nonteaching') {
+            regularizationDate.setMonth(regularizationDate.getMonth() + 6);
+            return regularizationDate;
+          }
+
+          regularizationDate.setFullYear(regularizationDate.getFullYear() + 3);
+          return regularizationDate;
+        },
+        isPermanentClassification(value = this.selectedEmployee?.employee?.classification) {
+          const normalized = this.normalizeClassificationValue(value);
+          return normalized.includes('permanent') || normalized.includes('regular');
+        },
+        canMarkSelectedEmployeePermanent() {
+          if (!this.selectedEmployee?.id || !this.selectedEmployee?.employee) return false;
+          if (this.isPermanentClassification()) return false;
+
+          const regularizationDate = this.selectedEmployeeRegularizationDate();
+          if (!regularizationDate) return false;
+
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          return today.getTime() >= regularizationDate.getTime();
+        },
+        selectedEmployeePermanentLabel() {
+          const regularizationDate = this.selectedEmployeeRegularizationDate();
+          if (!regularizationDate) return 'Mark as Permanent';
+
+          return `Mark as Permanent (${regularizationDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })})`;
+        },
         effectiveAccountStatusClass() {
           const status = this.effectiveAccountStatus().toLowerCase();
           if (status === 'active') return 'bg-green-100 text-green-700';
@@ -893,9 +933,10 @@
         canonicalClassificationValue(value) {
           const normalized = this.normalizeClassificationValue(value);
           if (!normalized) return '';
+          if (normalized.includes('permanent') || normalized.includes('regular')) return 'Permanent';
+          if (normalized.includes('probationary')) return 'Probationary';
           if (normalized.includes('full')) return 'Full-Time';
           if (normalized.includes('part')) return 'Part-Time';
-          if (normalized.includes('probationary') || normalized.includes('permanent') || normalized.includes('regular')) return 'Full-Time';
           if (normalized === 'nt' || normalized === 'non teaching' || normalized === 'non-teaching') return 'NT';
           if (normalized.includes('non teaching') || normalized.includes('non-teaching')) return 'NT';
           return (value ?? '').toString().trim();
@@ -2246,6 +2287,19 @@
         <!-- Footer -->
         <div class="flex gap-3 p-6 border-t">
           <button class="flex-1 bg-indigo-600 text-white py-2 rounded-lg">Send Message</button>
+          <template x-if="canMarkSelectedEmployeePermanent()">
+            <form method="POST" action="{{ route('admin.markEmployeePermanent', ['id' => '__USER_ID__']) }}"
+              class="flex-1"
+              x-bind:action="'{{ route('admin.markEmployeePermanent', ['id' => '__USER_ID__']) }}'.replace('__USER_ID__', selectedEmployee?.id ?? '')">
+              @csrf
+              <input type="hidden" name="tab" x-bind:value="tab">
+              <button
+                type="submit"
+                class="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700"
+                x-text="selectedEmployeePermanentLabel()">
+              </button>
+            </form>
+          </template>
           <button
             @click="openEditProfile = true; modalTarget = 'general'"
             class="flex-1 bg-slate-100 py-2 rounded-lg hover:bg-slate-200">
