@@ -684,12 +684,12 @@
                      alt="Careers">
             </div>
             <div class="carousel-item h-90">
-                <img src="{{ asset('images/Banner1.png') }}"
+                <img src="{{ asset('images/sirV.png') }}"
                      class="d-block w-100 h-90 object-fit-cover "
                      alt="Team">
             </div>
             <div class="carousel-item h-90">
-                <img src="{{ asset('images/banner3.png') }}"
+                <img src="{{ asset('images/carousel.jpg') }}"
                      class="d-block w-100 h-90 object-fit-cover carousel-dark-img"
                      alt="Growth">
             </div>
@@ -971,4 +971,3 @@
 
 </main>
 @endsection
-

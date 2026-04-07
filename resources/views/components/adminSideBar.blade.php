@@ -18,6 +18,7 @@
   $adminRoleLabel = trim((string) ($adminUser->role ?? 'Admin'));
   $tabSession = trim((string) request()->query('tab_session', ''));
   $adminUnreadMessages = 0;
+  $adminPendingLeaveCount = 0;
   if (
     $adminUser
     && \Illuminate\Support\Facades\Schema::hasTable('conversations')
@@ -31,6 +32,15 @@
           $innerQuery->where('user_one_id', (int) $adminUser->id)
             ->orWhere('user_two_id', (int) $adminUser->id);
         });
+      })
+      ->count();
+  }
+  if (\Illuminate\Support\Facades\Schema::hasTable('leave_applications')) {
+    $adminPendingLeaveCount = \App\Models\LeaveApplication::query()
+      ->where(function ($query) {
+        $query->whereNull('status')
+          ->orWhereRaw("TRIM(status) = ''")
+          ->orWhereRaw("LOWER(TRIM(status)) = ?", ['pending']);
       })
       ->count();
   }
@@ -61,6 +71,47 @@
   details.matrix-menu > summary { list-style: none; }
   details.matrix-menu > summary::-webkit-details-marker { display: none; }
   details.matrix-menu[open] .matrix-chevron { transform: rotate(90deg); }
+  .admin-sidebar-alert-dot {
+    position: absolute;
+    top: -0.3rem;
+    right: -0.35rem;
+    display: inline-flex;
+    height: 0.95rem;
+    min-width: 0.95rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #fb7185 0%, #ef4444 100%);
+    color: #fff;
+    font-size: 0.58rem;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.92);
+    animation: admin-sidebar-alert-pulse 1.4s ease-in-out infinite;
+  }
+  .admin-sidebar-alert-dot::after {
+    content: '';
+    position: absolute;
+    inset: -0.15rem;
+    border-radius: inherit;
+    border: 2px solid rgba(251, 113, 133, 0.45);
+    animation: admin-sidebar-alert-ring 1.4s ease-out infinite;
+  }
+  @keyframes admin-sidebar-alert-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  @keyframes admin-sidebar-alert-ring {
+    0% { opacity: 0.7; transform: scale(0.92); }
+    100% { opacity: 0; transform: scale(1.55); }
+  }
+  .admin-sidebar-count-badge {
+    display: none;
+  }
+  .admin-sidebar:hover .admin-sidebar-count-badge,
+  .admin-sidebar.is-open .admin-sidebar-count-badge {
+    display: inline-flex;
+  }
 
   .admin-sidebar-overlay {
     position: fixed;
@@ -144,9 +195,16 @@
        class="flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
        {{ request()->routeIs('admin.adminHome')
         ? 'bg-green-600 text-white'
-        : 'text-white hover:bg-green-600/30' }}">
-      <i class="fa-solid fa-house"></i>
+         : 'text-white hover:bg-green-600/30' }}">
+      <span class="relative inline-flex w-5 items-center justify-center">
+        <i class="fa-solid fa-house"></i>
+        <span data-admin-notification-alert class="admin-sidebar-alert-dot hidden group-hover:hidden" aria-hidden="true">!</span>
+      </span>
       <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Dashboard</span>
+      <span
+        data-admin-notification-count
+        class="admin-sidebar-count-badge ml-auto min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white"
+      ></span>
     </a>
 
     <!-- Employees -->
@@ -176,10 +234,20 @@
        data-admin-nav
        class="flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
        {{ request()->routeIs('admin.adminLeaveManagement')
-        ? 'bg-green-600 text-white'
-        : 'text-white hover:bg-green-600/30' }}">
-      <i class="fa-solid fa-clipboard"></i>
+          ? 'bg-green-600 text-white'
+          : 'text-white hover:bg-green-600/30' }}">
+      <span class="relative inline-flex w-5 items-center justify-center">
+        <i class="fa-solid fa-clipboard"></i>
+        @if ($adminPendingLeaveCount > 0)
+          <span class="admin-sidebar-alert-dot group-hover:hidden" aria-hidden="true">!</span>
+        @endif
+      </span>
       <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Leave Management</span>
+      @if ($adminPendingLeaveCount > 0)
+        <span class="admin-sidebar-count-badge ml-auto min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+          {{ $adminPendingLeaveCount > 99 ? '99+' : $adminPendingLeaveCount }}
+        </span>
+      @endif
     </a>
 
     <!-- ✅ Hiring Dropdown (FIXED) -->
@@ -208,7 +276,7 @@
       </span>
       <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Communication</span>
       @if ($adminUnreadMessages > 0)
-        <span class="ml-auto hidden min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white group-hover:inline-flex">{{ $adminUnreadMessages > 99 ? '99+' : $adminUnreadMessages }}</span>
+        <span class="admin-sidebar-count-badge ml-auto min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">{{ $adminUnreadMessages > 99 ? '99+' : $adminUnreadMessages }}</span>
       @endif
     </a>
 
@@ -447,8 +515,13 @@
     const sidebar = document.querySelector('.admin-sidebar');
     const sidebarToggle = document.querySelector('[data-admin-sidebar-toggle]');
     const sidebarOverlay = document.querySelector('[data-admin-sidebar-overlay]');
+    const notificationAlertDots = Array.from(document.querySelectorAll('[data-admin-notification-alert]'));
+    const notificationCountBadges = Array.from(document.querySelectorAll('[data-admin-notification-count]'));
     const currentUrl = new URL(window.location.href);
     const tabSession = currentUrl.searchParams.get('tab_session') || '';
+    const notificationSummaryUrl = @json(route('admin.adminNotifications.summary'));
+    const adminNotificationReadKey = 'admin_notifications_read_v1';
+    const adminNotificationUnreadKey = 'admin_notifications_unread_v1';
     if (!links.length && !tabSession && !sidebarToggle) {
       return;
     }
@@ -530,6 +603,61 @@
       });
     };
 
+    const readNotificationLookup = () => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(adminNotificationReadKey) || '[]');
+        return parsed && typeof parsed === 'object' ? parsed : {};
+      } catch (error) {
+        return {};
+      }
+    };
+
+    const computeUnreadCount = (items) => {
+      const readLookup = readNotificationLookup();
+      return (Array.isArray(items) ? items : []).reduce((count, item) => {
+        const id = item?.id ? String(item.id) : '';
+        return id && !readLookup[id] ? count + 1 : count;
+      }, 0);
+    };
+
+    const renderNotificationAlerts = (count) => {
+      const hasUnread = Number(count) > 0;
+      notificationAlertDots.forEach((badge) => {
+        badge.classList.toggle('hidden', !hasUnread);
+      });
+      notificationCountBadges.forEach((badge) => {
+        badge.classList.toggle('hidden', !hasUnread);
+        badge.textContent = hasUnread ? (Number(count) > 99 ? '99+' : String(count)) : '';
+      });
+    };
+
+    const syncAdminNotificationAlerts = async () => {
+      if (!notificationAlertDots.length) {
+        return;
+      }
+
+      try {
+        const response = await fetch(notificationSummaryUrl, {
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          credentials: 'same-origin',
+        });
+        if (!response.ok) {
+          throw new Error('Unable to load admin notification summary.');
+        }
+
+        const payload = await response.json();
+        const unreadCount = computeUnreadCount(payload?.items ?? []);
+        localStorage.setItem(adminNotificationUnreadKey, String(unreadCount));
+        renderNotificationAlerts(unreadCount);
+      } catch (error) {
+        const storedUnread = Number.parseInt(localStorage.getItem(adminNotificationUnreadKey) || '', 10);
+        renderNotificationAlerts(Number.isNaN(storedUnread) ? 0 : storedUnread);
+      }
+    };
+
     links.forEach((link) => {
       const href = appendTabSession(link.getAttribute('href'));
       if (!href) {
@@ -566,6 +694,14 @@
     window.addEventListener('pageshow', () => {
       if (overlay) {
         overlay.classList.remove('is-visible');
+      }
+      syncAdminNotificationAlerts();
+    });
+
+    window.addEventListener('storage', (event) => {
+      if (event.key === adminNotificationUnreadKey) {
+        const unreadCount = Number.parseInt(event.newValue || '', 10);
+        renderNotificationAlerts(Number.isNaN(unreadCount) ? 0 : unreadCount);
       }
     });
 
@@ -621,5 +757,7 @@
         }
       });
     });
+
+    syncAdminNotificationAlerts();
   })();
 </script>

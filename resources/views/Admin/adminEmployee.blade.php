@@ -199,6 +199,64 @@
         normalize(value) {
           return (value ?? '').toString().trim().toLowerCase();
         },
+        decodeDisplayText(value) {
+          let text = (value ?? '').toString();
+          if (!text) {
+            return '';
+          }
+
+          const suspiciousEncodingPattern = /(?:Ã.|Â.|â.|ðŸ|�)/;
+          if (!suspiciousEncodingPattern.test(text) || typeof TextDecoder === 'undefined') {
+            return text.trim();
+          }
+
+          for (let index = 0; index < 3; index += 1) {
+            try {
+              const bytes = Uint8Array.from(text, (character) => character.charCodeAt(0) & 0xff);
+              const decoded = new TextDecoder('utf-8').decode(bytes);
+              if (!decoded || decoded === text) {
+                break;
+              }
+              text = decoded;
+            } catch (error) {
+              break;
+            }
+          }
+
+          return text.trim();
+        },
+        normalizeAddressText(value) {
+          return (value ?? '')
+            .toString()
+            .split(',')
+            .map((part) => {
+              let text = this.decodeDisplayText(part);
+
+              for (let index = 0; index < 5; index += 1) {
+                let nextText = text;
+                try {
+                  nextText = decodeURIComponent(escape(nextText));
+                } catch (error) {
+                }
+
+                if (!nextText || nextText === text) {
+                  break;
+                }
+
+                text = nextText;
+              }
+
+              return text.trim();
+            })
+            .filter(Boolean)
+            .join(', ');
+        },
+        employeeAddressParts() {
+          return this.normalizeAddressText(this.selectedEmployee?.employee?.address ?? '')
+            .split(',')
+            .map((part) => this.decodeDisplayText(part))
+            .filter(Boolean);
+        },
         isPlaceholderValue(value) {
           const normalized = this.normalize(value);
           return normalized === '' || normalized === 'n/a' || normalized === 'na' || normalized === '-';
@@ -570,6 +628,13 @@
 
           if (this.isPlaceholderValue(employeeData.address) && !this.isPlaceholderValue(applicantData.address)) {
             employeeData.address = applicantData.address;
+          }
+
+          if (typeof employeeData.address === 'string') {
+            employeeData.address = this.normalizeAddressText(employeeData.address);
+          }
+          if (typeof applicantData.address === 'string') {
+            applicantData.address = this.normalizeAddressText(applicantData.address);
           }
 
           if (!employeeData.classification) {

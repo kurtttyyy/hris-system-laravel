@@ -59,7 +59,7 @@
 
         <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
           <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
-            <i class="fa-solid fa-badge-check text-lg"></i>
+            <i class="fa-solid fa-circle-check text-lg"></i>
           </span>
           <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Approved Requests</p>
           <p class="mt-2 text-3xl font-black tracking-tight text-emerald-700">{{ number_format($approvedRequestCount) }}</p>

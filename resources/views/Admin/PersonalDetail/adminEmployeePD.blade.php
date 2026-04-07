@@ -157,7 +157,7 @@
     </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">Barangay</span>
-        <span x-text="(() => { const parts = (selectedEmployee?.employee?.address ?? '').split(',').map(p => p.trim()).filter(Boolean); return parts[0] ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'; })()"></span>
+        <span x-text="employeeAddressParts()[0] ?? '—'"></span>
       </div>
     </div>
 
@@ -168,7 +168,7 @@
     </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">Municipality</span>
-        <span x-text="(() => { const parts = (selectedEmployee?.employee?.address ?? '').split(',').map(p => p.trim()).filter(Boolean); return parts[1] ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'; })()"></span>
+        <span x-text="employeeAddressParts()[1] ?? '—'"></span>
       </div>
     </div>
 
@@ -179,7 +179,7 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">Province</span>
-        <span x-text="(() => { const parts = (selectedEmployee?.employee?.address ?? '').split(',').map(p => p.trim()).filter(Boolean); return parts[2] ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'; })()"></span>
+        <span x-text="employeeAddressParts()[2] ?? '—'"></span>
       </div>
     </div>
 
