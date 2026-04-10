@@ -84,6 +84,41 @@
                 </div>
             </section>
 
+            @if (!empty($accountAlerts ?? []))
+                <section class="rounded-[1.75rem] border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm md:p-6">
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Account Alerts</p>
+                            <h3 class="mt-2 text-xl font-black text-slate-900">Action needed on your account</h3>
+                            <p class="mt-1 text-sm text-slate-600">Review these updates to keep your account records complete and up to date.</p>
+                        </div>
+                        <span class="inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700">
+                            <i class="fa fa-exclamation-circle"></i>
+                            {{ count($accountAlerts) }} item{{ count($accountAlerts) === 1 ? '' : 's' }}
+                        </span>
+                    </div>
+
+                    <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+                        @foreach ($accountAlerts as $alert)
+                            @php
+                                $tone = strtolower(trim((string) ($alert['tone'] ?? 'slate')));
+                                $alertToneClass = match ($tone) {
+                                    'rose' => 'border-rose-200 bg-rose-50',
+                                    'amber' => 'border-amber-200 bg-amber-50',
+                                    'violet' => 'border-violet-200 bg-violet-50',
+                                    'sky' => 'border-sky-200 bg-sky-50',
+                                    default => 'border-slate-200 bg-slate-50',
+                                };
+                            @endphp
+                            <a href="{{ $alert['href'] ?? '#' }}" class="block rounded-2xl border px-4 py-3 transition hover:-translate-y-0.5 hover:shadow-sm {{ $alertToneClass }}">
+                                <p class="text-sm font-bold text-slate-900">{{ $alert['title'] ?? 'Account update' }}</p>
+                                <p class="mt-1 text-xs leading-5 text-slate-600">{{ $alert['desc'] ?? '' }}</p>
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
             <section class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
                 <article class="rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
                     <div class="flex items-start justify-between gap-4">
@@ -174,7 +209,7 @@
                         <p class="mt-2 text-sm leading-6 text-slate-500">Check payment history, salary details, and downloadable payroll records.</p>
                     </a>
 
-                    <a href="{{ route('employee.employeeCommunication', ['reset_chat' => 1]) }}" class="group rounded-[1.5rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
+                    <a href="{{ route('employee.employeeCommunication') }}" class="group rounded-[1.5rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
                         <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20">
                             <i class="fa fa-users fa-2x"></i>
                         </div>

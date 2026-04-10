@@ -2,6 +2,7 @@
     $headerTitle = $headerTitle ?? 'HR Dashboard';
     $headerSubtitle = $headerSubtitle ?? "Welcome back! Here's what's happening today.";
     $headerSearchPlaceholder = $headerSearchPlaceholder ?? 'Search employees...';
+    $headerSearchInputId = trim((string) ($headerSearchInputId ?? 'admin-header-search-input'));
     $adminUser = auth()->user();
     $adminName = trim(implode(' ', array_filter([
         $adminUser?->first_name ?? null,
@@ -155,6 +156,8 @@
             <label class="admin-header-search group relative flex min-w-0 flex-1 items-center rounded-2xl border border-white/10 bg-white px-4 py-3 focus-within:border-emerald-300 focus-within:shadow-sm">
                 <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
                 <input
+                    id="{{ $headerSearchInputId }}"
+                    data-admin-header-search
                     class="w-full min-w-0 bg-transparent pl-3 pr-2 text-sm text-slate-700 outline-none placeholder:text-slate-400"
                     placeholder="{{ $headerSearchPlaceholder }}"
                 />

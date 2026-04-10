@@ -29,6 +29,48 @@
       margin-left: 16rem;
       width: calc(100vw - 16rem);
     }
+    .employee-missing-badge {
+      position: absolute;
+      top: 0.85rem;
+      right: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      background: rgba(255, 248, 235, 0.96);
+      color: #c2410c;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+      z-index: 12;
+    }
+    .employee-missing-icon {
+      width: 1.1rem;
+      height: 1.1rem;
+      border-radius: 999px;
+      background: #ef4444;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      line-height: 1;
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+      animation: employeeMissingPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes employeeMissingPulse {
+      0%,
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+      }
+      50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 0 7px rgba(239, 68, 68, 0);
+      }
+    }
   </style>
 </head>
 
@@ -42,6 +84,27 @@
   @php
     $resolveDepartment = function ($emp) {
       return trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? '')));
+    };
+    $isMissingEmployeeValue = function ($value): bool {
+      if (is_null($value)) {
+        return true;
+      }
+
+      $normalized = strtolower(trim(preg_replace('/\s+/', ' ', (string) $value)));
+      if ($normalized === '') {
+        return true;
+      }
+
+      return in_array($normalized, [
+        '-',
+        'n/a',
+        'na',
+        'unspecified',
+        'not set',
+        'school n/a',
+        'year n/a',
+        'school n/a, year n/a',
+      ], true);
     };
     $parseLeaveStatusDate = function ($value) {
       $text = trim((string) ($value ?? ''));
@@ -270,15 +333,18 @@
           if (!query) return true;
           return this.normalize(empName).includes(query);
         },
-        matchesStatus(empStatus) {
+        matchesStatus(empStatus, empHasMissingInfo = false) {
           if (this.statusFilter === 'All') return true;
+          if (this.normalize(this.statusFilter) === 'missing info') {
+            return Boolean(empHasMissingInfo);
+          }
           return this.normalize(empStatus) === this.normalize(this.statusFilter);
         },
         hasVisibleEmployees() {
           return this.employeeIndex.some(emp =>
             this.matchesDepartment(emp.department) &&
             this.matchesSearch(emp.name) &&
-            this.matchesStatus(emp.status)
+            this.matchesStatus(emp.status, emp.has_missing_info)
           );
         },
         degreeRows(level) {
@@ -1205,6 +1271,21 @@
           'name' => trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', '),
           'department' => trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? ''))),
           'status' => $resolveDisplayAccountStatus($emp),
+          'has_missing_info' => collect([
+            data_get($emp, 'employee.account_number'),
+            data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender'),
+            data_get($emp, 'employee.civil_status'),
+            data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.phone'),
+            data_get($emp, 'employee.birthday'),
+            data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address'),
+            data_get($emp, 'license.license'),
+            data_get($emp, 'license.registration_number'),
+            data_get($emp, 'government.SSS'),
+            data_get($emp, 'government.TIN'),
+            data_get($emp, 'government.PhilHealth'),
+            data_get($emp, 'government.MID'),
+            data_get($emp, 'salary.salary'),
+          ])->contains(fn ($value) => $isMissingEmployeeValue($value)),
         ])->values()
       ); employeeRecords = @js($employee->values()); openEmployeeFromQuery()"
 >
@@ -1320,7 +1401,7 @@
         return $text;
       };
 
-      $employeeTableRecords = $employee->map(function ($emp, $index) use ($resolveDepartment, $blankTableValue, $resolveDisplayAccountStatus, $wasRehiredAfterResignation) {
+      $employeeTableRecords = $employee->map(function ($emp, $index) use ($resolveDepartment, $blankTableValue, $resolveDisplayAccountStatus, $wasRehiredAfterResignation, $isMissingEmployeeValue) {
         $themeSeed = (string) ($emp->id ?? data_get($emp, 'employee.employee_id') ?? $index);
         $hue = ((int) sprintf('%u', crc32($themeSeed))) % 360;
         $headerStart = "hsl({$hue}, 78%, 58%)";
@@ -1414,6 +1495,22 @@
           ->filter()
           ->implode(' | ');
 
+        $hasMissingInfo = collect([
+          data_get($emp, 'employee.account_number'),
+          data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender'),
+          data_get($emp, 'employee.civil_status'),
+          data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.phone'),
+          data_get($emp, 'employee.birthday'),
+          data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address'),
+          data_get($emp, 'license.license'),
+          data_get($emp, 'license.registration_number'),
+          data_get($emp, 'government.SSS'),
+          data_get($emp, 'government.TIN'),
+          data_get($emp, 'government.PhilHealth'),
+          data_get($emp, 'government.MID'),
+          data_get($emp, 'salary.salary'),
+        ])->contains(fn ($value) => $isMissingEmployeeValue($value));
+
         return [
           'no' => $index + 1,
           'name' => $blankTableValue(trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', ')),
@@ -1454,6 +1551,7 @@
           'date_resigned' => $blankTableValue($dateResignedDisplay),
           'employment_history' => $blankTableValue($employmentHistoryDisplay),
           'status' => $resolveDisplayAccountStatus($emp),
+          'has_missing_info' => $hasMissingInfo,
           'user_id' => (int) ($emp->id ?? 0),
           'header_start' => $headerStart,
           'header_end' => $headerEnd,
@@ -1996,14 +2094,39 @@
               });
           }
           $profilePhotoUrl = $profilePhotoDocument?->filepath ? asset('storage/'.$profilePhotoDocument->filepath) : null;
+          $missingCardFields = collect([
+            'Account No.' => data_get($emp, 'employee.account_number'),
+            'Sex' => data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender'),
+            'Civil Status' => data_get($emp, 'employee.civil_status'),
+            'Contact No.' => data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.phone'),
+            'Birthday' => data_get($emp, 'employee.birthday'),
+            'Address' => data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address'),
+            'License' => data_get($emp, 'license.license'),
+            'Registration No.' => data_get($emp, 'license.registration_number'),
+            'SSS' => data_get($emp, 'government.SSS'),
+            'TIN' => data_get($emp, 'government.TIN'),
+            'PhilHealth' => data_get($emp, 'government.PhilHealth'),
+            'Pag-IBIG MID' => data_get($emp, 'government.MID'),
+            'Basic Salary' => data_get($emp, 'salary.salary'),
+          ])->filter(fn ($value) => $isMissingEmployeeValue($value));
+          $missingCardCount = $missingCardFields->count();
+          $missingCardTitle = $missingCardCount > 0
+            ? 'Missing: '.$missingCardFields->keys()->implode(', ')
+            : '';
         @endphp
         <!-- Employee Card -->
         <div
-            class="bg-white rounded-xl shadow-md overflow-hidden w-72"
+            class="relative bg-white rounded-xl shadow-md overflow-hidden w-72"
             x-show="matchesDepartment(@js($resolveDepartment($emp))) &&
                     matchesSearch(@js(trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', '))) &&
-                    matchesStatus(@js($resolveDisplayAccountStatus($emp)))"
+                    matchesStatus(@js($resolveDisplayAccountStatus($emp)), @js($missingCardCount > 0))"
         >
+            @if($missingCardCount > 0)
+                <div class="employee-missing-badge" title="{{ $missingCardTitle }}">
+                    <span class="employee-missing-icon">!</span>
+                    <span>{{ $missingCardCount }} missing</span>
+                </div>
+            @endif
             <div class="h-24 flex justify-center items-center" style="background-image: linear-gradient(to right, {{ $headerStart }}, {{ $headerEnd }});">
                 <div class="w-16 h-16 rounded-full text-white flex items-center justify-center text-lg font-bold border-4 border-white mt-24 overflow-hidden" style="background-color: {{ $avatarColor }};">
                     @if($profilePhotoUrl)
@@ -2215,7 +2338,7 @@
             </tr>
             @foreach ($employeeTableRecords as $row)
               <tr
-                x-show="matchesDepartment(@js($row['department'])) && matchesSearch(@js($row['name'])) && matchesStatus(@js($row['status']))"
+                x-show="matchesDepartment(@js($row['department'])) && matchesSearch(@js($row['name'])) && matchesStatus(@js($row['status']), @js((bool) ($row['has_missing_info'] ?? false)))"
                 class="bg-white text-[13px]"
               >
                 <td class="sticky left-0 z-10 border border-black bg-white px-2 py-1 text-center shadow-[inset_-1px_0_0_#000]">{{ $row['no'] }}</td>

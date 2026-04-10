@@ -19,6 +19,9 @@
   $tabSession = trim((string) request()->query('tab_session', ''));
   $adminUnreadMessages = 0;
   $adminPendingLeaveCount = 0;
+  $adminPendingApplicantCount = 0;
+  $hasEmployeeMissingInfoAlert = false;
+  $employeeMissingInfoCount = 0;
   if (
     $adminUser
     && \Illuminate\Support\Facades\Schema::hasTable('conversations')
@@ -43,6 +46,64 @@
           ->orWhereRaw("LOWER(TRIM(status)) = ?", ['pending']);
       })
       ->count();
+  }
+  if (\Illuminate\Support\Facades\Schema::hasTable('applicants')) {
+    $adminPendingApplicantCount = \App\Models\Applicant::query()
+      ->where(function ($query) {
+        $query->whereNull('application_status')
+          ->orWhereRaw("TRIM(application_status) = ''")
+          ->orWhereRaw("LOWER(TRIM(application_status)) = ?", ['pending']);
+      })
+      ->count();
+  }
+  if (
+    \Illuminate\Support\Facades\Schema::hasTable('users')
+    && \Illuminate\Support\Facades\Schema::hasTable('employees')
+    && \Illuminate\Support\Facades\Schema::hasTable('applicants')
+    && \Illuminate\Support\Facades\Schema::hasTable('licenses')
+    && \Illuminate\Support\Facades\Schema::hasTable('governments')
+    && \Illuminate\Support\Facades\Schema::hasTable('salaries')
+  ) {
+    $isMissingEmployeeValue = static function ($value): bool {
+      if (is_null($value)) {
+        return true;
+      }
+      if (is_string($value)) {
+        return trim($value) === '';
+      }
+      return false;
+    };
+
+    $employeeAlertCandidates = \App\Models\User::query()
+      ->with([
+        'employee:id,user_id,account_number,sex,civil_status,contact_number,birthday,address',
+        'applicant',
+        'license:id,user_id,license,registration_number',
+        'government:id,user_id,SSS,TIN,PhilHealth,MID',
+        'salary:id,user_id,salary',
+      ])
+      ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+      ->get();
+
+    $employeeMissingInfoCount = $employeeAlertCandidates->filter(function ($emp) use ($isMissingEmployeeValue) {
+      return collect([
+        data_get($emp, 'employee.account_number'),
+        data_get($emp, 'employee.sex'),
+        data_get($emp, 'employee.civil_status'),
+        data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.phone'),
+        data_get($emp, 'employee.birthday'),
+        data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address'),
+        data_get($emp, 'license.license'),
+        data_get($emp, 'license.registration_number'),
+        data_get($emp, 'government.SSS'),
+        data_get($emp, 'government.TIN'),
+        data_get($emp, 'government.PhilHealth'),
+        data_get($emp, 'government.MID'),
+        data_get($emp, 'salary.salary'),
+      ])->contains(fn ($value) => $isMissingEmployeeValue($value));
+    })->count();
+
+    $hasEmployeeMissingInfoAlert = $employeeMissingInfoCount > 0;
   }
 @endphp
 
@@ -212,10 +273,20 @@
        data-admin-nav
        class="flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
        {{ request()->routeIs('admin.adminEmployee')
-        ? 'bg-green-600 text-white'
-        : 'text-white hover:bg-green-600/30' }}">
-      <i class="fa-solid fa-users"></i>
+         ? 'bg-green-600 text-white'
+         : 'text-white hover:bg-green-600/30' }}">
+      <span class="relative inline-flex w-5 items-center justify-center">
+        <i class="fa-solid fa-users"></i>
+        @if ($hasEmployeeMissingInfoAlert)
+          <span class="admin-sidebar-alert-dot group-hover:hidden" aria-hidden="true">!</span>
+        @endif
+      </span>
       <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Employees</span>
+      @if ($employeeMissingInfoCount > 0)
+        <span class="admin-sidebar-count-badge ml-auto min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+          {{ $employeeMissingInfoCount > 99 ? '99+' : $employeeMissingInfoCount }}
+        </span>
+      @endif
     </a>
 
     <!-- Attendance -->
@@ -262,7 +333,7 @@
       <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Payslip</span>
     </a>
 
-    <a href="{{ route('admin.adminCommunication', array_filter(['reset_chat' => 1, 'tab_session' => $tabSession !== '' ? $tabSession : null])) }}"
+    <a href="{{ route('admin.adminCommunication', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"
        data-admin-nav
        class="relative flex items-center gap-0 group-hover:gap-3 px-4 py-2.5 rounded-lg font-medium transition justify-center group-hover:justify-start
        {{ request()->routeIs('admin.adminCommunication')
@@ -285,9 +356,19 @@
         class="w-full flex items-center justify-center group-hover:justify-between px-4 py-2.5 rounded-lg font-medium transition text-white hover:bg-green-600/30 cursor-pointer"
       >
         <span class="flex items-center gap-0 group-hover:gap-3 justify-center group-hover:justify-start">
-          <i class="fa-solid fa-briefcase"></i>
+          <span class="relative inline-flex items-center justify-center">
+            <i class="fa-solid fa-briefcase"></i>
+            @if ($adminPendingApplicantCount > 0)
+              <span class="admin-sidebar-alert-dot group-hover:hidden" aria-hidden="true">!</span>
+            @endif
+          </span>
           <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Hiring</span>
         </span>
+        @if ($adminPendingApplicantCount > 0)
+          <span class="admin-sidebar-count-badge ml-auto min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+            {{ $adminPendingApplicantCount > 99 ? '99+' : $adminPendingApplicantCount }}
+          </span>
+        @endif
 
         <i class="fa-solid fa-chevron-down hidden group-hover:inline-block transition-all duration-200 hiring-chevron"></i>
       </summary>
@@ -301,8 +382,18 @@
            {{ request()->routeIs('admin.adminApplicant')
                 ? 'bg-green-600 text-white'
                 : 'text-white hover:bg-green-600/30' }}">
-          <i class="fa-solid fa-user-check"></i>
+          <span class="relative inline-flex items-center justify-center">
+            <i class="fa-solid fa-user-check"></i>
+            @if ($adminPendingApplicantCount > 0)
+              <span class="admin-sidebar-alert-dot group-hover:hidden" aria-hidden="true">!</span>
+            @endif
+          </span>
           <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Applicant</span>
+          @if ($adminPendingApplicantCount > 0)
+            <span class="admin-sidebar-count-badge ml-auto min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+              {{ $adminPendingApplicantCount > 99 ? '99+' : $adminPendingApplicantCount }}
+            </span>
+          @endif
         </a>
 
         <a href="{{ route('admin.adminPosition', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}"

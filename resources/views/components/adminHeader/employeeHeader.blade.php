@@ -108,6 +108,20 @@
                             >
                                 Inactive
                             </button>
+                            <button
+                                type="button"
+                                @click="statusFilter = 'Missing Info'"
+                                :class="statusFilter === 'Missing Info'
+                                    ? 'border-orange-200 bg-orange-200 text-slate-950 shadow-md'
+                                    : 'border-orange-300/25 bg-orange-300/10 text-orange-100 hover:bg-orange-300/20'"
+                                class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition"
+                            >
+                                Missing Info
+                                <span
+                                    class="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-orange-100 px-1.5 py-0.5 text-[11px] font-bold leading-none text-orange-700"
+                                    x-text="employeeIndex.filter(emp => emp.has_missing_info).length"
+                                ></span>
+                            </button>
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2">

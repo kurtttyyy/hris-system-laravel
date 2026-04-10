@@ -3,6 +3,8 @@
     $showDepartmentHeadMore = strtolower(trim((string) ($employeeUser->department_head ?? ''))) === 'approved';
     $employeeMoreOpen = request()->routeIs('employee.employeeHierarchy') || request()->routeIs('employee.employeeEvaluation');
     $employeeUnreadMessages = 0;
+    $employeeMissingDocumentCount = 0;
+    $employeeNotificationCount = 0;
     if (
         $employeeUser
         && \Illuminate\Support\Facades\Schema::hasTable('conversations')
@@ -18,6 +20,156 @@
                 });
             })
             ->count();
+    }
+
+    if ($employeeUser && \Illuminate\Support\Facades\Schema::hasTable('applicants') && \Illuminate\Support\Facades\Schema::hasTable('applicant_documents')) {
+        $applicant = \App\Models\Applicant::query()
+            ->where('user_id', (int) $employeeUser->id)
+            ->where('application_status', 'Hired')
+            ->latest('id')
+            ->first();
+
+        if ($applicant) {
+            $requiredPrefix = '__REQUIRED__::';
+            $noticeType = '__NOTICE__';
+            $folderType = '__FOLDER__';
+            $normalizeDocumentLabel = static function (string $value): string {
+                $normalized = strtolower(trim($value));
+                if ($normalized === '') {
+                    return '';
+                }
+                return preg_replace('/\s+/', ' ', $normalized);
+            };
+
+            $requiredConfig = [];
+            $metaDocuments = \App\Models\ApplicantDocument::query()
+                ->where('applicant_id', (int) $applicant->id)
+                ->where(function ($query) use ($requiredPrefix, $noticeType) {
+                    $query
+                        ->where('type', 'like', $requiredPrefix.'%')
+                        ->orWhere('type', $noticeType);
+                })
+                ->orderByDesc('id')
+                ->get();
+
+            if ($metaDocuments->isNotEmpty()) {
+                $requiredDocuments = $metaDocuments
+                    ->filter(fn ($doc) => str_starts_with((string) ($doc->type ?? ''), $requiredPrefix))
+                    ->map(function ($doc) use ($requiredPrefix) {
+                        return trim((string) substr((string) $doc->type, strlen($requiredPrefix)));
+                    })
+                    ->filter()
+                    ->unique(fn ($value) => strtolower((string) $value))
+                    ->values()
+                    ->all();
+
+                $requiredConfig = [
+                    'required_documents' => $requiredDocuments,
+                    'document_notice' => (string) optional($metaDocuments->firstWhere('type', $noticeType))->filename,
+                ];
+            } else {
+                $disk = \Illuminate\Support\Facades\Storage::disk('local');
+                $path = 'required_employee_documents.json';
+                if ($disk->exists($path)) {
+                    $payload = json_decode((string) $disk->get($path), true);
+                    $applicants = is_array($payload['applicants'] ?? null) ? $payload['applicants'] : [];
+                    $requiredConfig = is_array($applicants[(string) $applicant->id] ?? null) ? $applicants[(string) $applicant->id] : [];
+                }
+            }
+
+            $requiredDocuments = collect($requiredConfig['required_documents'] ?? [])
+                ->map(fn ($item) => trim((string) $item))
+                ->filter()
+                ->values();
+
+            if ($requiredDocuments->isEmpty()) {
+                $requiredDocuments = collect([
+                    'Resume/CV',
+                    'Cover Letter',
+                    'Personal Data Sheet',
+                    'Transcript Of Records',
+                    'Diploma',
+                    'PRC License/Board Rating',
+                    'Certificate Of Eligibility / Certificate of Passing',
+                    'Certifications & Supporting Document',
+                    'Membership/Affiliation',
+                ]);
+            }
+
+            $uploadedDocumentTypesNormalized = \App\Models\ApplicantDocument::query()
+                ->where('applicant_id', (int) $applicant->id)
+                ->where('type', 'not like', $requiredPrefix.'%')
+                ->where('type', '!=', $noticeType)
+                ->where('type', '!=', $folderType)
+                ->get()
+                ->map(function ($doc) use ($normalizeDocumentLabel) {
+                    return $normalizeDocumentLabel((string) ($doc->type ?: $doc->filename));
+                })
+                ->filter()
+                ->unique()
+                ->values();
+
+            $employeeMissingDocumentCount = (int) $requiredDocuments
+                ->filter(function ($required) use ($uploadedDocumentTypesNormalized, $normalizeDocumentLabel) {
+                    return !$uploadedDocumentTypesNormalized->contains($normalizeDocumentLabel((string) $required));
+                })
+                ->count();
+        }
+    }
+
+    if ($employeeUser) {
+        $employeeId = trim((string) ($employeeUser->employee->employee_id ?? ''));
+
+        $leaveNotificationsCount = \Illuminate\Support\Facades\Schema::hasTable('leave_applications')
+            ? \App\Models\LeaveApplication::query()->where('user_id', (int) $employeeUser->id)->limit(5)->count()
+            : 0;
+
+        $payslipNotificationsCount = \Illuminate\Support\Facades\Schema::hasTable('payslip_records')
+            ? \App\Models\PayslipRecord::query()
+                ->where(function ($query) use ($employeeUser, $employeeId) {
+                    $query->where('user_id', (int) $employeeUser->id);
+                    if ($employeeId !== '') {
+                        $query->orWhere('employee_id', $employeeId);
+                    }
+                })
+                ->limit(4)
+                ->count()
+            : 0;
+
+        $attendanceNotificationsCount = \Illuminate\Support\Facades\Schema::hasTable('attendance_records')
+            ? \App\Models\AttendanceRecord::query()
+                ->where(function ($query) use ($employeeUser, $employeeId) {
+                    if ($employeeId !== '') {
+                        $query->where('employee_id', $employeeId);
+                    } else {
+                        $displayName = strtolower(trim(implode(' ', array_filter([
+                            $employeeUser->first_name ?? null,
+                            $employeeUser->middle_name ?? null,
+                            $employeeUser->last_name ?? null,
+                        ]))));
+                        $query->whereRaw('LOWER(TRIM(COALESCE(employee_name, \'\'))) = ?', [$displayName]);
+                    }
+                })
+                ->whereDate('attendance_date', '>=', now()->subDays(21)->toDateString())
+                ->get()
+                ->filter(function ($record) {
+                    $lateMinutes = (int) ($record->late_minutes ?? 0);
+                    $hasMissingLogs = !empty($record->missing_time_logs) && $record->missing_time_logs !== '[]';
+                    return !empty($record->is_absent) || $lateMinutes > 0 || $hasMissingLogs;
+                })
+                ->count()
+            : 0;
+
+        $resignationNotificationsCount = \Illuminate\Support\Facades\Schema::hasTable('resignations')
+            ? \App\Models\Resignation::query()->where('user_id', (int) $employeeUser->id)->limit(3)->count()
+            : 0;
+
+        $employeeNotificationCount = (int) (
+            $leaveNotificationsCount
+            + $payslipNotificationsCount
+            + $attendanceNotificationsCount
+            + $resignationNotificationsCount
+        );
     }
 @endphp
 
@@ -43,8 +195,12 @@
     <!-- Logo -->
     <div class="p-4 border-b border-gray-700">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                <img src="{{ asset('images/logo.webp') }}" alt="Logo" height="40">
+            <div class="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-full bg-white/95 shadow-sm ring-1 ring-white/40">
+                <img
+                    src="{{ asset('images/logo.webp') }}"
+                    alt="Logo"
+                    class="w-7 h-7 object-contain block"
+                >
             </div>
 
             <!-- Logo text -->
@@ -61,7 +217,6 @@
 
     <!-- Navigation -->
     <nav class="p-2 space-y-2">
-
         <!-- Dashboard -->
         <a href="{{ route('employee.employeeHome') }}"
            data-employee-nav
@@ -70,11 +225,19 @@
                         ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'text-gray-300 hover:bg-green-600/20 hover:text-white' }}">
 
-            <i class="fa fa-dashboard text-lg w-6 text-center"></i>
+            <span class="relative inline-flex items-center justify-center w-6">
+                <i class="fa fa-dashboard text-lg text-center"></i>
+                @if ($employeeNotificationCount > 0)
+                    <span class="absolute -right-2 -top-2 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white group-hover:hidden">{{ $employeeNotificationCount > 9 ? '9+' : $employeeNotificationCount }}</span>
+                @endif
+            </span>
 
             <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                 Dashboard
             </span>
+            @if ($employeeNotificationCount > 0)
+                <span class="ml-auto hidden min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white group-hover:inline-flex">{{ $employeeNotificationCount > 99 ? '99+' : $employeeNotificationCount }}</span>
+            @endif
         </a>
 
         <!-- Leave Requests -->
@@ -85,7 +248,9 @@
                         ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'text-gray-300 hover:bg-green-600/20 hover:text-white' }}">
 
-            <i class="fa fa-calendar text-lg w-6 text-center"></i>
+            <span class="relative inline-flex items-center justify-center w-6">
+                <i class="fa fa-calendar text-lg text-center"></i>
+            </span>
 
             <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                 Leave Requests
@@ -115,15 +280,23 @@
                         ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'text-gray-300 hover:bg-green-600/20 hover:text-white' }}">
 
-            <i class="fa fa-folder text-lg w-6 text-center"></i>
+            <span class="relative inline-flex items-center justify-center w-6">
+                <i class="fa fa-folder text-lg text-center"></i>
+                @if ($employeeMissingDocumentCount > 0)
+                    <span class="absolute -right-2 -top-2 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold leading-none text-white group-hover:hidden">{{ $employeeMissingDocumentCount > 9 ? '9+' : $employeeMissingDocumentCount }}</span>
+                @endif
+            </span>
 
             <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                 Documents
             </span>
+            @if ($employeeMissingDocumentCount > 0)
+                <span class="ml-auto hidden min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white group-hover:inline-flex">{{ $employeeMissingDocumentCount > 99 ? '99+' : $employeeMissingDocumentCount }}</span>
+            @endif
         </a>
 
         <!-- Communication -->
-        <a href="{{ route('employee.employeeCommunication', ['reset_chat' => 1]) }}"
+        <a href="{{ route('employee.employeeCommunication') }}"
            data-employee-nav
            class="relative flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition
                   {{ request()->routeIs('employee.employeeCommunication')
@@ -211,7 +384,7 @@
 <style>
     @media (min-width: 1025px) {
         .employee-sidebar:not(:hover) > div:first-child {
-            padding-left: 0.5rem;
+            padding-left: 4.9rem;
             padding-right: 0.5rem;
         }
 

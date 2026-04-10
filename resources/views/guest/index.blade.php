@@ -112,7 +112,8 @@
             <form method="POST" action="{{ route('applicant.rating.store') }}">
                 @csrf
                 <div class="modal-body">
-                    <p class="mb-3">Thank you for submitting your application. Please rate the system.</p>
+                    <p class="mb-1">Thank you for submitting your application. Please rate the system.</p>
+                    <p class="mb-3">Thank you for applying. You can check your application at Application Status.</p>
                     <div class="rating-grid">
                         <input type="radio" class="btn-check" name="rating" id="rate5" value="5" required>
                         <label class="rating-option" for="rate5">
@@ -606,6 +607,193 @@
         box-shadow: 0 16px 34px rgba(245, 158, 11, 0.08);
     }
 
+    .site-footer {
+        background:
+            radial-gradient(circle at top left, rgba(21, 115, 71, 0.12), transparent 24%),
+            linear-gradient(180deg, #0f1113 0%, #0b0c0d 100%);
+        color: rgba(255, 255, 255, 0.82);
+        margin-top: 4rem;
+    }
+
+    .site-footer a {
+        color: rgba(255, 255, 255, 0.82);
+        text-decoration: none;
+        transition: color 0.2s ease, transform 0.2s ease;
+    }
+
+    .site-footer a:hover {
+        color: #ffffff;
+        transform: translateX(2px);
+    }
+
+    .footer-shell {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 4rem 1.5rem 2rem;
+    }
+
+    .footer-grid {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr 1fr 1.1fr;
+        gap: 2rem;
+    }
+
+    .footer-brand {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .footer-brand-mark {
+        width: 3.75rem;
+        height: 3.75rem;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #fff;
+        padding: 0.35rem;
+        box-shadow: 0 14px 26px rgba(0, 0, 0, 0.28);
+    }
+
+    .footer-brand h3,
+    .footer-title {
+        margin: 0 0 1.25rem;
+        color: #fff;
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+
+    .footer-title {
+        font-size: 1.15rem;
+    }
+
+    .footer-info-list,
+    .footer-link-list {
+        list-style: none;
+        padding: 0;
+        margin: 1.4rem 0 0;
+    }
+
+    .footer-info-list li,
+    .footer-link-list li {
+        margin-bottom: 0.95rem;
+    }
+
+    .footer-contact {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.8rem;
+    }
+
+    .footer-icon {
+        width: 1.2rem;
+        height: 1.2rem;
+        flex: 0 0 1.2rem;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 0.15rem;
+    }
+
+    .footer-copy {
+        max-width: 18rem;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.7;
+    }
+
+    .footer-feature-text {
+        margin: 0;
+        max-width: 18rem;
+        color: rgba(255, 255, 255, 0.78);
+        line-height: 1.9;
+    }
+
+    .newsletter-copy {
+        margin: 0 0 1rem;
+        color: rgba(255, 255, 255, 0.72);
+        line-height: 1.7;
+    }
+
+    .newsletter-form {
+        display: grid;
+        gap: 0.8rem;
+    }
+
+    .newsletter-input-wrap {
+        position: relative;
+    }
+
+    .newsletter-input {
+        width: 100%;
+        height: 3rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 0.95rem;
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+        padding: 0.8rem 3rem 0.8rem 1rem;
+        outline: none;
+    }
+
+    .newsletter-input::placeholder {
+        color: rgba(255, 255, 255, 0.45);
+    }
+
+    .newsletter-input:focus {
+        border-color: rgba(52, 211, 153, 0.55);
+        box-shadow: 0 0 0 0.18rem rgba(52, 211, 153, 0.15);
+    }
+
+    .newsletter-input-icon {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 1.1rem;
+        height: 1.1rem;
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    .newsletter-btn {
+        border: none;
+        border-radius: 0.95rem;
+        min-height: 3rem;
+        background: linear-gradient(135deg, #1b1d1f 0%, #232628 100%);
+        color: #fff;
+        font-weight: 700;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    .newsletter-btn:hover {
+        background: linear-gradient(135deg, #157347 0%, #1ea55d 100%);
+    }
+
+    .newsletter-note {
+        margin: 0.35rem 0 0;
+        color: rgba(191, 219, 254, 0.8);
+        font-size: 0.9rem;
+    }
+
+    .footer-bottom {
+        margin-top: 3rem;
+        padding-top: 1.4rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .footer-bottom p {
+        margin: 0;
+        color: rgba(255, 255, 255, 0.68);
+    }
+
+    .footer-bottom-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+
     @media (max-width: 991.98px) {
         .careers-hero {
             min-height: 520px;
@@ -620,6 +808,10 @@
         .filter-intro {
             flex-direction: column;
             align-items: start;
+        }
+
+        .footer-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
     }
 
@@ -660,6 +852,24 @@
 
         .job-card {
             padding: 1.15rem;
+        }
+
+        .footer-shell {
+            padding: 3rem 1rem 1.5rem;
+        }
+
+        .footer-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .footer-bottom {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .footer-bottom-links {
+            gap: 1rem;
         }
     }
 
@@ -885,6 +1095,91 @@
         No jobs matched your filters.
     </div>
 </div>
+
+<footer class="site-footer">
+    <div class="footer-shell">
+        <div class="footer-grid">
+            <div>
+                <div class="footer-brand">
+                    <img src="{{ asset('images/nclogo.png') }}" alt="Northeastern College logo" class="footer-brand-mark">
+                    <div>
+                        <h3>Northeastern<br>College</h3>
+                    </div>
+                </div>
+
+                <ul class="footer-info-list">
+                    <li>
+                        <a href="https://www.google.com/maps/search/?api=1&query=Villasis%2C+Santiago+City%2C+Isabela+3311" target="_blank" rel="noopener noreferrer" class="footer-contact">
+                            <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21s7-4.35 7-11a7 7 0 1 0-14 0c0 6.65 7 11 7 11Z"/>
+                                <circle cx="12" cy="10" r="2.5"/>
+                            </svg>
+                            <span>Villasis, Santiago City<br>Isabela, 3311</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.facebook.com/NCnianAko" target="_blank" rel="noopener noreferrer" class="footer-contact">
+                            <svg class="footer-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M13.5 21v-7h2.3l.4-3h-2.7V9.2c0-.9.3-1.5 1.6-1.5H16V5.1c-.3 0-1.2-.1-2.2-.1-2.2 0-3.8 1.3-3.8 3.8V11H7.5v3H10v7h3.5Z"/>
+                            </svg>
+                            <span>facebook.com/NCnianAko</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://icloudph.com/nc/sias/" target="_blank" rel="noopener noreferrer" class="footer-contact">
+                            <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>
+                            </svg>
+                            <span>SIAS Online</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="footer-title">Quick Links</h4>
+                <ul class="footer-link-list">
+                    <li><a href="#heroCarousel">Home</a></li>
+                    <li><a href="{{ route('guest.jobOpenLanding') }}">Job Vacancies</a></li>
+                    <li><a href="#departmentFilter">Departments</a></li>
+                    <li><a href="{{ route('login_display') }}">Applicant Login</a></li>
+                    <li><a href="{{ route('register') }}">Create Account</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4 class="footer-title">About</h4>
+                <p class="footer-feature-text">Building careers, growing leaders, and creating meaningful opportunities for the next generation.</p>
+            </div>
+
+            <div>
+                <h4 class="footer-title">Newsletter</h4>
+                <p class="newsletter-copy">Subscribe to receive campus announcements and updates.</p>
+                <form class="newsletter-form" onsubmit="event.preventDefault()">
+                    <div class="newsletter-input-wrap">
+                        <input type="email" class="newsletter-input" placeholder="Enter your email" aria-label="Email address">
+                        <svg class="newsletter-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16v12H4z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m4 8 8 5 8-5"/>
+                        </svg>
+                    </div>
+                    <button type="submit" class="newsletter-btn">Subscribe</button>
+                </form>
+                <p class="newsletter-note">We respect your privacy. Unsubscribe at any time.</p>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2026 Northeastern College. All rights reserved.</p>
+            <div class="footer-bottom-links">
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Cookie Policy</a>
+            </div>
+        </div>
+    </div>
+</footer>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const jobSearchForm = document.getElementById('jobSearchForm');

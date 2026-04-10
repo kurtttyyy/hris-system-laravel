@@ -18,6 +18,7 @@ use App\Models\PayslipUpload;
 use App\Models\LeaveApplication;
 use App\Models\Resignation;
 use App\Models\User;
+use App\Support\EmployeeAccountStatusManager;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -833,6 +834,8 @@ class AdministratorPageController extends Controller
     }
 
     public function display_employee(){
+        app(EmployeeAccountStatusManager::class)->syncAllEmployeeStatuses();
+
         $employee = User::with([
             'applicant',
             'applicant.documents' => function ($query) {

@@ -36,6 +36,7 @@
             'headerTitle' => 'Communication Hub',
             'headerSubtitle' => 'Open employee threads, send updates, and keep conversations in one place.',
             'headerSearchPlaceholder' => 'Search employees or conversations...',
+            'headerSearchInputId' => 'admin-communication-search',
         ])
         <div class="space-y-8 p-4 pt-20 md:p-8">
             @if (session('success'))
@@ -56,7 +57,7 @@
                     </div>
                     <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-500"><i class="fa-solid fa-user-group text-emerald-500"></i>{{ $availableCount }} available employee{{ $availableCount === 1 ? '' : 's' }}</div>
                 </div>
-                <div class="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
+                <div id="admin-communication-directory-grid" class="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
                     @foreach ($directoryMembers as $employee)
                         @php
                             $employeeName = trim(implode(' ', array_filter([$employee->first_name ?? null, $employee->middle_name ?? null, $employee->last_name ?? null])));
@@ -68,7 +69,14 @@
                             $employeeUnreadCount = (int) ($employee->unread_message_count ?? 0);
                             $employeeHasUnreadMessages = (bool) ($employee->has_unread_messages ?? false);
                         @endphp
-                        <article class="rounded-[1.75rem] border border-slate-200 bg-slate-50/70 p-5 shadow-sm">
+                        <article
+                            data-communication-directory-card
+                            data-name="{{ strtolower($employeeName) }}"
+                            data-email="{{ strtolower((string) ($employee->email ?? '')) }}"
+                            data-position="{{ strtolower($position) }}"
+                            data-department="{{ strtolower($department) }}"
+                            class="rounded-[1.75rem] border border-slate-200 bg-slate-50/70 p-5 shadow-sm"
+                        >
                             <div class="flex items-start justify-between gap-4">
                                 <div class="flex items-center gap-4">
                                     <div class="flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-gradient-to-br from-slate-900 to-emerald-600 text-lg font-black text-white">{{ $employeeInitials !== '' ? $employeeInitials : 'EM' }}</div>
@@ -104,6 +112,9 @@
                             </div>
                         </article>
                     @endforeach
+                </div>
+                <div id="admin-communication-empty" class="mt-6 hidden rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                    No employee matched your search.
                 </div>
             </section>
 
@@ -181,6 +192,40 @@
 </div>
 <script>
 (function(){const thread=document.getElementById('admin-message-thread');if(thread){thread.scrollTop=thread.scrollHeight}})();
+(function(){
+    const searchInput = document.getElementById('admin-communication-search');
+    const cards = Array.from(document.querySelectorAll('[data-communication-directory-card]'));
+    const emptyMessage = document.getElementById('admin-communication-empty');
+    const directoryGrid = document.getElementById('admin-communication-directory-grid');
+    if (!searchInput || !cards.length || !directoryGrid) return;
+
+    const applyDirectorySearch = () => {
+        const query = (searchInput.value || '').toLowerCase().trim();
+        let visibleCount = 0;
+
+        cards.forEach((card) => {
+            const searchableText = [
+                card.dataset.name || '',
+                card.dataset.email || '',
+                card.dataset.position || '',
+                card.dataset.department || '',
+            ].join(' ');
+
+            const matches = query === '' || searchableText.includes(query);
+            card.classList.toggle('hidden', !matches);
+            if (matches) visibleCount += 1;
+        });
+
+        const hasVisibleCards = visibleCount > 0;
+        directoryGrid.classList.toggle('hidden', !hasVisibleCards);
+        if (emptyMessage) {
+            emptyMessage.classList.toggle('hidden', hasVisibleCards);
+        }
+    };
+
+    searchInput.addEventListener('input', applyDirectorySearch);
+    applyDirectorySearch();
+})();
 </script>
 </body>
 </html>

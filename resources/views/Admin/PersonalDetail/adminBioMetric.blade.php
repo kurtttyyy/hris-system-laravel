@@ -88,6 +88,40 @@
       display: inline;
       margin-left: 4px;
     }
+    .empty-data-flag {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: #b91c1c;
+      font-weight: 600;
+    }
+    .empty-data-flag::after {
+      content: "!";
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.05rem;
+      height: 1.05rem;
+      border-radius: 999px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+      animation: emptyDataPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes emptyDataPulse {
+      0%,
+      100% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+      }
+      50% {
+        transform: translateY(-1px) scale(1.08);
+        box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+      }
+    }
   </style>
 
   <!-- TOP + EMPLOYMENT SECTION -->
@@ -1552,6 +1586,48 @@ async function downloadProfileDOCX() {
       alert('Failed to export DOCX. Please try again.');
     });
 }
+
+function applyEmptyValueIndicators() {
+  const profileForm = document.getElementById('profile-form');
+  if (!profileForm) return;
+
+  const isEmptyDisplayValue = (text) => {
+    const normalized = (text || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!normalized) return true;
+
+    if (['-', 'n/a', 'na', 'unspecified', 'not set'].includes(normalized)) {
+      return true;
+    }
+
+    return normalized.includes('school n/a')
+      || normalized.includes('year n/a')
+      || normalized === 'n/a, n/a';
+  };
+
+  const targets = profileForm.querySelectorAll('.value, .split-value, .edu-title, .edu-meta');
+  targets.forEach((node) => {
+    if (node.closest('#action-buttons')) return;
+    const text = node.textContent || '';
+    node.classList.toggle('empty-data-flag', isEmptyDisplayValue(text));
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  applyEmptyValueIndicators();
+
+  const profileForm = document.getElementById('profile-form');
+  if (!profileForm || typeof MutationObserver === 'undefined') return;
+
+  const observer = new MutationObserver(() => {
+    applyEmptyValueIndicators();
+  });
+
+  observer.observe(profileForm, {
+    subtree: true,
+    childList: true,
+    characterData: true,
+  });
+});
 </script>
 
     </div>

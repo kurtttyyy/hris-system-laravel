@@ -380,7 +380,7 @@
     <div class="mb-3">
         <div class="floating-input">
             <input type="text" id="address" name="address" class="form-control" placeholder=" " required>
-            <label for="address">Address<span class="required-asterisk"> *</span></label>
+            <label for="address">Complete Address<span class="required-asterisk"> *</span></label>
         </div>
     </div>
 

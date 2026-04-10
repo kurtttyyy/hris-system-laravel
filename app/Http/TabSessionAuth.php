@@ -27,16 +27,24 @@ class TabSessionAuth
             $request->session()->put('last_tab_session_'.$tabSessionScope, $tabSession);
             $request->session()->put('last_tab_session', $tabSession);
 
-            $tabAuthMap = $request->session()->get('tab_auth_users', []);
+            $tabAuthMap = $request->session()->get($this->tabAuthMapKey($tabSessionScope), []);
+            if (!is_array($tabAuthMap) || empty($tabAuthMap)) {
+                $tabAuthMap = $request->session()->get('tab_auth_users', []);
+            }
             $userId = (int) ($tabAuthMap[$tabSession] ?? 0);
 
             if ($userId > 0) {
                 $user = User::query()->find($userId);
-                if ($user) {
+                if ($user && $this->userMatchesScope($user, $tabSessionScope)) {
                     Auth::setUser($user);
                 } else {
                     unset($tabAuthMap[$tabSession]);
-                    $request->session()->put('tab_auth_users', $tabAuthMap);
+                    $request->session()->put($this->tabAuthMapKey($tabSessionScope), $tabAuthMap);
+                    $legacyTabAuthMap = $request->session()->get('tab_auth_users', []);
+                    if (is_array($legacyTabAuthMap)) {
+                        unset($legacyTabAuthMap[$tabSession]);
+                        $request->session()->put('tab_auth_users', $legacyTabAuthMap);
+                    }
                 }
             }
         }
@@ -73,8 +81,7 @@ class TabSessionAuth
 
         $candidates = array_filter([
             $session->get('last_tab_session_'.$tabSessionScope, ''),
-            $tabSessionScope !== 'web' ? $session->get('last_tab_session', '') : '',
-            $tabSessionScope === 'admin' ? $session->get('last_tab_session_web', '') : '',
+            $tabSessionScope === 'web' ? $session->get('last_tab_session', '') : '',
         ], static fn ($value) => trim((string) $value) !== '');
 
         foreach ($candidates as $candidate) {
@@ -85,5 +92,21 @@ class TabSessionAuth
         }
 
         return '';
+    }
+
+    protected function tabAuthMapKey(string $tabSessionScope): string
+    {
+        return 'tab_auth_users_'.$tabSessionScope;
+    }
+
+    protected function userMatchesScope(User $user, string $tabSessionScope): bool
+    {
+        $role = strtolower(trim((string) ($user->role ?? '')));
+
+        return match ($tabSessionScope) {
+            'admin' => in_array($role, ['admin', 'administrator'], true),
+            'employee' => $role === 'employee',
+            default => true,
+        };
     }
 }

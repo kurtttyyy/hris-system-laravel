@@ -23,6 +23,7 @@ use App\Models\PayslipUpload;
 use App\Models\Resignation;
 use App\Models\Salary;
 use App\Models\User;
+use App\Support\EmployeeAccountStatusManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -2923,7 +2924,8 @@ class AdministratorStoreController extends Controller
             }
 
             if (!empty($leaveApplication->user_id)) {
-                $resolvedAccountStatus = $this->resolveAccountStatusByRecords((int) $leaveApplication->user_id);
+                $resolvedAccountStatus = app(EmployeeAccountStatusManager::class)
+                    ->syncUserAccountStatus((int) $leaveApplication->user_id);
                 User::query()
                     ->where('id', (int) $leaveApplication->user_id)
                     ->update(['account_status' => $resolvedAccountStatus]);
@@ -3047,7 +3049,8 @@ class AdministratorStoreController extends Controller
         // Keep employee account status dynamic based on resignation/leave outcomes.
         if ($employeeUser) {
             $employeeUser->update([
-                'account_status' => $this->resolveAccountStatusByRecords((int) $employeeUser->id),
+                'account_status' => app(EmployeeAccountStatusManager::class)
+                    ->syncUserAccountStatus((int) $employeeUser->id),
             ]);
         }
 
@@ -3184,67 +3187,7 @@ class AdministratorStoreController extends Controller
 
     private function resolveAccountStatusByRecords(int $userId): string
     {
-        if ($userId <= 0) {
-            return 'Active';
-        }
-
-        $user = User::query()->find($userId);
-        if (!$user) {
-            return 'Active';
-        }
-
-        $latestApprovedOrCompletedResignation = Resignation::query()
-            ->where('user_id', $userId)
-            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) IN (?, ?)", ['approved', 'completed'])
-            ->orderByDesc(DB::raw('COALESCE(effective_date, processed_at, submitted_at, created_at)'))
-            ->orderByDesc('id')
-            ->first();
-
-        if ($latestApprovedOrCompletedResignation) {
-            $latestResignationDate = $latestApprovedOrCompletedResignation->processed_at
-                ?? $latestApprovedOrCompletedResignation->submitted_at
-                ?? $latestApprovedOrCompletedResignation->created_at;
-            $latestResignationEffectiveDate = $latestApprovedOrCompletedResignation->effective_date;
-
-            $rehiredAfterResignation = Applicant::query()
-                ->where('user_id', $userId)
-                ->whereRaw("LOWER(TRIM(COALESCE(application_status, ''))) = ?", ['hired'])
-                ->where(function ($query) use ($latestResignationDate, $latestResignationEffectiveDate) {
-                    $query->where('created_at', '>', $latestResignationDate);
-
-                    if ($latestResignationDate) {
-                        $query->orWhere('date_hired', '>', Carbon::parse($latestResignationDate)->toDateString());
-                    }
-
-                    if ($latestResignationEffectiveDate) {
-                        $query->orWhere('date_hired', '>', Carbon::parse($latestResignationEffectiveDate)->toDateString());
-                    }
-                })
-                ->exists();
-
-            if (!$rehiredAfterResignation) {
-                return 'Inactive';
-            }
-        }
-
-        if (strcasecmp(trim((string) ($user->role ?? '')), 'employee') !== 0) {
-            return trim((string) ($user->account_status ?? '')) !== ''
-                ? (string) $user->account_status
-                : 'Active';
-        }
-
-        $today = Carbon::today();
-        $hasApprovedLeave = LeaveApplication::query()
-            ->where('user_id', $userId)
-            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
-            ->get()
-            ->contains(fn (LeaveApplication $leaveApplication) => $this->isLeaveApplicationActiveOnDate($leaveApplication, $today));
-
-        if ($hasApprovedLeave) {
-            return 'On Leave';
-        }
-
-        return 'Active';
+        return app(EmployeeAccountStatusManager::class)->resolveAccountStatus($userId);
     }
 
     private function reactivateResignedEmployeeAccountForApplicant(Applicant $applicant): void
@@ -3299,69 +3242,14 @@ class AdministratorStoreController extends Controller
 
     private function isLeaveApplicationActiveOnDate(LeaveApplication $leaveApplication, ?Carbon $targetDate = null): bool
     {
-        [$startDate, $endDate] = $this->resolveLeaveApplicationDateRange($leaveApplication);
-        if (!$startDate || !$endDate) {
-            return false;
-        }
-
-        $comparisonDate = ($targetDate ?? Carbon::today())->copy()->startOfDay();
-        return $comparisonDate->betweenIncluded($startDate, $endDate);
+        return app(EmployeeAccountStatusManager::class)
+            ->isLeaveApplicationActiveOnDate($leaveApplication, $targetDate);
     }
 
     private function resolveLeaveApplicationDateRange(LeaveApplication $leaveApplication): array
     {
-        $parseDate = static function ($value): ?Carbon {
-            $text = trim((string) ($value ?? ''));
-            if ($text === '') {
-                return null;
-            }
-
-            foreach (['Y-m-d', 'm/d/Y', 'n/j/Y'] as $format) {
-                try {
-                    return Carbon::createFromFormat($format, $text)->startOfDay();
-                } catch (\Throwable $e) {
-                }
-            }
-
-            try {
-                return Carbon::parse($text)->startOfDay();
-            } catch (\Throwable $e) {
-                return null;
-            }
-        };
-
-        $inclusiveDates = trim((string) ($leaveApplication->inclusive_dates ?? ''));
-        $matchedDates = [];
-        if ($inclusiveDates !== '') {
-            preg_match_all('/\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\/\d{1,2}\/\d{4}\b/', $inclusiveDates, $matches);
-            $matchedDates = $matches[0] ?? [];
-        }
-
-        $startDate = isset($matchedDates[0]) ? $parseDate($matchedDates[0]) : null;
-        $endDate = isset($matchedDates[1]) ? $parseDate($matchedDates[1]) : null;
-
-        if (!$startDate) {
-            $startDate = $parseDate($leaveApplication->filing_date) ?: $parseDate($leaveApplication->created_at);
-        }
-
-        $days = (float) ($leaveApplication->number_of_working_days ?? 0);
-        if ($days <= 0) {
-            $days = max(
-                (float) ($leaveApplication->days_with_pay ?? 0),
-                (float) ($leaveApplication->applied_total ?? 0)
-            );
-        }
-
-        $rangeDays = max((int) ceil($days), 1);
-        if (!$endDate && $startDate) {
-            $endDate = $startDate->copy()->addDays($rangeDays - 1);
-        }
-
-        if ($startDate && $endDate && $endDate->lt($startDate)) {
-            [$startDate, $endDate] = [$endDate, $startDate];
-        }
-
-        return [$startDate, $endDate];
+        return app(EmployeeAccountStatusManager::class)
+            ->resolveLeaveApplicationDateRange($leaveApplication);
     }
 
     private function canApplyLeaveAttendanceOverride(AttendanceRecord $record): bool

@@ -193,8 +193,13 @@
                             Upload one document at a time for your employee 201 file.
                         </p>
                     </div>
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                    <div class="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
                         <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                        @if($missingDocumentCount > 0)
+                            <span class="absolute -right-2 -top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white">
+                                {{ $missingDocumentCount > 99 ? '99+' : $missingDocumentCount }}
+                            </span>
+                        @endif
                     </div>
                 </div>
 

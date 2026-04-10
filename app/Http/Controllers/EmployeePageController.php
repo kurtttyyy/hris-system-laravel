@@ -9,6 +9,7 @@ use App\Models\AttendanceRecord;
 use App\Models\PayslipRecord;
 use App\Models\Resignation;
 use App\Models\User;
+use App\Support\EmployeeAccountStatusManager;
 use App\Models\LeaveApplication;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -28,16 +29,121 @@ class EmployeePageController extends Controller
         $leaveMetrics = $this->buildEmployeeLeaveMetrics($user, $selectedMonth);
         $attendanceMetrics = $this->buildEmployeeAttendanceMetrics($user, $selectedMonth);
         $weeklyAttendance = $this->buildWeeklyAttendanceData($user);
+        [$notificationItems, $notificationStats] = $this->buildEmployeeNotifications($user);
+        $accountAlerts = $this->buildEmployeeAccountAlerts($user, (int) ($notificationStats['total'] ?? 0));
 
         return view('employee.employeeHome', array_merge(
             [
                 'user' => $user,
-                'notifications' => 0,
+                'notifications' => (int) ($notificationStats['total'] ?? 0),
+                'accountAlerts' => $accountAlerts,
             ],
             $leaveMetrics,
             $attendanceMetrics,
             $weeklyAttendance
         ));
+    }
+
+    private function buildEmployeeAccountAlerts(User $user, int $notificationTotal = 0): array
+    {
+        $alerts = collect();
+
+        $unreadMessages = 0;
+        if (Schema::hasTable('conversations') && Schema::hasTable('conversation_messages')) {
+            $unreadMessages = \App\Models\ConversationMessage::query()
+                ->whereNull('read_at')
+                ->where('sender_user_id', '!=', (int) $user->id)
+                ->whereHas('conversation', function ($query) use ($user) {
+                    $query->where(function ($innerQuery) use ($user) {
+                        $innerQuery->where('user_one_id', (int) $user->id)
+                            ->orWhere('user_two_id', (int) $user->id);
+                    });
+                })
+                ->count();
+        }
+        if ($unreadMessages > 0) {
+            $alerts->push([
+                'title' => $unreadMessages.' unread message'.($unreadMessages === 1 ? '' : 's'),
+                'desc' => 'You have pending conversation replies.',
+                'href' => route('employee.employeeCommunication', ['focus' => 'chat-panel']),
+                'tone' => 'rose',
+            ]);
+        }
+
+        $leaveDecisionCount = 0;
+        if (Schema::hasTable('leave_applications')) {
+            $leaveDecisionCount = LeaveApplication::query()
+                ->where('user_id', (int) $user->id)
+                ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['rejected'])
+                ->count();
+        }
+        if ($leaveDecisionCount > 0) {
+            $alerts->push([
+                'title' => $leaveDecisionCount.' rejected leave request'.($leaveDecisionCount === 1 ? '' : 's'),
+                'desc' => 'A leave request was rejected and needs your attention.',
+                'href' => route('employee.employeeLeave', ['focus' => 'leave-history-section']),
+                'tone' => 'amber',
+            ]);
+        }
+
+        $missingDocumentCount = 0;
+        if (Schema::hasTable('applicants') && Schema::hasTable('applicant_documents')) {
+            $applicant = Applicant::query()
+                ->where('user_id', (int) $user->id)
+                ->where('application_status', 'Hired')
+                ->latest('id')
+                ->first();
+
+            if ($applicant) {
+                $requiredPrefix = '__REQUIRED__::';
+                $noticeType = '__NOTICE__';
+                $folderType = self::FOLDER_TYPE;
+                $requiredConfig = $this->getRequiredDocumentConfigForApplicant((int) $applicant->id);
+                $requiredDocuments = collect($requiredConfig['required_documents'] ?? [])
+                    ->map(fn ($item) => trim((string) $item))
+                    ->filter()
+                    ->values();
+
+                $accessibleApplicantIds = $this->documentAccessibleApplicantIds($applicant);
+                $uploadedDocumentTypesNormalized = ApplicantDocument::query()
+                    ->whereIn('applicant_id', $accessibleApplicantIds)
+                    ->where('type', 'not like', $requiredPrefix.'%')
+                    ->where('type', '!=', $noticeType)
+                    ->where('type', '!=', $folderType)
+                    ->get()
+                    ->map(fn ($doc) => $this->normalizeDocumentLabel((string) ($doc->type ?: $doc->filename)))
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                $missingDocumentCount = (int) $requiredDocuments
+                    ->filter(function ($required) use ($uploadedDocumentTypesNormalized) {
+                        return !$uploadedDocumentTypesNormalized->contains(
+                            $this->normalizeDocumentLabel((string) $required)
+                        );
+                    })
+                    ->count();
+            }
+        }
+        if ($missingDocumentCount > 0) {
+            $alerts->push([
+                'title' => $missingDocumentCount.' missing required document'.($missingDocumentCount === 1 ? '' : 's'),
+                'desc' => 'Upload missing files to complete your records.',
+                'href' => route('employee.employeeDocument', ['focus' => 'missing-documents-section']),
+                'tone' => 'violet',
+            ]);
+        }
+
+        if ($notificationTotal > 0) {
+            $alerts->push([
+                'title' => $notificationTotal.' account notification'.($notificationTotal === 1 ? '' : 's'),
+                'desc' => 'Review all recent updates in your notification center.',
+                'href' => route('employee.employeeNotifications'),
+                'tone' => 'sky',
+            ]);
+        }
+
+        return $alerts->values()->all();
     }
 
     public function display_notifications()
@@ -1296,8 +1402,11 @@ class EmployeePageController extends Controller
 
     private function resolveHierarchyEmploymentStatus(?User $user): string
     {
-        $status = trim((string) ($user?->employee?->account_status ?? $user?->account_status ?? ''));
-        return $status !== '' ? $status : 'Active';
+        if (!$user?->id) {
+            return 'Active';
+        }
+
+        return app(EmployeeAccountStatusManager::class)->syncUserAccountStatus((int) $user->id);
     }
 
     private function hierarchyManagerScore(?User $user): int

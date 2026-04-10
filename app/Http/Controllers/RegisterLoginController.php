@@ -15,6 +15,9 @@ class RegisterLoginController extends Controller
 {
     use ResolvesTabSession;
 
+    private const TAB_AUTH_MAP_ADMIN = 'tab_auth_users_admin';
+    private const TAB_AUTH_MAP_EMPLOYEE = 'tab_auth_users_employee';
+
     public function register_store(Request $request){
         Log::info($request);
         $attrs = $request->validate([
@@ -134,11 +137,24 @@ class RegisterLoginController extends Controller
         ])) {
             $user = Auth::user();
             $tabSession = $this->resolveTabSessionKey($request);
-            $tabAuthUsers = $request->session()->get('tab_auth_users', []);
 
             if ($tabSession !== '' && $user) {
-                $tabAuthUsers[$tabSession] = (int) $user->id;
-                $request->session()->put('tab_auth_users', $tabAuthUsers);
+                $tabScopeKey = $this->tabScopeMapKeyForRole((string) ($user->role ?? ''));
+                $scopedTabAuthUsers = $tabScopeKey !== null
+                    ? $request->session()->get($tabScopeKey, [])
+                    : [];
+
+                if ($tabScopeKey !== null) {
+                    $scopedTabAuthUsers[$tabSession] = (int) $user->id;
+                    $request->session()->put($tabScopeKey, $scopedTabAuthUsers);
+                }
+
+                // Clean legacy mixed-role map to prevent cross-account collisions.
+                $legacyTabAuthUsers = $request->session()->get('tab_auth_users', []);
+                if (is_array($legacyTabAuthUsers)) {
+                    unset($legacyTabAuthUsers[$tabSession]);
+                    $request->session()->put('tab_auth_users', $legacyTabAuthUsers);
+                }
             }
 
             Auth::logout();
@@ -159,14 +175,51 @@ class RegisterLoginController extends Controller
 
     public function logout(Request $request)
     {
+        $authUser = Auth::user();
         $tabSession = $this->resolveTabSessionKey($request);
+        $tabSessionScope = $this->resolveTabSessionScope($request);
+        $scopeMapKey = $this->tabScopeMapKeyForScope($tabSessionScope);
         $tabAuthUsers = $request->session()->get('tab_auth_users', []);
+        $tabAuthUsersAdmin = $request->session()->get(self::TAB_AUTH_MAP_ADMIN, []);
+        $tabAuthUsersEmployee = $request->session()->get(self::TAB_AUTH_MAP_EMPLOYEE, []);
+
+        $removeByTabKey = static function (array $map, string $tabKey): array {
+            unset($map[$tabKey]);
+            return $map;
+        };
+
+        $removeByUserId = static function (array $map, int $userId): array {
+            if ($userId <= 0) {
+                return $map;
+            }
+            return collect($map)
+                ->reject(fn ($mappedUserId) => (int) $mappedUserId === $userId)
+                ->all();
+        };
+
         if ($tabSession !== '') {
-            unset($tabAuthUsers[$tabSession]);
-            $request->session()->put('tab_auth_users', $tabAuthUsers);
+            // Remove only current tab from its own scope map.
+            if ($scopeMapKey === self::TAB_AUTH_MAP_ADMIN) {
+                $tabAuthUsersAdmin = $removeByTabKey($tabAuthUsersAdmin, $tabSession);
+            } elseif ($scopeMapKey === self::TAB_AUTH_MAP_EMPLOYEE) {
+                $tabAuthUsersEmployee = $removeByTabKey($tabAuthUsersEmployee, $tabSession);
+            }
+
+            // Legacy map cleanup: only remove if entry belongs to current user.
+            $legacyMappedUserId = (int) ($tabAuthUsers[$tabSession] ?? 0);
+            if ($legacyMappedUserId > 0 && $legacyMappedUserId === (int) ($authUser?->id ?? 0)) {
+                $tabAuthUsers = $removeByTabKey($tabAuthUsers, $tabSession);
+            }
         } else {
-            $request->session()->forget('tab_auth_users');
+            $authUserId = (int) ($authUser?->id ?? 0);
+            $tabAuthUsers = $removeByUserId($tabAuthUsers, $authUserId);
+            $tabAuthUsersAdmin = $removeByUserId($tabAuthUsersAdmin, $authUserId);
+            $tabAuthUsersEmployee = $removeByUserId($tabAuthUsersEmployee, $authUserId);
         }
+
+        $request->session()->put('tab_auth_users', $tabAuthUsers);
+        $request->session()->put(self::TAB_AUTH_MAP_ADMIN, $tabAuthUsersAdmin);
+        $request->session()->put(self::TAB_AUTH_MAP_EMPLOYEE, $tabAuthUsersEmployee);
 
         Auth::logout();
         $request->session()->regenerateToken();
@@ -207,5 +260,27 @@ class RegisterLoginController extends Controller
             ->where('user_id', $userId)
             ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) IN (?, ?)", ['approved', 'completed'])
             ->exists();
+    }
+
+    private function tabScopeMapKeyForRole(string $role): ?string
+    {
+        $normalizedRole = strtolower(trim($role));
+
+        return match ($normalizedRole) {
+            'admin', 'administrator' => self::TAB_AUTH_MAP_ADMIN,
+            'employee' => self::TAB_AUTH_MAP_EMPLOYEE,
+            default => null,
+        };
+    }
+
+    private function tabScopeMapKeyForScope(string $scope): ?string
+    {
+        $normalizedScope = strtolower(trim($scope));
+
+        return match ($normalizedScope) {
+            'admin' => self::TAB_AUTH_MAP_ADMIN,
+            'employee' => self::TAB_AUTH_MAP_EMPLOYEE,
+            default => null,
+        };
     }
 }
