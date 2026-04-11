@@ -209,6 +209,37 @@
 
 <script>
     (function () {
+        const sidebar = document.querySelector('.admin-sidebar');
+        const main = document.querySelector('main');
+        const isDesktopViewport = () => window.matchMedia('(min-width: 1025px)').matches;
+
+        if (sidebar && main) {
+            const applyCollapsedSidebar = () => {
+                if (!isDesktopViewport()) {
+                    main.classList.remove('ml-16', 'ml-72');
+                    return;
+                }
+
+                main.classList.remove('ml-72');
+                main.classList.add('ml-16');
+            };
+
+            const applyExpandedSidebar = () => {
+                if (!isDesktopViewport()) {
+                    main.classList.remove('ml-16', 'ml-72');
+                    return;
+                }
+
+                main.classList.remove('ml-16');
+                main.classList.add('ml-72');
+            };
+
+            applyCollapsedSidebar();
+            sidebar.addEventListener('mouseenter', applyExpandedSidebar);
+            sidebar.addEventListener('mouseleave', applyCollapsedSidebar);
+            window.addEventListener('resize', applyCollapsedSidebar);
+        }
+
         const filterButtons = Array.from(document.querySelectorAll('.notification-filter'));
         const resultsLabel = document.getElementById('notification-results-label');
         const listContainer = document.getElementById('notification-list');

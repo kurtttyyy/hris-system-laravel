@@ -79,7 +79,7 @@
         'employee:id,user_id,account_number,sex,civil_status,contact_number,birthday,address',
         'applicant',
         'license:id,user_id,license,registration_number',
-        'government:id,user_id,SSS,TIN,PhilHealth,MID',
+        'government:id,user_id,SSS,TIN,PhilHealth,MID,RTN',
         'salary:id,user_id,salary',
       ])
       ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
@@ -99,6 +99,7 @@
         data_get($emp, 'government.TIN'),
         data_get($emp, 'government.PhilHealth'),
         data_get($emp, 'government.MID'),
+        data_get($emp, 'government.RTN'),
         data_get($emp, 'salary.salary'),
       ])->contains(fn ($value) => $isMissingEmployeeValue($value));
     })->count();

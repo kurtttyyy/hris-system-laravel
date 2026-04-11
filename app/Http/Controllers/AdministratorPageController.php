@@ -935,6 +935,31 @@ class AdministratorPageController extends Controller
         $employee->each(function (User $row) {
             $this->attachApplicantComparisonMeta($row->applicant);
             $row->setAttribute('leave_summary', $this->buildAdminEmployeeLeaveSummary($row, now()->format('Y-m')));
+
+            $requiredConfig = $this->getRequiredDocumentConfigForApplicant((int) ($row->applicant?->id ?? 0));
+            $requiredDocuments = collect($requiredConfig['required_documents'] ?? [])
+                ->map(fn ($item) => trim((string) $item))
+                ->filter()
+                ->values();
+
+            $uploadedDocumentTypesNormalized = collect($row->applicant?->documents ?? [])
+                ->map(function ($doc) {
+                    return $this->normalizeDocumentLabel((string) ($doc->type ?: $doc->filename));
+                })
+                ->filter()
+                ->unique()
+                ->values();
+
+            $missingRequiredDocuments = $requiredDocuments
+                ->filter(function ($required) use ($uploadedDocumentTypesNormalized) {
+                    return !$uploadedDocumentTypesNormalized->contains(
+                        $this->normalizeDocumentLabel((string) $required)
+                    );
+                })
+                ->values();
+
+            $row->setAttribute('missing_required_documents', $missingRequiredDocuments->all());
+            $row->setAttribute('missing_required_documents_count', (int) $missingRequiredDocuments->count());
         });
 
         $this->attachSubjectLoadsToEmployees($employee);
@@ -1842,6 +1867,16 @@ class AdministratorPageController extends Controller
 
     private function buildMissingEmployeeAbsences($records, ?string $fromDate, ?string $selectedJobType = null, $employeeJobTypeMap = null, $employeeDepartmentMap = null)
     {
+        if ($fromDate) {
+            try {
+                $normalizedDate = Carbon::parse($fromDate)->toDateString();
+                if ($this->isSundayDate($normalizedDate) || $this->isHolidayDate($normalizedDate)) {
+                    return collect();
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
         $recordedEmployeeIds = $records
             ->pluck('employee_id')
             ->map(fn ($id) => $this->normalizeEmployeeId($id))
@@ -1965,6 +2000,11 @@ class AdministratorPageController extends Controller
 
         while ($current->lte($last)) {
             $date = $current->toDateString();
+
+            if ($this->isSundayDate($date) || $this->isHolidayDate($date)) {
+                $current->addDay();
+                continue;
+            }
 
             foreach ($employees as $employee) {
                 $employeeId = $this->normalizeEmployeeId($employee->employee_id);

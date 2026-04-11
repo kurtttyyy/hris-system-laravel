@@ -294,6 +294,13 @@
                             Complete: no missing required documents.
                         </div>
                     @endif
+
+                    @if(!empty($documentNotice))
+                        <div class="rounded-[1.25rem] border border-amber-200 bg-amber-50 p-4">
+                            <p class="mb-2 text-xs font-semibold text-amber-700">Admin Notice</p>
+                            <p class="text-sm leading-6 text-amber-900">{{ $documentNotice }}</p>
+                        </div>
+                    @endif
                 </form>
 
                 <div class="mt-6">

@@ -66,8 +66,8 @@
                         </label>
                     </div>
 
-                    <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                        <div class="flex flex-wrap gap-2">
+                    <div class="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+                        <div class="flex flex-wrap items-center gap-2">
                             <button
                                 type="button"
                                 @click="statusFilter = 'All'"
@@ -124,11 +124,11 @@
                             </button>
                         </div>
 
-                        <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2 xl:justify-end">
                             <button
                                 type="button"
                                 @click="window.exportAdminEmployeesExcel({ search, department, statusFilter })"
-                                class="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-200"
+                                class="inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-200"
                             >
                                 <i class="fa-solid fa-file-excel text-xs"></i>
                                 Excel
@@ -136,7 +136,7 @@
                             <button
                                 type="button"
                                 @click="search = ''; department = 'All'; statusFilter = 'All'"
-                                class="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-2 text-sm font-semibold text-emerald-50 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/15"
+                                class="inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-2 text-sm font-semibold text-emerald-50 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/15"
                             >
                                 <i class="fa-solid fa-rotate-left text-xs"></i>
                                 Reset filters

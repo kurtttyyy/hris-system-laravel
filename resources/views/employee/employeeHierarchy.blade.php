@@ -299,7 +299,7 @@
                                             <p class="tree-card-popover__value">{{ $managerNode['email'] }}</p>
                                         </div>
                                         <div class="mt-3">
-                                            <p class="tree-card-popover__label">Status</p>
+                                            <p class="tree-card-popover__label">Employment Status</p>
                                             <p class="tree-card-popover__value">{{ $managerNode['status'] }}</p>
                                         </div>
                                     </div>
@@ -351,7 +351,7 @@
                                                         <p class="tree-card-popover__value">{{ $employeeNode['email'] }}</p>
                                                     </div>
                                                     <div class="mt-3">
-                                                        <p class="tree-card-popover__label">Status</p>
+                                                        <p class="tree-card-popover__label">Employment Status</p>
                                                         <p class="tree-card-popover__value">{{ $employeeNode['status'] }}</p>
                                                     </div>
                                                 </div>

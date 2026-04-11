@@ -9,7 +9,6 @@ use App\Models\AttendanceRecord;
 use App\Models\PayslipRecord;
 use App\Models\Resignation;
 use App\Models\User;
-use App\Support\EmployeeAccountStatusManager;
 use App\Models\LeaveApplication;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -1402,11 +1401,48 @@ class EmployeePageController extends Controller
 
     private function resolveHierarchyEmploymentStatus(?User $user): string
     {
-        if (!$user?->id) {
-            return 'Active';
+        $classification = strtolower(trim((string) (
+            $user?->employee?->classification
+            ?? optional(optional($user?->applicant)->position)->employment
+            ?? $user?->classification
+            ?? ''
+        )));
+
+        if ($classification !== '') {
+            if (str_contains($classification, 'permanent') || str_contains($classification, 'regular')) {
+                return 'Permanent';
+            }
+
+            if (str_contains($classification, 'probationary')) {
+                return 'Probationary';
+            }
         }
 
-        return app(EmployeeAccountStatusManager::class)->syncUserAccountStatus((int) $user->id);
+        $jobType = strtolower(trim((string) (
+            $user?->employee?->job_type
+            ?? optional(optional($user?->applicant)->position)->job_type
+            ?? ''
+        )));
+        $rawJoinDate = $user?->applicant?->date_hired ?? $user?->employee?->employement_date;
+
+        if (in_array($jobType, ['non-teaching', 'teaching'], true)) {
+            if (!empty($rawJoinDate)) {
+                try {
+                    $joinDate = Carbon::parse($rawJoinDate);
+                    $threshold = $jobType === 'non-teaching'
+                        ? $joinDate->copy()->addMonths(6)
+                        : $joinDate->copy()->addYears(3);
+
+                    return now()->lt($threshold) ? 'Probationary' : 'Permanent';
+                } catch (\Throwable $e) {
+                    return 'Probationary';
+                }
+            }
+
+            return 'Probationary';
+        }
+
+        return 'Not set';
     }
 
     private function hierarchyManagerScore(?User $user): int

@@ -1284,6 +1284,7 @@
             data_get($emp, 'government.TIN'),
             data_get($emp, 'government.PhilHealth'),
             data_get($emp, 'government.MID'),
+            data_get($emp, 'government.RTN'),
             data_get($emp, 'salary.salary'),
           ])->contains(fn ($value) => $isMissingEmployeeValue($value)),
         ])->values()
@@ -1495,6 +1496,8 @@
           ->filter()
           ->implode(' | ');
 
+        $missingRequiredDocumentsCount = (int) data_get($emp, 'missing_required_documents_count', 0);
+
         $hasMissingInfo = collect([
           data_get($emp, 'employee.account_number'),
           data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender'),
@@ -1508,8 +1511,9 @@
           data_get($emp, 'government.TIN'),
           data_get($emp, 'government.PhilHealth'),
           data_get($emp, 'government.MID'),
+          data_get($emp, 'government.RTN'),
           data_get($emp, 'salary.salary'),
-        ])->contains(fn ($value) => $isMissingEmployeeValue($value));
+        ])->contains(fn ($value) => $isMissingEmployeeValue($value)) || $missingRequiredDocumentsCount > 0;
 
         return [
           'no' => $index + 1,
@@ -2005,7 +2009,7 @@
       <div class="border-b border-slate-200 bg-[linear-gradient(135deg,rgba(248,250,252,0.96),rgba(240,253,250,0.94))] px-5 py-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p class="text-[11px] font-black uppercase tracking-[0.28em] text-slate-500">Employee Snapshot</p>
+            <p class="text-[11px] font-black uppercase tracking-[0.28em] text-slate-500">Employee</p>
             <h4 class="mt-1 text-lg font-black tracking-tight text-slate-900">Category Totals</h4>
           </div>
           <div class="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-emerald-700">
@@ -2107,11 +2111,23 @@
             'TIN' => data_get($emp, 'government.TIN'),
             'PhilHealth' => data_get($emp, 'government.PhilHealth'),
             'Pag-IBIG MID' => data_get($emp, 'government.MID'),
+            'Pag-IBIG RTN' => data_get($emp, 'government.RTN'),
             'Basic Salary' => data_get($emp, 'salary.salary'),
           ])->filter(fn ($value) => $isMissingEmployeeValue($value));
-          $missingCardCount = $missingCardFields->count();
+          $missingRequiredDocuments = collect(data_get($emp, 'missing_required_documents', []))
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->values();
+          $missingCardCount = $missingCardFields->count() + $missingRequiredDocuments->count();
+          $missingCardParts = collect();
+          if ($missingCardFields->isNotEmpty()) {
+            $missingCardParts->push('Info: '.$missingCardFields->keys()->implode(', '));
+          }
+          if ($missingRequiredDocuments->isNotEmpty()) {
+            $missingCardParts->push('Documents: '.$missingRequiredDocuments->implode(', '));
+          }
           $missingCardTitle = $missingCardCount > 0
-            ? 'Missing: '.$missingCardFields->keys()->implode(', ')
+            ? 'Missing: '.$missingCardParts->implode(' | ')
             : '';
         @endphp
         <!-- Employee Card -->
