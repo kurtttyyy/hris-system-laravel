@@ -195,11 +195,11 @@
     <!-- Logo -->
     <div class="p-4 border-b border-gray-700">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 flex items-center justify-center flex-shrink-0 rounded-full bg-white/95 shadow-sm ring-1 ring-white/40">
+            <div class="w-12 h-12 flex items-center justify-center flex-shrink-0">
                 <img
                     src="{{ asset('images/logo.webp') }}"
                     alt="Logo"
-                    class="w-7 h-7 object-contain block"
+                    class="w-10 h-10 object-contain block"
                 >
             </div>
 

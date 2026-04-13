@@ -1,5 +1,71 @@
 <!-- Documents -->
 <div x-show="tab === 'documents'" x-transition class="w-full p-6 space-y-6">
+    <style>
+        .doc-archive-panel {
+            background:
+                radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 34%),
+                radial-gradient(circle at bottom left, rgba(245, 158, 11, 0.08), transparent 30%),
+                linear-gradient(180deg, #fbfffd 0%, #f7fafc 100%);
+        }
+
+        .doc-folder-card {
+            position: relative;
+            overflow: hidden;
+            transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+        }
+
+        .doc-folder-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0));
+            pointer-events: none;
+            opacity: 0.9;
+        }
+
+        .doc-folder-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .doc-folder-unfiled {
+            background: linear-gradient(180deg, rgba(255, 251, 235, 0.98), rgba(255, 255, 255, 1));
+            border-color: rgba(245, 158, 11, 0.45);
+            box-shadow: 0 10px 26px rgba(245, 158, 11, 0.12);
+        }
+
+        .doc-folder-regular {
+            background: linear-gradient(180deg, rgba(240, 249, 255, 0.98), rgba(255, 255, 255, 1));
+            border-color: rgba(56, 189, 248, 0.4);
+            box-shadow: 0 10px 26px rgba(14, 165, 233, 0.1);
+        }
+
+        .doc-folder-count {
+            min-width: 1.9rem;
+            justify-content: center;
+            border-radius: 999px;
+            padding: 0.28rem 0.62rem;
+            font-size: 0.74rem;
+            font-weight: 800;
+            line-height: 1;
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+        }
+
+        .doc-folder-count-amber {
+            background: #fff7ed;
+            color: #b45309;
+            border: 1px solid #fed7aa;
+        }
+
+        .doc-folder-count-sky {
+            background: #f0f9ff;
+            color: #0369a1;
+            border: 1px solid #bae6fd;
+        }
+
+        .doc-folder-icon {
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 8px 18px rgba(15, 23, 42, 0.1);
+        }
+    </style>
 
     @if (session('success'))
         <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
@@ -13,15 +79,15 @@
         </div>
     @endif
 
-    <div class="grid items-start gap-6 xl:grid-cols-[minmax(320px,0.92fr)_minmax(0,1.18fr)]">
-        <div class="space-y-6">
-            <form action="{{ route('admin.saveRequiredDocuments') }}" method="POST" class="rounded-[1.65rem] border border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(255,255,255,0.98))] p-5 shadow-[0_18px_42px_rgba(217,119,6,0.10)] ring-1 ring-white/70">
+    <div class="grid items-start gap-6 2xl:grid-cols-[minmax(0,1.02fr)_minmax(340px,0.98fr)]">
+        <div class="min-w-0 space-y-6">
+            <form action="{{ route('admin.saveRequiredDocuments') }}" method="POST" class="rounded-[1.65rem] border border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(255,255,255,0.98))] p-5 shadow-[0_18px_42px_rgba(217,119,6,0.10)] ring-1 ring-white/70 md:p-6">
                 @csrf
                 <input type="hidden" name="applicant_id" :value="selectedEmployee?.applicant?.id">
                 <input type="hidden" name="user_id" :value="selectedEmployee?.id">
 
-                <div class="flex items-start justify-between gap-4">
-                    <div>
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
                         <div class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-700">
                             Requirement Rules
                         </div>
@@ -31,7 +97,7 @@
                         </p>
                     </div>
                     <span
-                        class="inline-flex rounded-full border border-rose-200 bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700"
+                        class="inline-flex w-fit shrink-0 rounded-full border border-rose-200 bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700"
                         x-show="(selectedEmployee?.applicant?.missing_documents ?? []).length"
                         x-text="`${(selectedEmployee?.applicant?.missing_documents ?? []).length} Missing`"
                     ></span>
@@ -42,10 +108,10 @@
                         <label class="mb-1 block text-sm font-semibold text-slate-700">Required Document Types</label>
                         <textarea
                             name="required_documents"
-                            rows="5"
+                            rows="7"
                             x-model="selectedEmployee.applicant.required_documents_text"
                             placeholder="One per line, e.g.&#10;NBI Clearance&#10;TOR&#10;Medical Certificate"
-                            class="w-full rounded-2xl border border-amber-200 bg-white/95 px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                            class="min-h-[13rem] w-full resize-y rounded-2xl border border-amber-200 bg-white/95 px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
                         ></textarea>
                         <p class="mt-1 text-xs text-slate-500">Enter one document type per line.</p>
                     </div>
@@ -94,7 +160,7 @@
                 </div>
             </form>
 
-            <form action="{{ route('admin.addDocument') }}" method="POST" enctype="multipart/form-data" class="rounded-[1.65rem] border border-emerald-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,253,248,0.92))] p-5 shadow-[0_18px_42px_rgba(15,23,42,0.07)] ring-1 ring-white/70">
+            <form action="{{ route('admin.addDocument') }}" method="POST" enctype="multipart/form-data" class="rounded-[1.65rem] border border-emerald-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,253,248,0.92))] p-5 shadow-[0_18px_42px_rgba(15,23,42,0.07)] ring-1 ring-white/70 md:p-6">
                 @csrf
 
                 <input type="hidden" name="applicant_id" :value="selectedEmployee?.applicant?.id">
@@ -110,7 +176,7 @@
                             Add a named document to this employee profile for preview and download.
                         </p>
                     </div>
-                    <div class="hidden h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 sm:flex">
+                    <div class="hidden aspect-square h-14 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 sm:flex">
                         <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
                     </div>
                 </div>
@@ -151,7 +217,7 @@
             </form>
         </div>
 
-        <div class="rounded-[1.65rem] border border-slate-200/80 bg-[linear-gradient(180deg,#fbfffd_0%,#f8fafc_100%)] p-5 shadow-[0_18px_42px_rgba(15,23,42,0.07)] ring-1 ring-white/80 xl:sticky xl:top-28 xl:self-start">
+        <div class="doc-archive-panel min-w-0 rounded-[1.65rem] border border-slate-200/80 p-5 shadow-[0_18px_42px_rgba(15,23,42,0.07)] ring-1 ring-white/80 md:p-6 2xl:sticky 2xl:top-28 2xl:self-start">
             <div class="flex flex-col gap-4 border-b border-slate-200/80 pb-5 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600">
@@ -163,8 +229,8 @@
                         <span x-show="selectedDocumentFolderKey() !== 'all'">Review uploaded files inside the selected folder, then preview or download them.</span>
                     </p>
                 </div>
-                <div class="rounded-[1.1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-                    <span class="font-semibold text-slate-900" x-text="currentDocumentCount()"></span>
+                <div class="rounded-[1.1rem] border border-slate-200 bg-white/90 px-4 py-3 text-sm text-slate-600 shadow-sm backdrop-blur-sm">
+                    <span class="font-extrabold text-slate-900" x-text="currentDocumentCount()"></span>
                     <span x-text="selectedDocumentFolderKey() === 'all' ? 'file(s) total' : 'file(s) inside'"></span>
                 </div>
             </div>
@@ -184,23 +250,29 @@
                 </button>
             </div>
 
-            <div x-show="selectedDocumentFolderKey() === 'all'" class="mt-5 grid gap-3 sm:grid-cols-2">
+            <div x-show="selectedDocumentFolderKey() === 'all'" class="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <button
                     type="button"
                     @click="openDocumentFolder('unfiled')"
-                    class="group rounded-[1.25rem] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.96),rgba(255,255,255,1))] p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-[0_14px_28px_rgba(245,158,11,0.10)]"
+                    class="doc-folder-card doc-folder-unfiled group min-h-[9.25rem] rounded-[1.35rem] border p-4 text-left"
                 >
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex min-w-0 items-center gap-3">
-                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
-                                <i class="fa-solid fa-inbox"></i>
-                            </div>
+                    <div class="relative z-[1] flex h-full flex-col justify-between gap-3">
+                        <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <p class="text-sm font-bold text-slate-900">Unfiled</p>
-                                <p class="mt-1 text-xs text-slate-500">Files not assigned to any folder</p>
+                                <div class="flex items-center gap-2">
+                                    <p class="text-base font-bold text-slate-900">Unfiled</p>
+                                    <span class="doc-folder-count doc-folder-count-amber inline-flex items-center" x-text="selectedEmployee?.applicant?.unfiled_count ?? 0"></span>
+                                </div>
                             </div>
                         </div>
-                        <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-700 shadow-sm" x-text="selectedEmployee?.applicant?.unfiled_count ?? 0"></span>
+                        <div class="flex items-center gap-3">
+                            <div class="doc-folder-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                                <i class="fa-solid fa-inbox"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-end text-[11px] font-semibold uppercase tracking-[0.15em] text-amber-700/80 transition group-hover:text-amber-800">
+                            Review Folder
+                        </div>
                     </div>
                 </button>
 
@@ -208,19 +280,25 @@
                     <button
                         type="button"
                         @click="openDocumentFolder(folder.key)"
-                        class="group rounded-[1.25rem] border border-sky-200 bg-[linear-gradient(180deg,rgba(240,249,255,0.96),rgba(255,255,255,1))] p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-[0_14px_28px_rgba(14,165,233,0.10)]"
+                        class="doc-folder-card doc-folder-regular group min-h-[9.25rem] rounded-[1.35rem] border p-4 text-left"
                     >
-                        <div class="flex items-start justify-between gap-4">
-                            <div class="flex min-w-0 items-center gap-3">
-                                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
-                                    <i class="fa-solid fa-folder"></i>
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="truncate text-sm font-bold text-slate-900" x-text="folder.name"></p>
-                                    <p class="mt-1 text-xs text-slate-500">Open this folder to see saved files</p>
+                        <div class="relative z-[1] flex h-full flex-col justify-between gap-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <p class="truncate text-base font-bold text-slate-900" x-text="folder.name"></p>
+                                        <span class="doc-folder-count doc-folder-count-sky inline-flex items-center" x-text="folder.count ?? 0"></span>
+                                    </div>
                                 </div>
                             </div>
-                            <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-sky-700 shadow-sm" x-text="folder.count ?? 0"></span>
+                            <div class="flex items-center gap-3">
+                                <div class="doc-folder-icon flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+                                    <i class="fa-solid fa-folder"></i>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-end text-[11px] font-semibold uppercase tracking-[0.15em] text-sky-700/80 transition group-hover:text-sky-800">
+                                Open Folder
+                            </div>
                         </div>
                     </button>
                 </template>

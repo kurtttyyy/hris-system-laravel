@@ -63,6 +63,30 @@ class GuestPageController extends Controller
         ));
     }
 
+    public function display_about(){
+        $openCount = OpenPosition::count();
+        $department = OpenPosition::query()->distinct('department')->count('department');
+        $employee = User::where('role', 'Employee')->count();
+
+        return view('guest.about', compact(
+            'openCount',
+            'department',
+            'employee'
+        ));
+    }
+
+    public function display_policy(){
+        return view('guest.policy');
+    }
+
+    public function display_terms(){
+        return view('guest.terms');
+    }
+
+    public function display_cookie(){
+        return view('guest.cookie');
+    }
+
     public function job_open_landing(){
         $applicantEmail = session('applicant_email');
         $appliedPositionIds = $this->getBlockedPositionIds($applicantEmail);

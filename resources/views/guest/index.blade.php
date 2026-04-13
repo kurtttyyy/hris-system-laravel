@@ -12,7 +12,7 @@
             loading opportunities<span class="dots">...</span>
         </div>
     </div>
-</div>
+            </div>
 @endsection
 @push('loader-script')
 <script>
@@ -450,6 +450,7 @@
         padding-bottom: 4rem;
     }
 
+
     .section-heading {
         display: flex;
         justify-content: space-between;
@@ -634,7 +635,7 @@
 
     .footer-grid {
         display: grid;
-        grid-template-columns: 1.3fr 1fr 1fr 1.1fr;
+        grid-template-columns: 1.3fr 1fr 1fr;
         gap: 2rem;
     }
 
@@ -1006,7 +1007,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+</div>
         </div>
 
 <div class="container job-section">
@@ -1153,29 +1154,15 @@
                 <p class="footer-feature-text">Building careers, growing leaders, and creating meaningful opportunities for the next generation.</p>
             </div>
 
-            <div>
-                <h4 class="footer-title">Newsletter</h4>
-                <p class="newsletter-copy">Subscribe to receive campus announcements and updates.</p>
-                <form class="newsletter-form" onsubmit="event.preventDefault()">
-                    <div class="newsletter-input-wrap">
-                        <input type="email" class="newsletter-input" placeholder="Enter your email" aria-label="Email address">
-                        <svg class="newsletter-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16v12H4z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m4 8 8 5 8-5"/>
-                        </svg>
-                    </div>
-                    <button type="submit" class="newsletter-btn">Subscribe</button>
-                </form>
-                <p class="newsletter-note">We respect your privacy. Unsubscribe at any time.</p>
-            </div>
+            
         </div>
 
         <div class="footer-bottom">
             <p>&copy; 2026 Northeastern College. All rights reserved.</p>
             <div class="footer-bottom-links">
-                <a href="#">Privacy Policy</a>
-                <a href="#">Terms of Service</a>
-                <a href="#">Cookie Policy</a>
+                <a href="{{ route('guest.policy') }}">Privacy Policy</a>
+                <a href="{{ route('guest.terms') }}">Terms of Service</a>
+                <a href="{{ route('guest.cookie') }}">Cookie Policy</a>
             </div>
         </div>
     </div>
@@ -1266,3 +1253,6 @@
 
 </main>
 @endsection
+
+
+

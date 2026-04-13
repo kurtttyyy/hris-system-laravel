@@ -21,6 +21,10 @@ Route::controller(GuestPageController::class)->group(function () {
     Route::get('/application/teaching/procedure', 'display_teaching')->name('guest.applicationTeachingSteps');
     Route::get('/', 'display_index')->name('guest.index');
     Route::get('/index', 'display_index')->name('guest.index');
+    Route::get('/about', 'display_about')->name('guest.about');
+    Route::get('/policy', 'display_policy')->name('guest.policy');
+    Route::get('/terms-of-service', 'display_terms')->name('guest.terms');
+    Route::get('/cookie-policy', 'display_cookie')->name('guest.cookie');
     Route::get('/job/available', 'job_open_landing')->name('guest.jobOpenLanding');
     Route::get('/job/available/{id}', 'display_job')->name('guest.jobOpen');
 });

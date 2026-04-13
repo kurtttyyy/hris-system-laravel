@@ -4,6 +4,34 @@
   x-transition
   class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6"
 >
+  <style>
+    .missing-info-exclamation {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1rem;
+      height: 1rem;
+      border-radius: 9999px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 800;
+      line-height: 1;
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+      animation: missingInfoPulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes missingInfoPulse {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+      }
+      50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+      }
+    }
+  </style>
 
   <!-- Personal Information -->
   <div class="bg-slate-50 p-6 rounded-xl shadow-sm space-y-5">
@@ -35,7 +63,7 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">Date of Birth</span>
-        <span x-text="selectedEmployee?.employee.formatted_birthday ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.employee?.formatted_birthday) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.employee?.formatted_birthday)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.employee?.formatted_birthday)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
@@ -46,26 +74,74 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">Age</span>
-        <span x-text="(() => {
-          const rawBirthday = selectedEmployee?.employee?.birthday;
-          if (!rawBirthday) return 'â€”';
+        <span class="inline-flex items-center gap-2">
+          <span
+            :class="isMissingDisplayValue((() => {
+              const rawBirthday = selectedEmployee?.employee?.birthday;
+              if (!rawBirthday) return '';
 
-          const birthday = new Date(rawBirthday);
-          if (Number.isNaN(birthday.getTime())) return 'â€”';
+              const birthday = new Date(rawBirthday);
+              if (Number.isNaN(birthday.getTime())) return '';
 
-          const today = new Date();
-          if (birthday > today) return 'â€”';
+              const today = new Date();
+              if (birthday > today) return '';
 
-          let years = today.getFullYear() - birthday.getFullYear();
-          const monthDiff = today.getMonth() - birthday.getMonth();
-          const dayDiff = today.getDate() - birthday.getDate();
+              let years = today.getFullYear() - birthday.getFullYear();
+              const monthDiff = today.getMonth() - birthday.getMonth();
+              const dayDiff = today.getDate() - birthday.getDate();
 
-          if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
-            years -= 1;
-          }
+              if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                years -= 1;
+              }
 
-          return years >= 0 ? String(years) : '—';
-        })()"></span>
+              return years >= 0 ? String(years) : '';
+            })()) ? 'text-rose-600' : 'text-slate-700'"
+            x-text="displayValueOrNoInfo((() => {
+              const rawBirthday = selectedEmployee?.employee?.birthday;
+              if (!rawBirthday) return '';
+
+              const birthday = new Date(rawBirthday);
+              if (Number.isNaN(birthday.getTime())) return '';
+
+              const today = new Date();
+              if (birthday > today) return '';
+
+              let years = today.getFullYear() - birthday.getFullYear();
+              const monthDiff = today.getMonth() - birthday.getMonth();
+              const dayDiff = today.getDate() - birthday.getDate();
+
+              if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                years -= 1;
+              }
+
+              return years >= 0 ? String(years) : '';
+            })())"
+          ></span>
+          <span
+            x-show="isMissingDisplayValue((() => {
+              const rawBirthday = selectedEmployee?.employee?.birthday;
+              if (!rawBirthday) return '';
+
+              const birthday = new Date(rawBirthday);
+              if (Number.isNaN(birthday.getTime())) return '';
+
+              const today = new Date();
+              if (birthday > today) return '';
+
+              let years = today.getFullYear() - birthday.getFullYear();
+              const monthDiff = today.getMonth() - birthday.getMonth();
+              const dayDiff = today.getDate() - birthday.getDate();
+
+              if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                years -= 1;
+              }
+
+              return years >= 0 ? String(years) : '';
+            })())"
+            class="missing-info-exclamation"
+            aria-hidden="true"
+          >!</span>
+        </span>
       </div>
     </div>
 
@@ -88,7 +164,7 @@
 
   <div>
     <span class="block uppercase text-gray-400 font-semibold">Gender</span>
-    <span x-text="selectedEmployee?.employee.sex ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+    <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.employee?.sex) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.employee?.sex)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.employee?.sex)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
   </div>
 </div>
 
@@ -104,7 +180,7 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">Marital Status</span>
-        <span x-text="selectedEmployee?.employee.civil_status ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.employee?.civil_status) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.employee?.civil_status)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.employee?.civil_status)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
@@ -122,9 +198,7 @@
         <span class="block uppercase text-gray-400 font-semibold">
           Email Address
         </span>
-      <span class="text-gray-600"
-            x-text="selectedEmployee?.email ?? selectedEmployee?.employee?.email ?? selectedEmployee?.applicant?.email ?? 'Ã¢â‚¬â€'">
-      </span>
+      <span class="inline-flex items-center gap-2 text-gray-600"><span :class="isMissingDisplayValue(firstCleanDisplayValue(selectedEmployee?.email, selectedEmployee?.employee?.email, selectedEmployee?.applicant?.email)) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(firstCleanDisplayValue(selectedEmployee?.email, selectedEmployee?.employee?.email, selectedEmployee?.applicant?.email))"></span><span x-show="isMissingDisplayValue(firstCleanDisplayValue(selectedEmployee?.email, selectedEmployee?.employee?.email, selectedEmployee?.applicant?.email))" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
@@ -135,7 +209,7 @@
       </svg>
       <div>
         <span class="block text-xs uppercase text-gray-400 font-semibold">Phone No.</span>
-        <span x-text="selectedEmployee?.applicant?.phone ?? selectedEmployee?.employee?.contact_number ?? 'Ã¢â‚¬â€'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(firstCleanDisplayValue(selectedEmployee?.applicant?.phone, selectedEmployee?.employee?.contact_number)) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(firstCleanDisplayValue(selectedEmployee?.applicant?.phone, selectedEmployee?.employee?.contact_number))"></span><span x-show="isMissingDisplayValue(firstCleanDisplayValue(selectedEmployee?.applicant?.phone, selectedEmployee?.employee?.contact_number))" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
   </div>
@@ -157,7 +231,7 @@
     </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">Barangay</span>
-        <span x-text="employeeAddressParts()[0] ?? '—'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(employeeAddressParts()[0]) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(employeeAddressParts()[0])"></span><span x-show="isMissingDisplayValue(employeeAddressParts()[0])" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
@@ -168,7 +242,7 @@
     </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">Municipality</span>
-        <span x-text="employeeAddressParts()[1] ?? '—'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(employeeAddressParts()[1]) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(employeeAddressParts()[1])"></span><span x-show="isMissingDisplayValue(employeeAddressParts()[1])" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
@@ -179,7 +253,7 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">Province</span>
-        <span x-text="employeeAddressParts()[2] ?? '—'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(employeeAddressParts()[2]) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(employeeAddressParts()[2])"></span><span x-show="isMissingDisplayValue(employeeAddressParts()[2])" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
@@ -221,7 +295,7 @@
     <span class="block uppercase text-gray-400 font-semibold">
       Contact Name
     </span>
-    <span x-text="selectedEmployee?.employee?.emergency_contact_name ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+    <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.employee?.emergency_contact_name) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.employee?.emergency_contact_name)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.employee?.emergency_contact_name)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
   </div>
 </div>
 
@@ -234,7 +308,7 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">Relationship</span>
-        <span x-text="selectedEmployee?.employee?.emergency_contact_relationship ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.employee?.emergency_contact_relationship) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.employee?.emergency_contact_relationship)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.employee?.emergency_contact_relationship)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
@@ -255,7 +329,7 @@
 
   <div>
     <span class="block uppercase text-gray-400 font-semibold">Phone Number</span>
-    <span x-text="selectedEmployee?.employee?.emergency_contact_number ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+    <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.employee?.emergency_contact_number) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.employee?.emergency_contact_number)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.employee?.emergency_contact_number)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
   </div>
 </div>
 
@@ -296,7 +370,7 @@
     <span class="block uppercase text-gray-400 font-semibold">
       PNB
     </span>
-    <span x-text="selectedEmployee?.employee.account_number ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+    <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.employee?.account_number) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.employee?.account_number)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.employee?.account_number)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
   </div>
 
 </div>
@@ -308,7 +382,7 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">PAG IBIG MID:</span>
-        <span x-text="selectedEmployee?.government.MID ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.government?.MID) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.government?.MID)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.government?.MID)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
@@ -319,7 +393,7 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">PAG IBIG RTN:</span>
-        <span x-text="selectedEmployee?.government.RTN ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.government?.RTN) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.government?.RTN)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.government?.RTN)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
@@ -330,7 +404,7 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">SSS</span>
-        <span x-text="selectedEmployee?.government.SSS ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.government?.SSS) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.government?.SSS)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.government?.SSS)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
@@ -341,7 +415,7 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">PhilHealth</span>
-        <span x-text="selectedEmployee?.government.PhilHealth ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.government?.PhilHealth) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.government?.PhilHealth)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.government?.PhilHealth)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
         <div class="flex gap-3">
@@ -351,7 +425,7 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">TIN</span>
-        <span x-text="selectedEmployee?.government.TIN ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.government?.TIN) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.government?.TIN)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.government?.TIN)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
@@ -363,12 +437,15 @@
       </svg>
       <div>
         <span class="block uppercase text-gray-400 font-semibold">Account Number</span>
-        <span x-text="selectedEmployee?.employee.employee_id ?? 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'"></span>
+        <span class="inline-flex items-center gap-2"><span :class="isMissingDisplayValue(selectedEmployee?.employee?.employee_id) ? 'text-rose-600' : 'text-slate-700'" x-text="displayValueOrNoInfo(selectedEmployee?.employee?.employee_id)"></span><span x-show="isMissingDisplayValue(selectedEmployee?.employee?.employee_id)" class="missing-info-exclamation" aria-hidden="true">!</span></span>
       </div>
     </div>
 
   </div>
 
 </div>
+
+
+
 
 

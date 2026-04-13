@@ -106,6 +106,31 @@
         'school n/a, year n/a',
       ], true);
     };
+    $employeeAddressParts = function ($emp): array {
+      $rawAddress = trim((string) (data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address') ?: ($emp->address ?? '')));
+      if ($rawAddress === '') {
+        return [];
+      }
+
+      return collect(preg_split('/\s*,\s*/', $rawAddress))
+        ->map(fn ($item) => trim((string) $item))
+        ->values()
+        ->all();
+    };
+    $employeeMissingAddressPartLabels = function ($emp) use ($isMissingEmployeeValue, $employeeAddressParts) {
+      $parts = $employeeAddressParts($emp);
+      $labels = [
+        'Address: Barangay' => $parts[0] ?? null,
+        'Address: Municipality' => $parts[1] ?? null,
+        'Address: Province' => $parts[2] ?? null,
+      ];
+
+      return collect($labels)
+        ->filter(fn ($value) => $isMissingEmployeeValue($value))
+        ->keys()
+        ->values();
+    };
+    $employeeHasMissingAddressParts = fn ($emp): bool => $employeeMissingAddressPartLabels($emp)->isNotEmpty();
     $parseLeaveStatusDate = function ($value) {
       $text = trim((string) ($value ?? ''));
       if ($text === '') {
@@ -323,6 +348,238 @@
         isPlaceholderValue(value) {
           const normalized = this.normalize(value);
           return normalized === '' || normalized === 'n/a' || normalized === 'na' || normalized === '-';
+        },
+        cleanDisplayValue(value) {
+          if (value === null || value === undefined) {
+            return '';
+          }
+
+          let text = this.decodeDisplayText(value);
+          text = (text ?? '').toString().replace(/\s+/g, ' ').trim();
+          if (text === '') {
+            return '';
+          }
+
+          const normalized = this.normalize(text);
+          if ([
+            '-',
+            'n/a',
+            'na',
+            'unspecified',
+            'not set',
+            'school n/a',
+            'year n/a',
+            'school n/a, year n/a',
+          ].includes(normalized)) {
+            return '';
+          }
+
+          // Catch mojibake/fallback artifacts that should be treated as empty.
+          if (/(?:Ã|Â|â€”|â€“|â€|ï¿½|�)/.test(text)) {
+            return '';
+          }
+
+          return text;
+        },
+        isMissingDisplayValue(value) {
+          return this.cleanDisplayValue(value) === '';
+        },
+        firstCleanDisplayValue(...values) {
+          for (const value of values) {
+            const cleaned = this.cleanDisplayValue(value);
+            if (cleaned !== '') {
+              return cleaned;
+            }
+          }
+          return '';
+        },
+        displayValueOrNoInfo(value) {
+          const cleaned = this.cleanDisplayValue(value);
+          return cleaned === '' ? 'No information' : cleaned;
+        },
+        isMissingInfoValue(value) {
+          if (value === null || value === undefined) {
+            return true;
+          }
+
+          const normalized = (value ?? '')
+            .toString()
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+
+          if (normalized === '') {
+            return true;
+          }
+
+          return [
+            '-',
+            'n/a',
+            'na',
+            'unspecified',
+            'not set',
+            'school n/a',
+            'year n/a',
+            'school n/a, year n/a',
+          ].includes(normalized);
+        },
+        firstMeaningfulValue(...values) {
+          for (const value of values) {
+            if (!this.isMissingInfoValue(value)) {
+              return value;
+            }
+          }
+          return values[0] ?? '';
+        },
+        countMissingValues(values = []) {
+          return values.filter((value) => this.isMissingInfoValue(value)).length;
+        },
+        personalAddressMissingCount() {
+          const parts = this.employeeAddressParts();
+          const slots = [parts[0], parts[1], parts[2]];
+          return slots.filter((value) => this.isMissingInfoValue(value)).length;
+        },
+        biometricDegreeMissingCount() {
+          const levels = ['bachelor', 'master', 'doctorate'];
+          let missingCount = 0;
+
+          const fallbackByLevel = {
+            bachelor: {
+              degree: this.selectedEmployee?.education?.bachelor,
+              school: this.selectedEmployee?.applicant?.bachelor_school_name,
+              year: this.selectedEmployee?.applicant?.bachelor_year_finished,
+            },
+            master: {
+              degree: this.selectedEmployee?.education?.master,
+              school: this.selectedEmployee?.applicant?.master_school_name,
+              year: this.selectedEmployee?.applicant?.master_year_finished,
+            },
+            doctorate: {
+              degree: this.selectedEmployee?.education?.doctorate,
+              school: this.selectedEmployee?.applicant?.doctoral_school_name,
+              year: this.selectedEmployee?.applicant?.doctoral_year_finished,
+            },
+          };
+
+          levels.forEach((level) => {
+            const rows = this.degreeRows(level);
+            if (rows.length) {
+              rows.forEach((row) => {
+                const hasMissingDegreeRow = this.isMissingInfoValue(row?.degree_name)
+                  || this.isMissingInfoValue(row?.school_name)
+                  || this.isMissingInfoValue(row?.year_finished);
+                if (hasMissingDegreeRow) {
+                  missingCount += 1;
+                }
+              });
+              return;
+            }
+
+            const fallback = fallbackByLevel[level] ?? {};
+            const hasMissingFallback = this.isMissingInfoValue(fallback?.degree)
+              || this.isMissingInfoValue(fallback?.school)
+              || this.isMissingInfoValue(fallback?.year);
+            if (hasMissingFallback) {
+              missingCount += 1;
+            }
+          });
+
+          return missingCount;
+        },
+        missingDocumentsCount() {
+          const docs = this.selectedEmployee?.applicant?.missing_documents;
+          if (!Array.isArray(docs)) {
+            return 0;
+          }
+          return docs.filter((value) => !this.isMissingInfoValue(value)).length;
+        },
+        tabMissingCount(tabName) {
+          const tab = this.normalize(tabName);
+          const contactNumber = this.firstMeaningfulValue(
+            this.selectedEmployee?.employee?.contact_number,
+            this.selectedEmployee?.applicant?.phone
+          );
+          const address = this.firstMeaningfulValue(
+            this.selectedEmployee?.employee?.address,
+            this.selectedEmployee?.applicant?.address
+          );
+          const classification = this.firstMeaningfulValue(
+            this.selectedEmployee?.employee?.classification,
+            this.selectedEmployee?.applicant?.position?.employment,
+            this.selectedEmployee?.employee?.job_type,
+            this.selectedEmployee?.applicant?.position?.job_type
+          );
+
+          if (tab === 'overview') {
+            return this.countMissingValues([
+              contactNumber,
+              this.selectedEmployee?.employee?.birthday,
+              address,
+            ]);
+          }
+
+          if (tab === 'personal') {
+            return this.countMissingValues([
+              this.selectedEmployee?.employee?.account_number,
+              this.firstMeaningfulValue(
+                this.selectedEmployee?.employee?.sex,
+                this.selectedEmployee?.employee?.gender
+              ),
+              this.selectedEmployee?.employee?.civil_status,
+              contactNumber,
+              this.selectedEmployee?.employee?.birthday,
+              this.selectedEmployee?.government?.SSS,
+              this.selectedEmployee?.government?.TIN,
+              this.selectedEmployee?.government?.PhilHealth,
+              this.selectedEmployee?.government?.MID,
+              this.selectedEmployee?.government?.RTN,
+            ]) + this.personalAddressMissingCount();
+          }
+
+          if (tab === 'performance') {
+            return 0;
+          }
+
+          if (tab === 'documents') {
+            return this.missingDocumentsCount();
+          }
+
+          if (tab === 'record') {
+            return this.countMissingValues([
+              this.selectedEmployee?.employee?.employee_id,
+              this.currentServiceStartRaw(),
+              this.firstMeaningfulValue(
+                this.selectedEmployee?.employee?.department,
+                this.selectedEmployee?.applicant?.position?.department
+              ),
+              classification,
+            ]);
+          }
+
+          if (tab === 'biometric') {
+            return this.countMissingValues([
+              this.selectedEmployee?.employee?.employee_id,
+              this.selectedEmployee?.employee?.account_number,
+              this.firstMeaningfulValue(
+                this.selectedEmployee?.employee?.sex,
+                this.selectedEmployee?.employee?.gender
+              ),
+              this.selectedEmployee?.employee?.civil_status,
+              contactNumber,
+              this.selectedEmployee?.employee?.birthday,
+              address,
+              this.selectedEmployee?.license?.license,
+              this.selectedEmployee?.license?.registration_number,
+              this.selectedEmployee?.government?.SSS,
+              this.selectedEmployee?.government?.TIN,
+              this.selectedEmployee?.government?.PhilHealth,
+              this.selectedEmployee?.government?.MID,
+              this.selectedEmployee?.government?.RTN,
+              this.selectedEmployee?.salary?.salary,
+            ]) + this.biometricDegreeMissingCount();
+          }
+
+          return 0;
         },
         matchesDepartment(empDepartment) {
           if (this.department === 'All') return true;
@@ -1277,7 +1534,6 @@
             data_get($emp, 'employee.civil_status'),
             data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.phone'),
             data_get($emp, 'employee.birthday'),
-            data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address'),
             data_get($emp, 'license.license'),
             data_get($emp, 'license.registration_number'),
             data_get($emp, 'government.SSS'),
@@ -1286,7 +1542,7 @@
             data_get($emp, 'government.MID'),
             data_get($emp, 'government.RTN'),
             data_get($emp, 'salary.salary'),
-          ])->contains(fn ($value) => $isMissingEmployeeValue($value)),
+          ])->contains(fn ($value) => $isMissingEmployeeValue($value)) || $employeeHasMissingAddressParts($emp),
         ])->values()
       ); employeeRecords = @js($employee->values()); openEmployeeFromQuery()"
 >
@@ -1402,7 +1658,7 @@
         return $text;
       };
 
-      $employeeTableRecords = $employee->map(function ($emp, $index) use ($resolveDepartment, $blankTableValue, $resolveDisplayAccountStatus, $wasRehiredAfterResignation, $isMissingEmployeeValue) {
+      $employeeTableRecords = $employee->map(function ($emp, $index) use ($resolveDepartment, $blankTableValue, $resolveDisplayAccountStatus, $wasRehiredAfterResignation, $isMissingEmployeeValue, $employeeHasMissingAddressParts) {
         $themeSeed = (string) ($emp->id ?? data_get($emp, 'employee.employee_id') ?? $index);
         $hue = ((int) sprintf('%u', crc32($themeSeed))) % 360;
         $headerStart = "hsl({$hue}, 78%, 58%)";
@@ -1504,7 +1760,6 @@
           data_get($emp, 'employee.civil_status'),
           data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.phone'),
           data_get($emp, 'employee.birthday'),
-          data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address'),
           data_get($emp, 'license.license'),
           data_get($emp, 'license.registration_number'),
           data_get($emp, 'government.SSS'),
@@ -1513,7 +1768,9 @@
           data_get($emp, 'government.MID'),
           data_get($emp, 'government.RTN'),
           data_get($emp, 'salary.salary'),
-        ])->contains(fn ($value) => $isMissingEmployeeValue($value)) || $missingRequiredDocumentsCount > 0;
+        ])->contains(fn ($value) => $isMissingEmployeeValue($value))
+          || $employeeHasMissingAddressParts($emp)
+          || $missingRequiredDocumentsCount > 0;
 
         return [
           'no' => $index + 1,
@@ -2104,7 +2361,6 @@
             'Civil Status' => data_get($emp, 'employee.civil_status'),
             'Contact No.' => data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.phone'),
             'Birthday' => data_get($emp, 'employee.birthday'),
-            'Address' => data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address'),
             'License' => data_get($emp, 'license.license'),
             'Registration No.' => data_get($emp, 'license.registration_number'),
             'SSS' => data_get($emp, 'government.SSS'),
@@ -2114,14 +2370,16 @@
             'Pag-IBIG RTN' => data_get($emp, 'government.RTN'),
             'Basic Salary' => data_get($emp, 'salary.salary'),
           ])->filter(fn ($value) => $isMissingEmployeeValue($value));
+          $missingAddressParts = $employeeMissingAddressPartLabels($emp);
           $missingRequiredDocuments = collect(data_get($emp, 'missing_required_documents', []))
             ->map(fn ($value) => trim((string) $value))
             ->filter()
             ->values();
-          $missingCardCount = $missingCardFields->count() + $missingRequiredDocuments->count();
+          $missingCardCount = $missingCardFields->count() + $missingAddressParts->count() + $missingRequiredDocuments->count();
           $missingCardParts = collect();
-          if ($missingCardFields->isNotEmpty()) {
-            $missingCardParts->push('Info: '.$missingCardFields->keys()->implode(', '));
+          $missingInfoLabels = $missingCardFields->keys()->values()->merge($missingAddressParts);
+          if ($missingInfoLabels->isNotEmpty()) {
+            $missingCardParts->push('Info: '.$missingInfoLabels->implode(', '));
           }
           if ($missingRequiredDocuments->isNotEmpty()) {
             $missingCardParts->push('Documents: '.$missingRequiredDocuments->implode(', '));
@@ -2471,12 +2729,30 @@
 
         <!-- Tabs -->
         <div class="flex gap-6 px-6 pt-4 border-b text-sm">
-          <button @click="tab='overview'" :class="tab==='overview' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'">Overview</button>
-          <button @click="tab='personal'" :class="tab==='personal' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'">Personal Details</button>
-          <button @click="tab='performance'" :class="tab==='performance' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'">Performance</button>
-          <button @click="tab='documents'" :class="tab==='documents' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'">Documents</button>
-          <button @click="tab='record'" :class="tab==='record' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'">Service Record</button>
-          <button @click="tab='biometric'" :class="tab==='biometric' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'">Biometric</button>
+          <button @click="tab='overview'" :class="tab==='overview' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
+            <span>Overview</span>
+            <span x-show="tabMissingCount('overview') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('overview')"></span>
+          </button>
+          <button @click="tab='personal'" :class="tab==='personal' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
+            <span>Personal Details</span>
+            <span x-show="tabMissingCount('personal') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('personal')"></span>
+          </button>
+          <button @click="tab='performance'" :class="tab==='performance' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
+            <span>Performance</span>
+            <span x-show="tabMissingCount('performance') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('performance')"></span>
+          </button>
+          <button @click="tab='documents'" :class="tab==='documents' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
+            <span>Documents</span>
+            <span x-show="tabMissingCount('documents') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('documents')"></span>
+          </button>
+          <button @click="tab='record'" :class="tab==='record' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
+            <span>Service Record</span>
+            <span x-show="tabMissingCount('record') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('record')"></span>
+          </button>
+          <button @click="tab='biometric'" :class="tab==='biometric' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
+            <span>Biometric</span>
+            <span x-show="tabMissingCount('biometric') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('biometric')"></span>
+          </button>
         </div>
 
         @include('Admin.PersonalDetail.adminEmployeeOverview')
