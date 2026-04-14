@@ -30,6 +30,9 @@
 <body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#eef4ff_45%,#f8fafc_100%)] text-slate-800">
 @php
   $records = $records ?? collect();
+  $recordItems = $records instanceof \Illuminate\Pagination\AbstractPaginator
+      ? collect($records->items())
+      : collect($records);
   $selectedRecord = $selectedRecord ?? null;
   $money = function ($value) {
       return is_null($value) || $value === '' ? '-' : number_format((float) $value, 2);
@@ -81,7 +84,7 @@
       }
   }
   $displayTotalDeduction = $hasDeductionValue ? $computedTotalDeduction : null;
-  $scannedCount = $records->count();
+  $scannedCount = method_exists($records, 'total') ? (int) $records->total() : $recordItems->count();
 @endphp
 
 <div class="flex min-h-screen">
@@ -193,7 +196,7 @@
           </div>
 
           <div class="mt-6 grid grid-cols-1 gap-4">
-            @forelse ($records as $record)
+            @forelse ($recordItems as $record)
               @php
                 $isSelected = $selectedRecord && (int) $selectedRecord->id === (int) $record->id;
                 $searchName = strtolower(trim((string) ($record->employee_name ?: '')));
@@ -232,6 +235,11 @@
               </div>
             @endforelse
           </div>
+          @if ($records instanceof \Illuminate\Pagination\AbstractPaginator && $records->hasPages())
+            <div class="mt-5">
+              {{ $records->links() }}
+            </div>
+          @endif
 
           <div id="employee_search_empty" class="hidden mt-4 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50/70 p-6 text-center text-sm text-slate-500">
             No employee matched your search.

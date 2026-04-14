@@ -349,8 +349,8 @@
         margin: -3.7rem auto 0;
         padding: 1.4rem;
         border-radius: 1.75rem;
-        border: 1px solid rgba(255, 255, 255, 0.75);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.94));
+        border: 1px solid #cfe3d7;
+        background: linear-gradient(180deg, #f3f8f5, #edf5f1);
         box-shadow: var(--careers-shadow);
     }
 
@@ -364,22 +364,22 @@
 
     .filter-intro h2 {
         margin: 0;
-        color: var(--careers-ink);
+        color: #0f2a1f;
         font-size: 1.35rem;
         font-weight: 800;
     }
 
     .filter-intro p {
         margin: 0.35rem 0 0;
-        color: var(--careers-muted);
+        color: #5f6f67;
         font-size: 0.94rem;
     }
 
     .filter-chip {
         padding: 0.55rem 0.95rem;
         border-radius: 999px;
-        background: #ecfdf3;
-        color: var(--careers-brand-strong);
+        background: #ddf6e8;
+        color: #0f7a4c;
         font-size: 0.82rem;
         font-weight: 700;
         white-space: nowrap;
@@ -389,8 +389,8 @@
         padding: 1rem;
         height: 100%;
         border-radius: 1.2rem;
-        border: 1px solid var(--careers-line);
-        background: linear-gradient(180deg, #ffffff, #f8fbf8);
+        border: 1px solid #cfe3d7;
+        background: #ffffff;
     }
 
     .filter-field .form-label {
@@ -398,18 +398,20 @@
         font-size: 0.8rem;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: var(--careers-brand-strong);
+        color: #0f7a4c;
     }
 
     .filter-field .form-select {
         border-radius: 0.95rem;
-        border-color: rgba(21, 115, 71, 0.16);
+        border-color: #cfe3d7;
+        color: #0f2a1f;
+        background-color: #ffffff;
         min-height: 48px;
     }
 
     .filter-field .form-select:focus {
-        border-color: #22c55e;
-        box-shadow: 0 0 0 0.2rem rgba(34, 197, 94, 0.18);
+        border-color: #22a06b;
+        box-shadow: 0 0 0 0.2rem rgba(34, 160, 107, 0.2);
     }
 
     .stats-shell {
@@ -576,20 +578,6 @@
         color: var(--careers-ink);
         font-size: 0.82rem;
         font-weight: 700;
-    }
-
-    .job-badge-stack {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.55rem;
-        margin-bottom: 1.2rem;
-    }
-
-    .job-badge-stack .badge {
-        padding: 0.55rem 0.8rem;
-        border-radius: 999px;
-        font-weight: 700;
-        letter-spacing: 0.01em;
     }
 
     .job-card .green-btn {
@@ -795,6 +783,461 @@
         gap: 1.5rem;
     }
 
+    .nc-chatbot {
+        position: fixed;
+        right: 5.2rem;
+        bottom: 2.4rem;
+        z-index: 1085;
+        width: 5.8rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .nc-chatbot-launcher {
+        width: 6.2rem;
+        height: 6.2rem;
+        border: 0;
+        border-radius: 50%;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        background:
+            radial-gradient(circle at 26% 22%, #ffffff 0%, #f8fafc 42%, #e5e7eb 100%);
+        box-shadow:
+            0 18px 32px rgba(15, 23, 42, 0.28),
+            inset 0 2px 5px rgba(255, 255, 255, 0.85),
+            inset 0 -8px 14px rgba(148, 163, 184, 0.22),
+            0 0 0 4px rgba(255, 255, 255, 0.88);
+        color: #0f172a;
+        cursor: pointer;
+        animation: nc-chatbot-float 2.8s ease-in-out infinite;
+        overflow: hidden;
+        transform-style: preserve-3d;
+    }
+
+    .nc-chatbot-launcher::before {
+        content: "";
+        position: absolute;
+        inset: 0.4rem;
+        border-radius: 50%;
+        background: radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.9), rgba(241, 245, 249, 0.45) 70%, rgba(203, 213, 225, 0.28));
+        box-shadow: inset 0 -6px 10px rgba(148, 163, 184, 0.22);
+        z-index: 0;
+    }
+
+    .nc-chatbot-launcher::after {
+        content: "";
+        position: absolute;
+        top: 0.6rem;
+        left: 0.9rem;
+        width: 2.15rem;
+        height: 1.1rem;
+        border-radius: 999px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0));
+        transform: rotate(-18deg) translateZ(12px);
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .nc-robot {
+        position: relative;
+        width: 4.15rem;
+        height: 2.95rem;
+        border-radius: 1.45rem;
+        background: linear-gradient(155deg, #1f2937 0%, #0f172a 58%, #020617 100%);
+        border: 2px solid #0f172a;
+        box-shadow:
+            inset 0 0 0 2px rgba(74, 222, 128, 0.12),
+            inset 0 8px 10px rgba(255, 255, 255, 0.08),
+            0 8px 14px rgba(2, 6, 23, 0.45);
+        transform-origin: center;
+        transition: transform 0.15s ease-out;
+        will-change: transform;
+        z-index: 1;
+    }
+
+    .nc-robot::before {
+        content: "";
+        position: absolute;
+        left: 0.42rem;
+        right: 0.42rem;
+        top: 0.28rem;
+        height: 0.42rem;
+        border-radius: 999px;
+        background: linear-gradient(180deg, rgba(148, 163, 184, 0.38), rgba(148, 163, 184, 0));
+        pointer-events: none;
+    }
+
+    .nc-robot-eye {
+        position: absolute;
+        top: 0.74rem;
+        width: 0.66rem;
+        height: 0.66rem;
+        border-radius: 50%;
+        transform: translate(var(--eye-x, 0px), var(--eye-y, 0px));
+        transition: transform 0.15s ease-out;
+        will-change: transform;
+        border: 1px solid rgba(134, 239, 172, 0.8);
+        background: rgba(2, 6, 23, 0.5);
+        overflow: hidden;
+    }
+
+    .nc-robot-eye.left {
+        left: 0.7rem;
+    }
+
+    .nc-robot-eye.right {
+        right: 0.7rem;
+    }
+
+    .nc-robot-eye-core {
+        position: absolute;
+        inset: 0.06rem;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #86efac, #4ade80 60%, #16a34a 100%);
+        box-shadow: 0 0 10px rgba(74, 222, 128, 0.75);
+        transform-origin: center;
+        animation: nc-eye-blink 3.6s infinite;
+    }
+
+    .nc-robot-mouth {
+        position: absolute;
+        left: 50%;
+        bottom: 0.6rem;
+        transform: translateX(-50%);
+        width: 1.25rem;
+        height: 0.28rem;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #22c55e, #4ade80);
+        box-shadow:
+            0 0 8px rgba(74, 222, 128, 0.65),
+            inset 0 -1px 2px rgba(15, 23, 42, 0.45);
+        transition: all 0.22s ease;
+    }
+
+    .nc-chatbot-launcher:hover .nc-robot-mouth {
+        width: 1.32rem;
+        height: 0.46rem;
+        bottom: 0.33rem;
+        background: transparent;
+        border-bottom: 0.18rem solid #4ade80;
+        border-radius: 0 0 999px 999px;
+        box-shadow:
+            0 0 10px rgba(74, 222, 128, 0.78),
+            none;
+    }
+
+    .nc-robot.is-sad .nc-robot-mouth {
+        width: 1.12rem;
+        height: 0.32rem;
+        bottom: 0.5rem;
+        background: transparent;
+        border-top: 0.14rem solid #4ade80;
+        border-radius: 999px 999px 0 0;
+        box-shadow: 0 0 6px rgba(74, 222, 128, 0.55);
+    }
+
+    .nc-chatbot-launcher-label {
+        position: absolute;
+        left: 50%;
+        top: 6.9rem;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        color: #047857;
+        font-size: 0.65rem;
+        font-family: "Trebuchet MS", "Gill Sans", "Segoe UI", sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    .nc-chatbot-launcher,
+    .nc-chatbot-launcher-label {
+        transition: opacity 0.2s ease, transform 0.28s ease;
+    }
+
+    .nc-chatbot-help-hint {
+        position: absolute;
+        left: 50%;
+        top: -3.05rem;
+        transform: translate(-50%, 6px);
+        max-width: 14rem;
+        padding: 0.45rem 0.65rem;
+        border-radius: 0.75rem;
+        background: rgba(15, 23, 42, 0.94);
+        color: #ecfdf5;
+        border: 1px solid rgba(52, 211, 153, 0.45);
+        box-shadow: 0 12px 25px rgba(2, 6, 23, 0.35);
+        font-size: 0.72rem;
+        line-height: 1.3;
+        font-weight: 600;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+        pointer-events: none;
+        text-align: center;
+        white-space: nowrap;
+        z-index: 3;
+    }
+
+    .nc-chatbot-help-hint.is-visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, 0);
+    }
+
+    .nc-chatbot-panel {
+        position: absolute;
+        right: 0;
+        bottom: 5.2rem;
+        width: min(24rem, calc(100vw - 1.5rem));
+        max-height: min(34rem, calc(100vh - 8.5rem));
+        display: grid;
+        grid-template-rows: auto 1fr auto auto;
+        border-radius: 1.15rem;
+        overflow: hidden;
+        background: #f8fafc;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        box-shadow: 0 28px 50px rgba(15, 23, 42, 0.26);
+        transform-origin: 88% 100%;
+        will-change: transform, opacity;
+    }
+
+    .nc-chatbot-panel[hidden] {
+        display: none;
+    }
+
+    .nc-chatbot-panel.pop-in {
+        animation: nc-bubble-pop 0.34s cubic-bezier(0.2, 0.85, 0.25, 1.15);
+    }
+
+    .nc-chatbot.is-open .nc-chatbot-launcher,
+    .nc-chatbot.is-open .nc-chatbot-launcher-label,
+    .nc-chatbot.is-open .nc-chatbot-help-hint {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: scale(0.88);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .nc-chatbot.rolling-back .nc-chatbot-launcher {
+        animation: nc-assistant-roll-3x 1.05s cubic-bezier(0.25, 0.8, 0.3, 1.02);
+    }
+
+    .nc-chatbot.rolling-back .nc-chatbot-launcher-label {
+        animation: nc-assistant-label-return 1.05s ease;
+    }
+
+    .nc-chatbot.dizzy .nc-robot {
+        animation: nc-assistant-dizzy 0.9s ease-in-out;
+    }
+
+    .nc-chatbot.dizzy .nc-robot-eye-core {
+        animation: nc-eye-dizzy 0.9s linear;
+    }
+
+    .nc-chatbot-header {
+        padding: 0.95rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(130deg, #0f5132, #157347);
+        color: #fff;
+    }
+
+    .nc-chatbot-title {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+    }
+
+    .nc-chatbot-subtitle {
+        margin: 0.1rem 0 0;
+        font-size: 0.75rem;
+        color: rgba(226, 232, 240, 0.95);
+    }
+
+    .nc-chatbot-close {
+        border: 0;
+        border-radius: 0.55rem;
+        width: 2rem;
+        height: 2rem;
+        color: #fff;
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    .nc-chatbot-messages {
+        padding: 0.95rem;
+        overflow-y: auto;
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    }
+
+    .nc-bubble {
+        max-width: 88%;
+        border-radius: 0.9rem;
+        padding: 0.65rem 0.75rem;
+        margin-bottom: 0.65rem;
+        line-height: 1.45;
+        font-size: 0.89rem;
+        word-break: break-word;
+    }
+
+    .nc-bubble.user {
+        margin-left: auto;
+        background: #157347;
+        color: #fff;
+        border-bottom-right-radius: 0.25rem;
+    }
+
+    .nc-bubble.bot {
+        background: #fff;
+        color: #0f172a;
+        border: 1px solid #dbe2ea;
+        border-bottom-left-radius: 0.25rem;
+    }
+
+    .nc-chatbot-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        padding: 0.65rem 0.85rem 0.4rem;
+        background: #f1f5f9;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .nc-chatbot-chip {
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        border-radius: 999px;
+        font-size: 0.73rem;
+        line-height: 1;
+        font-weight: 600;
+        padding: 0.42rem 0.6rem;
+        color: #334155;
+    }
+
+    .nc-chatbot-form {
+        padding: 0.75rem;
+        display: flex;
+        align-items: flex-end;
+        gap: 0.6rem;
+        background: #fff;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .nc-chatbot-input {
+        flex: 1;
+        resize: none;
+        max-height: 8rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 0.85rem;
+        padding: 0.6rem 0.7rem;
+        font-size: 0.9rem;
+        outline: none;
+    }
+
+    .nc-chatbot-input:focus {
+        border-color: rgba(21, 115, 71, 0.55);
+        box-shadow: 0 0 0 0.18rem rgba(21, 115, 71, 0.12);
+    }
+
+    .nc-chatbot-send {
+        border: 0;
+        border-radius: 0.85rem;
+        min-width: 3.2rem;
+        height: 2.9rem;
+        background: linear-gradient(135deg, #157347, #1ea55d);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.84rem;
+        letter-spacing: 0.03em;
+    }
+
+    .nc-chatbot-send[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .nc-typing {
+        display: inline-flex;
+        gap: 0.25rem;
+        align-items: center;
+    }
+
+    .nc-typing i {
+        width: 0.36rem;
+        height: 0.36rem;
+        border-radius: 50%;
+        background: #94a3b8;
+        animation: nc-dot 1s infinite ease-in-out;
+    }
+
+    .nc-typing i:nth-child(2) { animation-delay: 0.12s; }
+    .nc-typing i:nth-child(3) { animation-delay: 0.24s; }
+
+    @keyframes nc-dot {
+        0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
+        40% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    @keyframes nc-chatbot-float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+    }
+
+    @keyframes nc-bubble-pop {
+        0% {
+            opacity: 0;
+            transform: translateY(12px) scale(0.72);
+        }
+        68% {
+            opacity: 1;
+            transform: translateY(-2px) scale(1.04);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    @keyframes nc-assistant-roll-3x {
+        0% { transform: translateY(14px) scale(0.8) rotate(0deg); opacity: 0.1; }
+        70% { transform: translateY(-2px) scale(1.02) rotate(990deg); opacity: 1; }
+        100% { transform: translateY(0) scale(1) rotate(1080deg); opacity: 1; }
+    }
+
+    @keyframes nc-assistant-label-return {
+        0% { transform: translateX(-50%) translateY(12px); opacity: 0; }
+        70% { transform: translateX(-50%) translateY(-2px); opacity: 1; }
+        100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+
+    @keyframes nc-assistant-dizzy {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        20% { transform: translate(-2px, 0) rotate(-7deg); }
+        40% { transform: translate(2px, 0) rotate(7deg); }
+        60% { transform: translate(-1px, 0) rotate(-5deg); }
+        80% { transform: translate(1px, 0) rotate(5deg); }
+    }
+
+    @keyframes nc-eye-dizzy {
+        0% { opacity: 1; transform: scale(1) rotate(0deg); }
+        50% { opacity: 0.65; transform: scale(0.9) rotate(180deg); }
+        100% { opacity: 1; transform: scale(1) rotate(360deg); }
+    }
+
+    @keyframes nc-eye-blink {
+        0%, 44%, 100% { transform: scaleY(1); opacity: 1; }
+        46%, 50% { transform: scaleY(0.1); opacity: 0.9; }
+        52%, 56% { transform: scaleY(1); opacity: 1; }
+    }
+
     @media (max-width: 991.98px) {
         .careers-hero {
             min-height: 520px;
@@ -871,6 +1314,45 @@
 
         .footer-bottom-links {
             gap: 1rem;
+        }
+
+        .nc-chatbot {
+            right: 2.7rem;
+            bottom: 1.8rem;
+            width: 5.1rem;
+        }
+
+        .nc-chatbot-launcher {
+            width: 5.2rem;
+            height: 5.2rem;
+        }
+
+        .nc-chatbot-launcher-label {
+            display: block;
+            top: 5.6rem;
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%);
+            font-size: 0.6rem;
+        }
+
+        .nc-chatbot-help-hint {
+            top: -2.7rem;
+            left: 50%;
+            right: auto;
+            transform: translate(-50%, 6px);
+            font-size: 0.67rem;
+            padding: 0.42rem 0.55rem;
+        }
+
+        .nc-chatbot-help-hint.is-visible {
+            transform: translate(-50%, 0);
+        }
+
+        .nc-chatbot-panel {
+            right: -0.2rem;
+            width: min(23rem, calc(100vw - 1rem));
+            bottom: 4.8rem;
         }
     }
 
@@ -1059,27 +1541,15 @@
 
                     <ul class="job-card-copy">
                         @foreach (array_slice($lines, 0, 3) as $line)
-                            <li>
-                                {{
-                                    Str::limit(
-                                        ltrim($line, "•- "),
-                                        150,
-                                        '......'
-                                    )
-                                }}
-                            </li>
+                            @php
+                                $cleanLine = preg_replace('/^[^\pL\pN]+/u', '', (string) $line);
+                                $cleanLine = trim((string) preg_replace('/\s+/', ' ', $cleanLine));
+                            @endphp
+                            @if ($cleanLine !== '')
+                                <li>{{ Str::limit($cleanLine, 150, '...') }}</li>
+                            @endif
                         @endforeach
                     </ul>
-
-                    <div class="job-badge-stack">
-                        @if ($position->employment == "Full-Time")
-                            <span class="badge bg-success bg-opacity-25 text-success me-1 bordered-badge">Full - Time</span>
-                            <span class="badge bg-purple-light-opacity me-1">{{ $position->work_mode }}</span>
-                        @else
-                            <span class="badge bg-success bg-opacity-25 text-success me-1 bordered-badge">Part - Time</span>
-                            <span class="badge bg-purple-light-opacity me-1">{{ $position->work_mode }}</span>
-                        @endif
-                    </div>
 
                     <button
                         onclick="window.location.href='{{ route('guest.jobOpen', $position->id) }}';"
@@ -1167,6 +1637,44 @@
         </div>
     </div>
 </footer>
+
+<div class="nc-chatbot" id="ncChatbot" data-endpoint="{{ route('guest.chat.reply') }}">
+    <span class="nc-chatbot-help-hint" id="ncChatHelpHint">Click me if you need help</span>
+    <button class="nc-chatbot-launcher" id="ncChatLauncher" type="button" aria-expanded="false" aria-controls="ncChatPanel" aria-label="Open chat assistant">
+        <span class="nc-robot" aria-hidden="true">
+            <span class="nc-robot-eye left"><span class="nc-robot-eye-core"></span></span>
+            <span class="nc-robot-eye right"><span class="nc-robot-eye-core"></span></span>
+            <span class="nc-robot-mouth"></span>
+        </span>
+    </button>
+    <span class="nc-chatbot-launcher-label">Click here to chat</span>
+
+    <section class="nc-chatbot-panel" id="ncChatPanel" hidden>
+        <header class="nc-chatbot-header">
+            <div>
+                <p class="nc-chatbot-title">NC Career Assistant</p>
+                <p class="nc-chatbot-subtitle">Ask about jobs, requirements, and policies</p>
+            </div>
+            <button class="nc-chatbot-close" id="ncChatClose" type="button" aria-label="Close chat">X</button>
+        </header>
+
+        <div class="nc-chatbot-messages" id="ncChatMessages"></div>
+
+        <div class="nc-chatbot-chips" id="ncChatChips">
+            <button class="nc-chatbot-chip" type="button" data-msg="Show available jobs">Show available jobs</button>
+            <button class="nc-chatbot-chip" type="button" data-msg="How to apply">How to apply</button>
+            <button class="nc-chatbot-chip" type="button" data-msg="Application requirements">Requirements</button>
+            <button class="nc-chatbot-chip" type="button" data-msg="Explain this website">Website guide</button>
+            <button class="nc-chatbot-chip" type="button" data-msg="How to create an account">Account help</button>
+            <button class="nc-chatbot-chip" type="button" data-msg="Where are policy pages?">Policy links</button>
+        </div>
+
+        <form class="nc-chatbot-form" id="ncChatForm">
+            <textarea class="nc-chatbot-input" id="ncChatInput" rows="1" maxlength="500" placeholder="Type your message..."></textarea>
+            <button class="nc-chatbot-send" id="ncChatSend" type="submit">Send</button>
+        </form>
+    </section>
+</div>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const jobSearchForm = document.getElementById('jobSearchForm');
@@ -1227,6 +1735,340 @@
     });
 </script>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const chatbotRoot = document.getElementById('ncChatbot');
+        if (!chatbotRoot) return;
+
+        const endpoint = chatbotRoot.dataset.endpoint;
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const launcher = document.getElementById('ncChatLauncher');
+        const panel = document.getElementById('ncChatPanel');
+        const closeBtn = document.getElementById('ncChatClose');
+        const messagesEl = document.getElementById('ncChatMessages');
+        const chipsEl = document.getElementById('ncChatChips');
+        const form = document.getElementById('ncChatForm');
+        const input = document.getElementById('ncChatInput');
+        const sendBtn = document.getElementById('ncChatSend');
+        const helpHint = document.getElementById('ncChatHelpHint');
+        const robotHead = chatbotRoot.querySelector('.nc-robot');
+        const robotEyes = Array.from(chatbotRoot.querySelectorAll('.nc-robot-eye'));
+        const historyKey = 'nc_guest_chat_history_v1';
+        let isSending = false;
+        let hintHideTimeout = null;
+        let hintCycleInterval = null;
+        let followRaf = null;
+        let followX = null;
+        let followY = null;
+        let sadTimeout = null;
+        let rollReturnTimeout = null;
+        let dizzyReturnTimeout = null;
+
+        function escapeHtml(text) {
+            return (text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function saveHistory() {
+            const bubbles = Array.from(messagesEl.querySelectorAll('.nc-bubble')).map((bubble) => ({
+                role: bubble.classList.contains('user') ? 'user' : 'bot',
+                text: bubble.textContent || '',
+            }));
+            localStorage.setItem(historyKey, JSON.stringify(bubbles.slice(-30)));
+        }
+
+        function appendMessage(role, text, shouldSave = true) {
+            const bubble = document.createElement('div');
+            bubble.className = 'nc-bubble ' + role;
+            bubble.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+            messagesEl.appendChild(bubble);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            if (shouldSave) saveHistory();
+        }
+
+        function setTyping(visible) {
+            const existing = document.getElementById('ncTyping');
+            if (!visible) {
+                if (existing) existing.remove();
+                return;
+            }
+            if (existing) return;
+
+            const bubble = document.createElement('div');
+            bubble.id = 'ncTyping';
+            bubble.className = 'nc-bubble bot';
+            bubble.innerHTML = '<span class="nc-typing"><i></i><i></i><i></i></span>';
+            messagesEl.appendChild(bubble);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function setQuickChips(items) {
+            const list = Array.isArray(items) && items.length ? items.slice(0, 6) : [
+                'Explain this website',
+                'Show available jobs',
+                'How to apply',
+                'Application requirements',
+                'How to create an account',
+                'Where are policy pages?',
+            ];
+
+            chipsEl.innerHTML = '';
+            list.forEach((label) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'nc-chatbot-chip';
+                button.dataset.msg = label;
+                button.textContent = label;
+                chipsEl.appendChild(button);
+            });
+        }
+
+        function showHint(text, hideAfterMs = null) {
+            if (!helpHint || !panel.hidden) return;
+
+            helpHint.textContent = text;
+            helpHint.classList.add('is-visible');
+
+            if (hintHideTimeout) {
+                clearTimeout(hintHideTimeout);
+                hintHideTimeout = null;
+            }
+
+            if (typeof hideAfterMs === 'number' && hideAfterMs > 0) {
+                hintHideTimeout = setTimeout(function () {
+                    helpHint.classList.remove('is-visible');
+                    hintHideTimeout = null;
+                }, hideAfterMs);
+            }
+        }
+
+        function showHelpHintWindow() {
+            showHint('Click me if you need help', 5000);
+        }
+
+        function startHelpHintCycle() {
+            if (!helpHint) return;
+            showHelpHintWindow();
+            hintCycleInterval = setInterval(showHelpHintWindow, 40000);
+        }
+
+        function applyRobotFollow(clientX, clientY) {
+            if (!robotHead) return;
+
+            const rect = launcher.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const dx = clientX - centerX;
+            const dy = clientY - centerY;
+            const distance = Math.sqrt((dx * dx) + (dy * dy)) || 1;
+
+            // Head follows cursor subtly, but launcher stays in place.
+            const maxShift = 4;
+            const maxTilt = 8;
+            const shiftX = Math.max(-maxShift, Math.min(maxShift, (dx / distance) * maxShift));
+            const shiftY = Math.max(-maxShift, Math.min(maxShift, (dy / distance) * maxShift));
+            const tilt = Math.max(-maxTilt, Math.min(maxTilt, dx / 18));
+            robotHead.style.transform = `translate(${shiftX}px, ${shiftY}px) rotate(${tilt}deg)`;
+
+            const eyeMax = 4.2;
+            const eyeX = Math.max(-eyeMax, Math.min(eyeMax, (dx / distance) * eyeMax));
+            const eyeY = Math.max(-eyeMax, Math.min(eyeMax, (dy / distance) * eyeMax));
+            robotEyes.forEach((eye) => {
+                eye.style.setProperty('--eye-x', `${eyeX}px`);
+                eye.style.setProperty('--eye-y', `${eyeY}px`);
+            });
+        }
+
+        function queueRobotFollow(clientX, clientY) {
+            followX = clientX;
+            followY = clientY;
+            if (followRaf) return;
+            followRaf = requestAnimationFrame(function () {
+                applyRobotFollow(followX, followY);
+                followRaf = null;
+            });
+        }
+
+        function resetRobotFollow() {
+            if (!robotHead) return;
+            robotHead.style.transform = 'translate(0px, 0px) rotate(0deg)';
+            robotEyes.forEach((eye) => {
+                eye.style.setProperty('--eye-x', '0px');
+                eye.style.setProperty('--eye-y', '0px');
+            });
+        }
+
+        function clearSadFace() {
+            if (!robotHead) return;
+            if (sadTimeout) {
+                clearTimeout(sadTimeout);
+                sadTimeout = null;
+            }
+            robotHead.classList.remove('is-sad');
+        }
+
+        function showSadFaceForTwoSeconds() {
+            if (!robotHead) return;
+            clearSadFace();
+            robotHead.classList.add('is-sad');
+            sadTimeout = setTimeout(function () {
+                robotHead.classList.remove('is-sad');
+                sadTimeout = null;
+            }, 1000);
+        }
+
+        function loadHistory() {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(historyKey) || '[]');
+                if (!Array.isArray(parsed) || parsed.length === 0) {
+                    appendMessage('bot', 'Hi. I am your NC Career Assistant. Ask me about jobs, application steps, requirements, or policy pages.', false);
+                    saveHistory();
+                    return;
+                }
+                parsed.forEach((item) => {
+                    if (!item || !item.role || !item.text) return;
+                    appendMessage(item.role === 'user' ? 'user' : 'bot', String(item.text), false);
+                });
+                saveHistory();
+            } catch (error) {
+                appendMessage('bot', 'Hi. I am your NC Career Assistant. Ask me about jobs, application steps, requirements, or policy pages.', true);
+            }
+        }
+
+        async function sendMessage(messageText) {
+            const message = (messageText || '').trim();
+            if (!message || isSending) return;
+
+            isSending = true;
+            sendBtn.disabled = true;
+            input.disabled = true;
+            appendMessage('user', message);
+            input.value = '';
+            input.style.height = 'auto';
+            setTyping(true);
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ message }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const data = await response.json();
+                setTyping(false);
+                appendMessage('bot', data.reply || 'I can help with jobs, requirements, and policies.');
+                setQuickChips(data.suggestions || []);
+            } catch (error) {
+                setTyping(false);
+                appendMessage('bot', 'I could not connect right now. Please try again in a few seconds.');
+            } finally {
+                isSending = false;
+                sendBtn.disabled = false;
+                input.disabled = false;
+                input.focus();
+            }
+        }
+
+        function openPanel() {
+            panel.hidden = false;
+            panel.classList.remove('pop-in');
+            void panel.offsetWidth;
+            panel.classList.add('pop-in');
+            if (rollReturnTimeout) clearTimeout(rollReturnTimeout);
+            if (dizzyReturnTimeout) clearTimeout(dizzyReturnTimeout);
+            chatbotRoot.classList.remove('rolling-back', 'dizzy');
+            chatbotRoot.classList.add('is-open');
+            launcher.setAttribute('aria-expanded', 'true');
+            if (helpHint) helpHint.classList.remove('is-visible');
+            input.focus();
+        }
+
+        function closePanel() {
+            panel.hidden = true;
+            panel.classList.remove('pop-in');
+            chatbotRoot.classList.remove('is-open');
+            if (rollReturnTimeout) clearTimeout(rollReturnTimeout);
+            if (dizzyReturnTimeout) clearTimeout(dizzyReturnTimeout);
+            chatbotRoot.classList.remove('rolling-back', 'dizzy');
+            void chatbotRoot.offsetWidth;
+            chatbotRoot.classList.add('rolling-back');
+            rollReturnTimeout = setTimeout(function () {
+                chatbotRoot.classList.remove('rolling-back');
+                chatbotRoot.classList.add('dizzy');
+                dizzyReturnTimeout = setTimeout(function () {
+                    chatbotRoot.classList.remove('dizzy');
+                    showHint("I'm fine", 1400);
+                }, 900);
+            }, 1050);
+            launcher.setAttribute('aria-expanded', 'false');
+        }
+
+        launcher.addEventListener('click', function () {
+            if (panel.hidden) {
+                openPanel();
+            } else {
+                closePanel();
+            }
+        });
+
+        closeBtn.addEventListener('click', closePanel);
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            sendMessage(input.value);
+        });
+
+        input.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 128) + 'px';
+        });
+
+        chipsEl.addEventListener('click', function (event) {
+            const target = event.target.closest('.nc-chatbot-chip');
+            if (!target) return;
+            sendMessage(target.dataset.msg || target.textContent || '');
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !panel.hidden) {
+                closePanel();
+            }
+        });
+
+        if (robotHead && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.addEventListener('mousemove', function (event) {
+                queueRobotFollow(event.clientX, event.clientY);
+            });
+
+            launcher.addEventListener('mouseenter', function () {
+                clearSadFace();
+                showHint('Need help?');
+            });
+            launcher.addEventListener('mouseleave', function () {
+                resetRobotFollow();
+                showSadFaceForTwoSeconds();
+                showHint('Ohh.. okay', 1800);
+            });
+            window.addEventListener('blur', resetRobotFollow);
+        }
+
+        loadHistory();
+        startHelpHintCycle();
+    });
+</script>
+
 @if(session('popup_error'))
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -1253,6 +2095,8 @@
 
 </main>
 @endsection
+
+
 
 
 

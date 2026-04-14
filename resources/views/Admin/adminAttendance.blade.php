@@ -353,6 +353,11 @@
               </div>
             @endforelse
           </div>
+          @if ($attendanceFiles instanceof \Illuminate\Pagination\AbstractPaginator && $attendanceFiles->hasPages())
+            <div class="mt-5">
+              {{ $attendanceFiles->links() }}
+            </div>
+          @endif
         </section>
       </div>
       @else

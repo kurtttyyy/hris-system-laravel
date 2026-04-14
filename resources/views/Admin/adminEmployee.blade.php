@@ -35,15 +35,10 @@
       right: 0.85rem;
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.35rem 0.7rem;
-      border-radius: 999px;
-      background: rgba(255, 248, 235, 0.96);
-      color: #c2410c;
-      font-size: 0.72rem;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+      justify-content: center;
+      padding: 0;
+      background: transparent;
+      box-shadow: none;
       z-index: 12;
     }
     .employee-missing-icon {
@@ -284,6 +279,7 @@
         zoomImageUrl: '',
         employeeIndex: [],
         employeeRecords: [],
+        employeeById: {},
         normalize(value) {
           return (value ?? '').toString().trim().toLowerCase();
         },
@@ -888,7 +884,20 @@
           leave_applications: [],
           ui_theme: {},
         },
-        async openEmployeeProfile(emp, headerStart, headerEnd) {
+        getEmployeeById(userId) {
+          const numericId = Number.parseInt((userId ?? '').toString(), 10);
+          if (!Number.isFinite(numericId) || numericId <= 0) {
+            return null;
+          }
+          return this.employeeById[numericId] ?? null;
+        },
+        async openEmployeeProfile(empOrId, headerStart, headerEnd) {
+          const emp = (typeof empOrId === 'object' && empOrId !== null)
+            ? empOrId
+            : this.getEmployeeById(empOrId);
+          if (!emp) {
+            return;
+          }
           this.openProfile = true;
           this.tab = 'overview';
           await this.setEmployee({
@@ -906,10 +915,7 @@
             return;
           }
 
-          const employees = @js($employee->values());
-          const matchedEmployee = Array.isArray(employees)
-            ? employees.find((row) => Number.parseInt((row?.id ?? '').toString(), 10) === userId)
-            : null;
+          const matchedEmployee = this.getEmployeeById(userId);
 
           if (!matchedEmployee) {
             return;
@@ -1544,7 +1550,13 @@
             data_get($emp, 'salary.salary'),
           ])->contains(fn ($value) => $isMissingEmployeeValue($value)) || $employeeHasMissingAddressParts($emp),
         ])->values()
-      ); employeeRecords = @js($employee->values()); openEmployeeFromQuery()"
+      ); employeeRecords = @js($employee->values()); employeeById = Object.fromEntries(employeeRecords
+        .map((row) => {
+          const userId = Number.parseInt((row?.id ?? '').toString(), 10);
+          return Number.isFinite(userId) && userId > 0 ? [userId, row] : null;
+        })
+        .filter((entry) => Array.isArray(entry))
+      ); openEmployeeFromQuery()"
 >
 
     <!-- Header -->
@@ -2355,34 +2367,96 @@
               });
           }
           $profilePhotoUrl = $profilePhotoDocument?->filepath ? asset('storage/'.$profilePhotoDocument->filepath) : null;
-          $missingCardFields = collect([
-            'Account No.' => data_get($emp, 'employee.account_number'),
-            'Sex' => data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender'),
-            'Civil Status' => data_get($emp, 'employee.civil_status'),
-            'Contact No.' => data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.phone'),
-            'Birthday' => data_get($emp, 'employee.birthday'),
-            'License' => data_get($emp, 'license.license'),
-            'Registration No.' => data_get($emp, 'license.registration_number'),
-            'SSS' => data_get($emp, 'government.SSS'),
-            'TIN' => data_get($emp, 'government.TIN'),
-            'PhilHealth' => data_get($emp, 'government.PhilHealth'),
-            'Pag-IBIG MID' => data_get($emp, 'government.MID'),
-            'Pag-IBIG RTN' => data_get($emp, 'government.RTN'),
-            'Basic Salary' => data_get($emp, 'salary.salary'),
-          ])->filter(fn ($value) => $isMissingEmployeeValue($value));
+          $contactNumberValue = data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.phone');
+          $sexValue = data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender');
+          $addressValue = data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address');
           $missingAddressParts = $employeeMissingAddressPartLabels($emp);
+
+          $personalMissingCount = collect([
+            data_get($emp, 'employee.account_number'),
+            $sexValue,
+            data_get($emp, 'employee.civil_status'),
+            $contactNumberValue,
+            data_get($emp, 'employee.birthday'),
+            data_get($emp, 'government.SSS'),
+            data_get($emp, 'government.TIN'),
+            data_get($emp, 'government.PhilHealth'),
+            data_get($emp, 'government.MID'),
+            data_get($emp, 'government.RTN'),
+          ])->filter(fn ($value) => $isMissingEmployeeValue($value))->count() + $missingAddressParts->count();
+
+          $degreeRows = collect(is_array(data_get($emp, 'applicant.degrees')) ? data_get($emp, 'applicant.degrees') : []);
+          $biometricDegreeMissingCount = collect(['bachelor', 'master', 'doctorate'])
+            ->map(function ($level) use ($degreeRows, $emp, $isMissingEmployeeValue) {
+              $rowsForLevel = $degreeRows->filter(function ($row) use ($level) {
+                return strtolower(trim((string) data_get($row, 'degree_level'))) === $level;
+              });
+
+              if ($rowsForLevel->isNotEmpty()) {
+                return $rowsForLevel
+                  ->filter(function ($row) use ($isMissingEmployeeValue) {
+                    return $isMissingEmployeeValue(data_get($row, 'degree_name'))
+                      || $isMissingEmployeeValue(data_get($row, 'school_name'))
+                      || $isMissingEmployeeValue(data_get($row, 'year_finished'));
+                  })
+                  ->count();
+              }
+
+              $fallback = match ($level) {
+                'bachelor' => [
+                  data_get($emp, 'education.bachelor'),
+                  data_get($emp, 'applicant.bachelor_school_name'),
+                  data_get($emp, 'applicant.bachelor_year_finished'),
+                ],
+                'master' => [
+                  data_get($emp, 'education.master'),
+                  data_get($emp, 'applicant.master_school_name'),
+                  data_get($emp, 'applicant.master_year_finished'),
+                ],
+                default => [
+                  data_get($emp, 'education.doctorate'),
+                  data_get($emp, 'applicant.doctoral_school_name'),
+                  data_get($emp, 'applicant.doctoral_year_finished'),
+                ],
+              };
+
+              return collect($fallback)->contains(fn ($value) => $isMissingEmployeeValue($value)) ? 1 : 0;
+            })
+            ->sum();
+
+          $biometricMissingCount = collect([
+            data_get($emp, 'employee.employee_id'),
+            data_get($emp, 'employee.account_number'),
+            $sexValue,
+            data_get($emp, 'employee.civil_status'),
+            $contactNumberValue,
+            data_get($emp, 'employee.birthday'),
+            $addressValue,
+            data_get($emp, 'license.license'),
+            data_get($emp, 'license.registration_number'),
+            data_get($emp, 'government.SSS'),
+            data_get($emp, 'government.TIN'),
+            data_get($emp, 'government.PhilHealth'),
+            data_get($emp, 'government.MID'),
+            data_get($emp, 'government.RTN'),
+            data_get($emp, 'salary.salary'),
+          ])->filter(fn ($value) => $isMissingEmployeeValue($value))->count() + $biometricDegreeMissingCount;
+
           $missingRequiredDocuments = collect(data_get($emp, 'missing_required_documents', []))
             ->map(fn ($value) => trim((string) $value))
             ->filter()
             ->values();
-          $missingCardCount = $missingCardFields->count() + $missingAddressParts->count() + $missingRequiredDocuments->count();
+          $documentsMissingCount = $missingRequiredDocuments->count();
+          $missingCardCount = $personalMissingCount + $biometricMissingCount + $documentsMissingCount;
           $missingCardParts = collect();
-          $missingInfoLabels = $missingCardFields->keys()->values()->merge($missingAddressParts);
-          if ($missingInfoLabels->isNotEmpty()) {
-            $missingCardParts->push('Info: '.$missingInfoLabels->implode(', '));
+          if ($personalMissingCount > 0) {
+            $missingCardParts->push('Personal: '.$personalMissingCount);
           }
-          if ($missingRequiredDocuments->isNotEmpty()) {
-            $missingCardParts->push('Documents: '.$missingRequiredDocuments->implode(', '));
+          if ($biometricMissingCount > 0) {
+            $missingCardParts->push('Biometric: '.$biometricMissingCount);
+          }
+          if ($documentsMissingCount > 0) {
+            $missingCardParts->push('Documents: '.$documentsMissingCount);
           }
           $missingCardTitle = $missingCardCount > 0
             ? 'Missing: '.$missingCardParts->implode(' | ')
@@ -2398,7 +2472,6 @@
             @if($missingCardCount > 0)
                 <div class="employee-missing-badge" title="{{ $missingCardTitle }}">
                     <span class="employee-missing-icon">!</span>
-                    <span>{{ $missingCardCount }} missing</span>
                 </div>
             @endif
             <div class="h-24 flex justify-center items-center" style="background-image: linear-gradient(to right, {{ $headerStart }}, {{ $headerEnd }});">
@@ -2460,7 +2533,7 @@
                     </div>
                     <button
                         type="button"
-                        @click="openEmployeeProfile(@js($emp), @js($headerStart), @js($headerEnd))"
+                        @click="openEmployeeProfile({{ (int) ($emp->id ?? 0) }}, @js($headerStart), @js($headerEnd))"
                         class="text-blue-500 text-sm font-medium hover:underline">
                         View Profile
                     </button>
@@ -2619,7 +2692,7 @@
                 <td class="sticky left-14 z-10 border border-black bg-white px-2 py-1 shadow-[inset_-1px_0_0_#000]">
                   <button
                     type="button"
-                    @click="openEmployeeProfile(employeeRecords.find(emp => Number.parseInt((emp?.id ?? '').toString(), 10) === {{ (int) ($row['user_id'] ?? 0) }}), @js($row['header_start']), @js($row['header_end']))"
+                    @click="openEmployeeProfile({{ (int) ($row['user_id'] ?? 0) }}, @js($row['header_start']), @js($row['header_end']))"
                     class="font-semibold text-sky-700 underline decoration-sky-300 underline-offset-2 transition hover:text-sky-900 hover:decoration-sky-600"
                   >
                     {{ $row['name'] }}

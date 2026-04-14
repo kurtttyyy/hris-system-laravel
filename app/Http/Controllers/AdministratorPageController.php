@@ -22,6 +22,7 @@ use App\Support\EmployeeAccountStatusManager;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -838,22 +839,6 @@ class AdministratorPageController extends Controller
 
         $employee = User::with([
             'applicant',
-            'applicant.documents' => function ($query) {
-                $query->select([
-                    'id',
-                    'applicant_id',
-                    'filename',
-                    'filepath',
-                    'type',
-                    'mime_type',
-                    'size',
-                    'created_at',
-                ])
-                ->where('type', 'not like', '__REQUIRED__::%')
-                ->where('type', '!=', '__NOTICE__')
-                ->where('type', '!=', '__FOLDER__')
-                ->orderByDesc('created_at');
-            },
             'applicant.degrees' => function ($query) {
                 $query->select([
                     'id',
@@ -865,7 +850,7 @@ class AdministratorPageController extends Controller
                     'sort_order',
                 ])->orderBy('degree_level')->orderBy('sort_order');
             },
-            'applicant.position:id,title,department,employment,collage_name,work_mode,job_description,responsibilities,requirements,experience_level,location,skills,benifits,job_type,one,two,passionate',
+            'applicant.position:id,title,department,employment,job_type',
             'employee',
             'education',
             'government',
@@ -932,23 +917,44 @@ class AdministratorPageController extends Controller
             },
             ])->where('role','Employee')->get();
 
-        $employee->each(function (User $row) {
-            $this->attachApplicantComparisonMeta($row->applicant);
-            $row->setAttribute('leave_summary', $this->buildAdminEmployeeLeaveSummary($row, now()->format('Y-m')));
+        $applicantIds = $employee
+            ->pluck('applicant.id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
 
+        $uploadedDocumentTypesByApplicant = ApplicantDocument::query()
+            ->select(['applicant_id', 'type', 'filename'])
+            ->whereIn('applicant_id', $applicantIds)
+            ->where('type', 'not like', '__REQUIRED__::%')
+            ->where('type', '!=', '__NOTICE__')
+            ->where('type', '!=', '__FOLDER__')
+            ->get()
+            ->groupBy('applicant_id')
+            ->map(function ($documents) {
+                return $documents
+                    ->map(function ($doc) {
+                        return $this->normalizeDocumentLabel((string) ($doc->type ?: $doc->filename));
+                    })
+                    ->filter()
+                    ->unique()
+                    ->values();
+            });
+
+        $employee->each(function (User $row) {
+            $row->setAttribute('leave_summary', $this->buildAdminEmployeeLeaveSummary($row, now()->format('Y-m')));
+        });
+
+        $employee->each(function (User $row) use ($uploadedDocumentTypesByApplicant) {
             $requiredConfig = $this->getRequiredDocumentConfigForApplicant((int) ($row->applicant?->id ?? 0));
             $requiredDocuments = collect($requiredConfig['required_documents'] ?? [])
                 ->map(fn ($item) => trim((string) $item))
                 ->filter()
                 ->values();
 
-            $uploadedDocumentTypesNormalized = collect($row->applicant?->documents ?? [])
-                ->map(function ($doc) {
-                    return $this->normalizeDocumentLabel((string) ($doc->type ?: $doc->filename));
-                })
-                ->filter()
-                ->unique()
-                ->values();
+            $uploadedDocumentTypesNormalized = $uploadedDocumentTypesByApplicant
+                ->get((int) ($row->applicant?->id ?? 0), collect());
 
             $missingRequiredDocuments = $requiredDocuments
                 ->filter(function ($required) use ($uploadedDocumentTypesNormalized) {
@@ -963,8 +969,6 @@ class AdministratorPageController extends Controller
         });
 
         $this->attachSubjectLoadsToEmployees($employee);
-
-        Log::info($employee);
         return view('admin.adminEmployee', compact('employee'));
     }
 
@@ -1038,11 +1042,14 @@ class AdministratorPageController extends Controller
             })
             ->orderByDesc('uploaded_at')
             ->orderByDesc('id')
-            ->get();
+            ->paginate(50)
+            ->withQueryString();
+
+        $attendanceFileItems = collect($attendanceFiles->items());
 
         if (!$selectedUploadId && !$hasDateFilter) {
             $selectedUploadId = optional(
-                $attendanceFiles->firstWhere('status', 'Processed') ?? $attendanceFiles->first()
+                $attendanceFileItems->firstWhere('status', 'Processed') ?? $attendanceFileItems->first()
             )->id;
         }
 
@@ -1092,32 +1099,27 @@ class AdministratorPageController extends Controller
             })
             ->values();
 
-        $employeesWithJobType = Employee::query()
-            ->select(['employee_id', 'job_type'])
+        $employeesForLookup = Employee::query()
+            ->with([
+                'user:id,first_name,middle_name,last_name,department',
+                'user.applicant.position:id,department',
+            ])
+            ->select(['employee_id', 'job_type', 'department', 'user_id'])
             ->whereNotNull('employee_id')
             ->orderBy('employee_id')
             ->get();
 
-        $employeeJobTypeMap = $employeesWithJobType
+        $employeeJobTypeMap = $employeesForLookup
             ->mapWithKeys(function ($employee) {
                 $employeeId = $this->normalizeEmployeeId($employee->employee_id);
                 if ($employeeId === '') {
                     return [];
                 }
 
-                $jobTypeFromEmployee = $this->normalizeJobType($employee->job_type);
-
-                return [$employeeId => $jobTypeFromEmployee];
+                return [$employeeId => $this->normalizeJobType($employee->job_type)];
             });
-        $employeeDepartmentMap = Employee::query()
-            ->with([
-                'user:id,department',
-                'user.applicant.position:id,department',
-            ])
-            ->select(['employee_id', 'department', 'user_id'])
-            ->whereNotNull('employee_id')
-            ->orderBy('employee_id')
-            ->get()
+
+        $employeeDepartmentMap = $employeesForLookup
             ->mapWithKeys(function ($employee) {
                 $employeeId = $this->normalizeEmployeeId($employee->employee_id);
                 if ($employeeId === '') {
@@ -1133,12 +1135,8 @@ class AdministratorPageController extends Controller
 
                 return [$employeeId => $resolvedDepartment];
             });
-        $employeeDisplayNameMap = Employee::query()
-            ->with('user:id,first_name,middle_name,last_name')
-            ->select(['employee_id', 'user_id'])
-            ->whereNotNull('employee_id')
-            ->orderBy('employee_id')
-            ->get()
+
+        $employeeDisplayNameMap = $employeesForLookup
             ->mapWithKeys(function ($employee) {
                 $employeeId = $this->normalizeEmployeeId($employee->employee_id);
                 if ($employeeId === '') {
@@ -2464,37 +2462,54 @@ class AdministratorPageController extends Controller
         $payslipFiles = PayslipUpload::query()
             ->orderByDesc('uploaded_at')
             ->orderByDesc('id')
-            ->get();
+            ->paginate(50)
+            ->withQueryString();
 
-        return view('admin.adminPayslip', compact('payslipFiles'));
+        $uploadedCount = (int) PayslipUpload::query()->count();
+        $scannedCount = (int) PayslipUpload::query()
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) IN (?, ?)", ['scanned', 'processed'])
+            ->count();
+        $latestUpload = PayslipUpload::query()
+            ->orderByDesc('uploaded_at')
+            ->orderByDesc('id')
+            ->first();
+
+        return view('admin.adminPayslip', compact('payslipFiles', 'uploadedCount', 'scannedCount', 'latestUpload'));
     }
 
     public function display_payslip_view(Request $request){
         $uploadId = (int) $request->query('upload_id', 0);
         $recordId = (int) $request->query('record_id', 0);
 
-        $recordsQuery = PayslipRecord::query()
+        $baseRecordsQuery = PayslipRecord::query()
+            ->when($uploadId > 0, fn ($query) => $query->where('payslip_upload_id', $uploadId))
+            ->whereNotNull('employee_id')
+            ->whereRaw("TRIM(COALESCE(employee_id, '')) <> ''");
+
+        // Get latest row per normalized employee_id directly in SQL for better performance.
+        $latestRecordIdsQuery = (clone $baseRecordsQuery)
+            ->selectRaw('MAX(id) as id')
+            ->groupBy(DB::raw('LOWER(TRIM(employee_id))'));
+
+        $records = PayslipRecord::query()
             ->with('upload:id,original_name,uploaded_at')
+            ->whereIn('id', $latestRecordIdsQuery)
             ->orderByDesc('scanned_at')
-            ->orderByDesc('id');
-
-        if ($uploadId > 0) {
-            $recordsQuery->where('payslip_upload_id', $uploadId);
-        }
-
-        // Show one container per employee (latest scanned row for that employee).
-        $records = $recordsQuery->get()
-            ->filter(function ($record) {
-                return trim((string) ($record->employee_id ?? '')) !== '';
-            })
-            ->unique(function ($record) {
-                return strtolower(trim((string) $record->employee_id));
-            })
-            ->values();
+            ->orderByDesc('id')
+            ->paginate(60)
+            ->withQueryString();
         $selectedRecord = null;
 
         if ($recordId > 0) {
-            $selectedRecord = $records->firstWhere('id', $recordId);
+            $selectedRecord = PayslipRecord::query()
+                ->with('upload:id,original_name,uploaded_at')
+                ->when($uploadId > 0, fn ($query) => $query->where('payslip_upload_id', $uploadId))
+                ->where('id', $recordId)
+                ->first();
+
+            if (!$selectedRecord && $records instanceof \Illuminate\Contracts\Pagination\Paginator) {
+                $selectedRecord = collect($records->items())->firstWhere('id', $recordId);
+            }
         }
 
 

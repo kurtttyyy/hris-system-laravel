@@ -21,6 +21,9 @@
     <main class="flex-1 ml-16 transition-all duration-300">
         @include('components.employeeHeader.dashboardHeader', [
             'notifications' => (int) ($notifications ?? 0),
+            'badge' => 'Employee Evaluation',
+            'subtitle' => 'Track performance reviews, scores, and manager feedback in one focused workspace.',
+            'status_chip' => 'Evaluation Mode',
         ])
 
         <div class="space-y-6 p-4 pt-20 md:p-8">

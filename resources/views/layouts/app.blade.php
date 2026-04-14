@@ -19,6 +19,10 @@
 
     @yield('content')
 
+    @if (request()->routeIs('guest.*') && !request()->routeIs('guest.index'))
+        @include('components.guest-ai-assistant')
+    @endif
+
     <!-- JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 

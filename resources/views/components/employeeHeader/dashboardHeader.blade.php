@@ -2,6 +2,9 @@
     $headerUser = auth()->user();
     $displayName = $name ?? trim((string) ($headerUser?->first_name ?? ''));
     $notificationCount = (int) ($notifications ?? 0);
+    $headerBadge = trim((string) ($badge ?? 'Employee Dashboard'));
+    $headerSubtitle = trim((string) ($subtitle ?? 'Track requests, review updates, and move through your workday from one clean workspace.'));
+    $statusChip = trim((string) ($status_chip ?? 'Ready Today'));
     $currentHour = now()->hour;
 
     if ($currentHour < 12) {
@@ -117,20 +120,20 @@
         <div class="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
                 <div class="employee-dashboard-header__badge inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-700">
-                    Employee Dashboard
+                    {{ $headerBadge !== '' ? $headerBadge : 'Employee Dashboard' }}
                 </div>
                 <h2 class="employee-dashboard-header__title mt-3 text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
                     {{ $greeting }}{{ $displayName !== '' ? ', '.$displayName : '' }}
                     <span class="employee-hand-wave text-amber-500">&#128075;</span>
                 </h2>
                 <p class="employee-dashboard-header__subtitle mt-1 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
-                    Track requests, review updates, and move through your workday from one clean workspace.
+                    {{ $headerSubtitle !== '' ? $headerSubtitle : 'Track requests, review updates, and move through your workday from one clean workspace.' }}
                 </p>
             </div>
 
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div class="employee-dashboard-header__chips flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    <span class="rounded-full bg-emerald-100 px-3 py-2 text-emerald-700">Ready Today</span>
+                    <span class="rounded-full bg-emerald-100 px-3 py-2 text-emerald-700">{{ $statusChip !== '' ? $statusChip : 'Ready Today' }}</span>
                     <span class="rounded-full bg-sky-100 px-3 py-2 text-sky-700">{{ now()->format('M d, Y') }}</span>
                 </div>
 

@@ -24,10 +24,18 @@
   <main class="flex-1 ml-16 transition-all duration-300">
     @php
       $payslipFiles = $payslipFiles ?? collect();
-      $uploadedCount = $payslipFiles->count();
-      $scannedCount = $payslipFiles->filter(fn ($file) => in_array(strtolower((string) ($file->status ?? '')), ['scanned', 'processed']))->count();
+      $payslipFileItems = $payslipFiles instanceof \Illuminate\Pagination\AbstractPaginator
+        ? collect($payslipFiles->items())
+        : collect($payslipFiles);
+      $uploadedCount = isset($uploadedCount)
+        ? (int) $uploadedCount
+        : (method_exists($payslipFiles, 'total') ? (int) $payslipFiles->total() : $payslipFileItems->count());
+      $scannedCount = isset($scannedCount)
+        ? (int) $scannedCount
+        : $payslipFileItems->filter(fn ($file) => in_array(strtolower((string) ($file->status ?? '')), ['scanned', 'processed']))->count();
       $pendingCount = max($uploadedCount - $scannedCount, 0);
-      $latestUpload = $payslipFiles->sortByDesc(fn ($file) => optional($file->uploaded_at)?->timestamp ?? 0)->first();
+      $latestUpload = $latestUpload
+        ?? $payslipFileItems->sortByDesc(fn ($file) => optional($file->uploaded_at)?->timestamp ?? 0)->first();
     @endphp
 
     <div class="p-4 md:p-8 pt-10 space-y-6">
@@ -201,7 +209,7 @@
           </div>
 
           <div id="payslip_file_list" class="mt-6 space-y-4">
-            @forelse ($payslipFiles as $file)
+            @forelse ($payslipFileItems as $file)
               @php
                 $isScanned = strcasecmp((string) ($file->status ?? ''), 'Scanned') === 0
                   || strcasecmp((string) ($file->status ?? ''), 'Processed') === 0;
@@ -257,6 +265,11 @@
               </div>
             @endforelse
           </div>
+          @if ($payslipFiles instanceof \Illuminate\Pagination\AbstractPaginator && $payslipFiles->hasPages())
+            <div class="mt-5">
+              {{ $payslipFiles->links() }}
+            </div>
+          @endif
         </section>
       </div>
     </div>
