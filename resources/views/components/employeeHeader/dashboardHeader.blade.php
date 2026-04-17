@@ -77,8 +77,7 @@
     }
 
     .employee-dashboard-header.is-scrolled {
-        background-color: rgba(248, 250, 252, 0.82);
-        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+        box-shadow: none;
     }
 
     .employee-dashboard-header.is-scrolled .employee-dashboard-header__card {
@@ -112,7 +111,7 @@
     }
 </style>
 
-<header id="employee-dashboard-header" class="employee-dashboard-header sticky top-0 z-40 border-b border-emerald-100/80 bg-gradient-to-r from-emerald-50 via-white to-sky-50 px-4 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur md:px-8">
+<header id="employee-dashboard-header" class="employee-dashboard-header sticky top-0 z-40 border-b border-transparent bg-transparent px-4 py-4 shadow-none backdrop-blur md:px-8">
     <div class="employee-dashboard-header__card relative rounded-[1.75rem] border border-white/80 bg-white/80 px-5 py-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)] md:px-7">
         <div class="employee-header-orb absolute -left-8 top-4 h-24 w-24 rounded-full bg-emerald-200/40 blur-2xl"></div>
         <div class="employee-header-orb absolute right-8 top-0 h-20 w-20 rounded-full bg-sky-200/40 blur-2xl"></div>

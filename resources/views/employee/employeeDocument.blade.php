@@ -197,7 +197,7 @@
                         <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
                         @if($missingDocumentCount > 0)
                             <span class="absolute -right-2 -top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white">
-                                {{ $missingDocumentCount > 99 ? '99+' : $missingDocumentCount }}
+                                !
                             </span>
                         @endif
                     </div>

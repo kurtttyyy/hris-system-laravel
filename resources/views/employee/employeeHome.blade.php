@@ -27,7 +27,7 @@
             <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-2xl md:p-8">
                 <div class="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl"></div>
                 <div class="absolute bottom-0 right-20 h-24 w-24 rounded-full bg-emerald-300/10 blur-2xl"></div>
-                <div class="relative grid gap-6 lg:grid-cols-[1.7fr_1fr] lg:items-end">
+                <div class="relative grid gap-6 lg:grid-cols-[1.7fr_1fr] lg:items-start">
                     <div class="space-y-4">
                         <div class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-100">
                             Employee Workspace
@@ -52,33 +52,61 @@
                                 <p class="mt-1 font-semibold">{{ rtrim(rtrim(number_format((float) ($combinedLeaveAvailable ?? 0), 1, '.', ''), '0'), '.') }} Days</p>
                             </div>
                         </div>
+
                     </div>
 
-                    <div class="rounded-[1.75rem] border border-white/15 bg-white/10 p-5 backdrop-blur-sm">
-                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">Focus Panel</p>
-                        <div class="mt-5 space-y-4">
-                            <div>
-                                <div class="flex items-center justify-between text-sm">
-                                    <span class="text-emerald-50">Leave usage</span>
-                                    <span class="font-semibold">{{ (int) ($combinedLeavePercentUsed ?? 0) }}%</span>
+                    <div class="space-y-4">
+                        <div class="rounded-[1.75rem] border border-white/15 bg-white/10 p-5 backdrop-blur-sm">
+                            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">Focus Panel</p>
+                            <div class="mt-5 space-y-4">
+                                <div>
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-emerald-50">Leave usage</span>
+                                        <span class="font-semibold">{{ (int) ($combinedLeavePercentUsed ?? 0) }}%</span>
+                                    </div>
+                                    <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-white/15">
+                                        <div class="h-full rounded-full bg-emerald-300" style="width: {{ (int) ($combinedLeavePercentUsed ?? 0) }}%;"></div>
+                                    </div>
                                 </div>
-                                <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-white/15">
-                                    <div class="h-full rounded-full bg-emerald-300" style="width: {{ (int) ($combinedLeavePercentUsed ?? 0) }}%;"></div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="rounded-2xl bg-white/10 p-4">
+                                        <p class="text-xs uppercase tracking-wide text-emerald-100">Vacation</p>
+                                        <p class="mt-2 text-xl font-bold">{{ rtrim(rtrim(number_format((float) ($vacationCardAvailable ?? 0), 1, '.', ''), '0'), '.') }}</p>
+                                    </div>
+                                    <div class="rounded-2xl bg-white/10 p-4">
+                                        <p class="text-xs uppercase tracking-wide text-emerald-100">Sick</p>
+                                        <p class="mt-2 text-xl font-bold">{{ rtrim(rtrim(number_format((float) ($sickCardAvailable ?? 0), 1, '.', ''), '0'), '.') }}</p>
+                                    </div>
                                 </div>
+                                <p class="text-xs leading-5 text-emerald-50">
+                                    Keep your records updated to avoid delays in payroll, leave approvals, and required document submissions.
+                                </p>
                             </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="rounded-2xl bg-white/10 p-4">
-                                    <p class="text-xs uppercase tracking-wide text-emerald-100">Vacation</p>
-                                    <p class="mt-2 text-xl font-bold">{{ rtrim(rtrim(number_format((float) ($vacationCardAvailable ?? 0), 1, '.', ''), '0'), '.') }}</p>
-                                </div>
-                                <div class="rounded-2xl bg-white/10 p-4">
-                                    <p class="text-xs uppercase tracking-wide text-emerald-100">Sick</p>
-                                    <p class="mt-2 text-xl font-bold">{{ rtrim(rtrim(number_format((float) ($sickCardAvailable ?? 0), 1, '.', ''), '0'), '.') }}</p>
-                                </div>
+                        </div>
+
+                        <div class="rounded-[1.5rem] border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">Quick Actions</p>
+                                <span class="text-[11px] text-emerald-50/85">Most-used tools</span>
                             </div>
-                            <p class="text-xs leading-5 text-emerald-50">
-                                Keep your records updated to avoid delays in payroll, leave approvals, and required document submissions.
-                            </p>
+                            <div class="mt-3 grid grid-cols-2 gap-2">
+                                <a href="{{ route('employee.employeeLeave') }}" class="inline-flex items-center justify-start gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/20">
+                                    <i class="fa fa-calendar-check-o"></i>
+                                    <span>Leave</span>
+                                </a>
+                                <a href="{{ route('employee.employeeDocument') }}" class="inline-flex items-center justify-start gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/20">
+                                    <i class="fa fa-folder-open"></i>
+                                    <span>Documents</span>
+                                </a>
+                                <a href="{{ route('employee.employeePayslip') }}" class="inline-flex items-center justify-start gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/20">
+                                    <i class="fa fa-money"></i>
+                                    <span>Payslip</span>
+                                </a>
+                                <a href="{{ route('employee.employeeCommunication') }}" class="inline-flex items-center justify-start gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/20">
+                                    <i class="fa fa-users"></i>
+                                    <span>Directory</span>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -173,50 +201,6 @@
                     <p class="mt-1 text-sm font-medium text-slate-600">Payslip and salary access</p>
                     <p class="mt-5 text-xs leading-5 text-slate-500">Use the payslip section to review your latest payroll records.</p>
                 </article>
-            </section>
-
-            <section class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-                <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Quick Actions</p>
-                        <h3 class="mt-2 text-2xl font-black text-slate-900">Jump back into the work that matters.</h3>
-                    </div>
-                    <p class="text-sm text-slate-500">Your most-used employee tools in one row.</p>
-                </div>
-
-                <div class="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-                    <a href="{{ route('employee.employeeLeave') }}" class="group rounded-[1.5rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/20">
-                            <i class="fa fa-calendar-check-o fa-2x"></i>
-                        </div>
-                        <h4 class="mt-5 text-lg font-bold text-slate-900">Apply Leave</h4>
-                        <p class="mt-2 text-sm leading-6 text-slate-500">Submit requests, review balances, and monitor approvals from one place.</p>
-                    </a>
-
-                    <a href="{{ route('employee.employeeDocument') }}" class="group rounded-[1.5rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
-                            <i class="fa fa-folder-open fa-2x"></i>
-                        </div>
-                        <h4 class="mt-5 text-lg font-bold text-slate-900">Documents</h4>
-                        <p class="mt-2 text-sm leading-6 text-slate-500">Manage 201 file uploads, organize folders, and keep requirements complete.</p>
-                    </a>
-
-                    <a href="{{ route('employee.employeePayslip') }}" class="group rounded-[1.5rem] border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-500/20">
-                            <i class="fa fa-money fa-2x"></i>
-                        </div>
-                        <h4 class="mt-5 text-lg font-bold text-slate-900">View Payslip</h4>
-                        <p class="mt-2 text-sm leading-6 text-slate-500">Check payment history, salary details, and downloadable payroll records.</p>
-                    </a>
-
-                    <a href="{{ route('employee.employeeCommunication') }}" class="group rounded-[1.5rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 transition hover:-translate-y-1 hover:shadow-lg">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20">
-                            <i class="fa fa-users fa-2x"></i>
-                        </div>
-                        <h4 class="mt-5 text-lg font-bold text-slate-900">Team Directory</h4>
-                        <p class="mt-2 text-sm leading-6 text-slate-500">Find contacts, connect with teams, and reach out faster when you need support.</p>
-                    </a>
-                </div>
             </section>
 
             <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">

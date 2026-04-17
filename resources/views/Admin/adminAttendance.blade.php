@@ -19,7 +19,7 @@
     }
   </style>
 </head>
-<body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#eef4ff_45%,#f8fafc_100%)] text-slate-800">
+<body class="min-h-screen bg-slate-100 text-slate-800">
 
 <div class="flex min-h-screen">
   @include('components.adminSideBar')
@@ -55,38 +55,6 @@
 
         $baseCardClasses = 'group relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/88 p-6 shadow-[0_20px_45px_rgba(15,23,42,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(15,23,42,0.12)]';
       @endphp
-
-      <section class="relative overflow-hidden rounded-[2rem] border border-sky-100/80 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(99,102,241,0.08),rgba(255,255,255,0.96))] px-6 py-6 shadow-[0_28px_60px_rgba(37,99,235,0.10)] md:px-8">
-        <div class="absolute -left-8 top-6 h-24 w-24 rounded-full bg-sky-300/25 blur-3xl"></div>
-        <div class="absolute right-0 top-0 h-32 w-32 translate-x-10 -translate-y-8 rounded-full bg-indigo-300/25 blur-3xl"></div>
-        <div class="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div class="max-w-3xl">
-            <p class="max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
-              Track daily workforce movement, review uploads, and move from raw logs to attendance insights in one cleaner dashboard.
-            </p>
-          </div>
-
-          <div class="grid gap-3 sm:grid-cols-3 xl:min-w-[520px]">
-            <div class="rounded-2xl border border-white/80 bg-white/80 px-4 py-4 shadow-sm">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Date Range</p>
-              <p class="mt-2 text-sm font-semibold text-slate-800">
-                {{ $fromDate }}
-                @if (!empty($toDate))
-                  <span class="text-slate-400">to</span> {{ $toDate }}
-                @endif
-              </p>
-            </div>
-            <div class="rounded-2xl border border-white/80 bg-white/80 px-4 py-4 shadow-sm">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Search</p>
-              <p class="mt-2 truncate text-sm font-semibold text-slate-800">{{ !empty($searchName) ? $searchName : 'All employees' }}</p>
-            </div>
-            <div class="rounded-2xl border border-slate-900/90 bg-slate-900 px-4 py-4 shadow-sm">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Current View</p>
-              <p class="mt-2 text-sm font-semibold text-white">{{ $activeAttendanceLabel }}</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
         <a href="{{ route('admin.attendance.present', $attendanceQuery) }}" class="{{ $baseCardClasses }} {{ $activeAttendanceTab === 'present' ? 'border-emerald-300 bg-emerald-50/80' : '' }}">

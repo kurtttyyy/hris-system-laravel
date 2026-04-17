@@ -98,10 +98,20 @@
         position: absolute;
         inset: 0.06rem;
         border-radius: 50%;
-        background: radial-gradient(circle at 35% 30%, #86efac, #4ade80 60%, #16a34a 100%);
-        box-shadow: 0 0 10px rgba(74, 222, 128, 0.75);
+        background: radial-gradient(circle at 35% 30%, #a5f3fc, #22d3ee 60%, #0891b2 100%);
+        box-shadow: 0 0 10px rgba(34, 211, 238, 0.78);
         transform-origin: center;
         animation: nc-eye-blink 3.6s infinite;
+    }
+
+    .nc-robot-eye-core::before {
+        content: "";
+        display: none;
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: center / contain no-repeat
+            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M51 50c10-9 20 2 14 12-5 8-18 6-22-2-5-11 6-20 17-20 13 0 23 11 23 24S73 86 58 86 30 74 30 58s12-30 29-30' fill='none' stroke='%2367e8f9' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     }
 
     .nc-robot-mouth {
@@ -226,7 +236,28 @@
     }
 
     .nc-chatbot.dizzy .nc-robot-eye-core {
-        animation: nc-eye-dizzy 0.9s linear;
+        animation: nc-eye-dizzy 0.95s cubic-bezier(0.22, 1.3, 0.36, 1);
+        background: rgba(2, 6, 23, 0.08);
+        box-shadow: none;
+    }
+
+    .nc-chatbot.dizzy .nc-robot-eye-core::before {
+        display: block;
+    }
+
+    .nc-chatbot.dizzy .nc-robot-eye {
+        animation: nc-eye-spring-dizzy 0.95s cubic-bezier(0.22, 1.45, 0.36, 1);
+    }
+
+    .nc-chatbot.dizzy .nc-robot-mouth {
+        width: 1.45rem;
+        height: 0.34rem;
+        bottom: 0.46rem;
+        background: transparent;
+        border-top: 0.14rem solid #4ade80;
+        border-radius: 65% 35% 60% 40% / 45% 55% 45% 55%;
+        box-shadow: 0 0 8px rgba(74, 222, 128, 0.45);
+        animation: nc-dizzy-mouth-wave 0.95s ease-in-out;
     }
 
     .nc-chatbot-header {
@@ -288,8 +319,50 @@
 
     @keyframes nc-eye-dizzy {
         0% { opacity: 1; transform: scale(1) rotate(0deg); }
-        50% { opacity: 0.65; transform: scale(0.9) rotate(180deg); }
-        100% { opacity: 1; transform: scale(1) rotate(360deg); }
+        18% { opacity: 0.9; transform: scale(1.24, 0.76) rotate(115deg); }
+        36% { opacity: 0.85; transform: scale(0.82, 1.2) rotate(228deg); }
+        56% { opacity: 0.95; transform: scale(1.12, 0.9) rotate(320deg); }
+        74% { opacity: 0.9; transform: scale(0.92, 1.08) rotate(372deg); }
+        100% { opacity: 1; transform: scale(1) rotate(410deg); }
+    }
+
+    @keyframes nc-eye-spring-dizzy {
+        0% {
+            transform: translate(var(--eye-x, 0px), var(--eye-y, 0px));
+        }
+        20% {
+            transform: translate(calc(var(--eye-x, 0px) + 3px), calc(var(--eye-y, 0px) - 2px));
+        }
+        38% {
+            transform: translate(calc(var(--eye-x, 0px) - 4px), calc(var(--eye-y, 0px) + 2px));
+        }
+        56% {
+            transform: translate(calc(var(--eye-x, 0px) + 2px), calc(var(--eye-y, 0px) - 1px));
+        }
+        74% {
+            transform: translate(calc(var(--eye-x, 0px) - 1px), calc(var(--eye-y, 0px) + 1px));
+        }
+        100% {
+            transform: translate(var(--eye-x, 0px), var(--eye-y, 0px));
+        }
+    }
+
+    @keyframes nc-dizzy-mouth-wave {
+        0% {
+            transform: translateX(-50%) translateY(0) rotate(0deg);
+        }
+        25% {
+            transform: translateX(-50%) translateY(0.5px) rotate(-4deg);
+        }
+        50% {
+            transform: translateX(-50%) translateY(0) rotate(4deg);
+        }
+        75% {
+            transform: translateX(-50%) translateY(0.5px) rotate(-3deg);
+        }
+        100% {
+            transform: translateX(-50%) translateY(0) rotate(0deg);
+        }
     }
 
     @keyframes nc-eye-blink {

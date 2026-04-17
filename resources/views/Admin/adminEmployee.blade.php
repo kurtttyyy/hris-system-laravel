@@ -66,6 +66,12 @@
         box-shadow: 0 0 0 7px rgba(239, 68, 68, 0);
       }
     }
+    .employee-profile-modal-scroll {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-gutter: stable both-edges;
+    }
   </style>
 </head>
 
@@ -2749,7 +2755,8 @@
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-40"
       style="display:none"
     >
-      <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-y-auto overflow-hidden">
+      <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="employee-profile-modal-scroll">
 
         <div
           class="p-6 text-white relative"
@@ -2860,6 +2867,7 @@
           </button>
         </div>
 
+        </div>
       </div>
     </div>
 
