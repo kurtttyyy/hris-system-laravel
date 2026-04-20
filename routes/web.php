@@ -39,6 +39,10 @@ Route::controller(ApplicantController::class)->group(function () {
 Route::controller(RegisterLoginController::class)->group(function () {
     Route::post('register/store', 'register_store')->name('register.store');
     Route::post('login', 'login_store')->name('login');
+    Route::get('forgot-password', 'forgot_password')->name('password.request');
+    Route::post('forgot-password', 'send_password_reset_link')->name('password.email');
+    Route::get('reset-password/{token}', 'reset_password')->name('password.reset');
+    Route::post('reset-password', 'update_password')->name('password.update');
     Route::post('logout', 'logout')->name('logout');
 });
 

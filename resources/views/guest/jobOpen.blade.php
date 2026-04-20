@@ -474,9 +474,6 @@
 
             <h6 class="section-title">Qualifications</h6>
             <ul id="sidebarQualifications" class="list-unstyled ps-0"></ul>
-
-            <h6 class="section-title">Benefits</h6>
-            <ul id="sidebarBenefits" class="list-unstyled ps-0"></ul>
         </div>
 
         <div class="text-center mt-3">
@@ -536,7 +533,7 @@
         let items = Array.isArray(data) ? data : [data];
 
         // special handling for longer text fields: split on bullet markers or newlines
-        if (/(responsib|description|qualif|benefit)/.test(id.toLowerCase())) {
+        if (/(responsib|description|qualif)/.test(id.toLowerCase())) {
             if (!Array.isArray(data)) {
                 let text = String(data || '');
                 // convert <br> to newline for consistent splitting
@@ -640,7 +637,6 @@ function formatDate(dateString) {
         populateList('sidebarDescription', job.job_description);
         populateList('sidebarResponsibilities', job.responsibilities);
         populateList('sidebarQualifications', job.requirements);
-        populateList('sidebarBenefits', job.benifits);
 
         document.getElementById('applyJobBtn').href =
             `/application/non_teaching/procedure/${job.id}`;

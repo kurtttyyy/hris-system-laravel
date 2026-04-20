@@ -6,10 +6,13 @@ use App\Http\Controllers\Concerns\ResolvesTabSession;
 use App\Models\Applicant;
 use App\Models\Resignation;
 use App\Models\User;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 
 class RegisterLoginController extends Controller
 {
@@ -171,6 +174,76 @@ class RegisterLoginController extends Controller
                 'email' => 'The provided credentials do not match our records.',
             ])
             ->withInput();
+    }
+
+    public function forgot_password()
+    {
+        return view('auth-forgot-password');
+    }
+
+    public function send_password_reset_link(Request $request)
+    {
+        $attrs = $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        try {
+            $status = Password::sendResetLink([
+                'email' => $attrs['email'],
+            ]);
+        } catch (\Throwable $exception) {
+            Log::error('Password reset email could not be sent.', [
+                'email' => $attrs['email'],
+                'message' => $exception->getMessage(),
+            ]);
+
+            return back()
+                ->withErrors([
+                    'email' => 'We could not send the reset link right now. Please check the mail settings or contact HR.',
+                ])
+                ->withInput();
+        }
+
+        return $status === Password::RESET_LINK_SENT
+            ? back()->with('status', __($status))
+            : back()
+                ->withErrors(['email' => __($status)])
+                ->withInput();
+    }
+
+    public function reset_password(Request $request, string $token)
+    {
+        return view('auth-reset-password', [
+            'token' => $token,
+            'email' => $request->query('email'),
+        ]);
+    }
+
+    public function update_password(Request $request)
+    {
+        $attrs = $request->validate([
+            'token' => 'required',
+            'email' => 'required|email|exists:users,email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $status = Password::reset(
+            $attrs,
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        return $status === Password::PASSWORD_RESET
+            ? redirect()->route('login_display')->with('status', __($status))
+            : back()
+                ->withErrors(['email' => __($status)])
+                ->withInput($request->only('email'));
     }
 
     public function logout(Request $request)

@@ -183,6 +183,12 @@
                     <h2 class="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
                     <p class="text-gray-500 mb-8">Sign in to continue to your account</p>
 
+                    @if (session('status') && (($mode ?? 'login') === 'login'))
+                        <div class="mb-5 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                            {{ session('status') }}
+                        </div>
+                    @endif
+
                     @if ($errors->has('email'))
                         <div class="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                             {{ $errors->first('email') }}
@@ -212,6 +218,11 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9.88 5.09A10.94 10.94 0 0 1 12 5c4.478 0 8.268 2.943 9.542 7a10.94 10.94 0 0 1-4.043 5.138M6.228 6.228A10.945 10.945 0 0 0 2.458 12c1.274 4.057 5.065 7 9.542 7a10.94 10.94 0 0 0 5.772-1.686" />
                                     </svg>
                                 </button>
+                            </div>
+                            <div class="mt-3 text-right">
+                                <a href="{{ route('password.request') }}" class="text-sm font-semibold text-green-700 hover:underline">
+                                    Forgot password?
+                                </a>
                             </div>
                         </div>
 
