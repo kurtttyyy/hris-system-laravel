@@ -44,7 +44,7 @@
                 <!-- X Close Button -->
                 <button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('guest.application') }}" method="POST">
+            <form action="{{ route('guest.application.submit') }}" method="POST">
                 @csrf
                 <div class="modal-body px-4">
                     <input type="email" id="verifyEmail" name="email" class="form-control py-2 rounded-pill shadow-sm" placeholder="you@example.com">

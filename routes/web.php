@@ -20,7 +20,7 @@ Route::controller(GuestPageController::class)->group(function () {
     Route::get('/application/non_teaching/procedure/{id}', 'display_non_teaching')->name('guest.applicationNonTeachingSteps');
     Route::get('/application/teaching/procedure', 'display_teaching')->name('guest.applicationTeachingSteps');
     Route::get('/', 'display_index')->name('guest.index');
-    Route::get('/index', 'display_index')->name('guest.index');
+    Route::get('/index', 'display_index')->name('guest.index.alias');
     Route::get('/about', 'display_about')->name('guest.about');
     Route::get('/policy', 'display_policy')->name('guest.policy');
     Route::get('/terms-of-service', 'display_terms')->name('guest.terms');
@@ -33,7 +33,7 @@ Route::controller(GuestPageController::class)->group(function () {
 Route::controller(ApplicantController::class)->group(function () {
     Route::post('applicant/store', 'applicant_stores')->name('applicant.store');
     Route::post('applicant/rating', 'store_rating')->name('applicant.rating.store');
-    Route::post('/application', 'display_application')->name('guest.application');
+    Route::post('/application', 'display_application')->name('guest.application.submit');
 });
 
 Route::controller(RegisterLoginController::class)->group(function () {
