@@ -270,17 +270,17 @@
                 }
               @endphp
               <div class="file-item group rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] p-4 transition hover:border-sky-200 hover:shadow-md" data-file-id="{{ $file->id }}">
-                <div class="flex flex-col gap-4 xl:flex-row xl:items-center">
-                  <div class="flex items-center gap-4">
+                <div class="grid gap-4 xl:grid-cols-[20rem_minmax(18rem,1fr)_7rem_2.5rem] xl:items-center">
+                  <div class="flex min-w-0 items-center gap-4">
                     <input type="radio" name="selected_file" value="{{ $file->id }}" class="file-checkbox h-4 w-4 cursor-pointer border-slate-300 text-sky-600 focus:ring-sky-500">
                     <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 shadow-sm">
                       <i class="fa-solid fa-file-excel text-xl"></i>
                     </span>
 
-                    <div>
-                      <div class="flex flex-wrap items-center gap-2">
-                        <p class="text-sm font-semibold text-slate-800">{{ $file->original_name }}</p>
-                        <span class="file-status rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{{ $file->status }}</span>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex min-w-0 items-center gap-2">
+                        <p class="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800" title="{{ $file->original_name }}">{{ $file->original_name }}</p>
+                        <span class="file-status shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{{ $file->status }}</span>
                       </div>
                       <p class="mt-1 text-xs text-slate-500">
                         {{ number_format((float) $file->file_size / 1024, 2) }} KB
@@ -291,22 +291,22 @@
                     </div>
                   </div>
 
-                  <div class="flex-1">
+                  <div class="min-w-0">
                     <div class="mb-2 flex items-center justify-between">
                       <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Processing Progress</p>
-                      <div class="min-w-[40px] text-right text-xs font-semibold text-slate-700">{{ $progress }}%</div>
+                      <div class="attendance-progress-percent min-w-[40px] text-right text-xs font-semibold text-slate-700">{{ $progress }}%</div>
                     </div>
                     <div class="h-2.5 w-full rounded-full bg-slate-200">
                       <div class="h-2.5 rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 transition-all duration-500" style="width: {{ $progress }}%"></div>
                     </div>
                   </div>
 
-                  <div class="min-w-[120px] text-left text-xs text-slate-500 xl:text-right">
+                  <div class="text-left text-xs text-slate-500 xl:text-right">
                     {{ optional($file->uploaded_at)->format('M d, Y') ?? '-' }}<br>
                     {{ optional($file->uploaded_at)->format('h:i A') ?? '-' }}
                   </div>
 
-                  <button type="button" class="delete-btn inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100" data-file-id="{{ $file->id }}" title="Delete file">
+                  <button type="button" class="delete-btn inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-600 transition hover:bg-rose-100 xl:justify-self-end" data-file-id="{{ $file->id }}" title="Delete file">
                     <i class="fa-solid fa-trash-can"></i>
                   </button>
                 </div>
@@ -384,15 +384,74 @@
 
         <div class="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50/60 p-3">
           @if ($activeAttendanceTab === 'present')
-            @include('Admin.attendanceTable.presentEmployee', ['rows' => $presentEmployees])
+            @include('Admin.attendanceTable.presentEmployee', ['rows' => $attendanceRows ?? $presentEmployees])
           @elseif ($activeAttendanceTab === 'absent')
-            @include('Admin.attendanceTable.absentEmployee', ['rows' => $absentEmployees])
+            @include('Admin.attendanceTable.absentEmployee', ['rows' => $attendanceRows ?? $absentEmployees])
           @elseif ($activeAttendanceTab === 'tardiness')
-            @include('Admin.attendanceTable.tardinessEmployee', ['rows' => $tardyEmployees])
+            @include('Admin.attendanceTable.tardinessEmployee', ['rows' => $attendanceRows ?? $tardyEmployees])
           @elseif ($activeAttendanceTab === 'total_employee')
-            @include('Admin.attendanceTable.totalEmployee', ['rows' => $allEmployees])
+            @include('Admin.attendanceTable.totalEmployee', ['rows' => $attendanceRows ?? $allEmployees])
           @endif
         </div>
+
+        @if (($attendanceRows ?? null) instanceof \Illuminate\Pagination\AbstractPaginator)
+          <div class="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-sm text-slate-600">
+              Showing
+              <span class="font-bold text-slate-900">{{ $attendanceRows->firstItem() ?? 0 }}</span>
+              to
+              <span class="font-bold text-slate-900">{{ $attendanceRows->lastItem() ?? 0 }}</span>
+              of
+              <span class="font-bold text-slate-900">{{ $attendanceRows->total() }}</span>
+              attendance rows
+            </p>
+
+            <div class="flex flex-wrap items-center gap-3">
+              <label class="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                Per page
+                <select
+                  class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100"
+                  onchange="
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('attendance_per_page', this.value);
+                    params.delete('attendance_page');
+                    window.location.href = `${window.location.pathname}?${params.toString()}`;
+                  "
+                >
+                  @foreach ([10, 25, 50] as $pageSize)
+                    <option value="{{ $pageSize }}" @selected((int) ($attendancePerPage ?? 25) === $pageSize)>{{ $pageSize }}</option>
+                  @endforeach
+                </select>
+              </label>
+
+              <div class="flex items-center gap-2">
+                @if ($attendanceRows->onFirstPage())
+                  <span class="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-400">
+                    <i class="fa-solid fa-chevron-left text-xs"></i>
+                  </span>
+                @else
+                  <a href="{{ $attendanceRows->previousPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700">
+                    <i class="fa-solid fa-chevron-left text-xs"></i>
+                  </a>
+                @endif
+
+                <span class="rounded-xl bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700">
+                  {{ $attendanceRows->currentPage() }} / {{ $attendanceRows->lastPage() }}
+                </span>
+
+                @if ($attendanceRows->hasMorePages())
+                  <a href="{{ $attendanceRows->nextPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700">
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                  </a>
+                @else
+                  <span class="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-400">
+                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                  </span>
+                @endif
+              </div>
+            </div>
+          </div>
+        @endif
       </div>
       @endif
     </div>
@@ -455,7 +514,7 @@
       const fileItem = document.querySelector(`[data-file-id="${fileId}"]`);
       const statusElement = fileItem.querySelector('.file-status');
       const progressBar = fileItem.querySelector('.bg-gradient-to-r');
-      const progressTextElement = fileItem.querySelector('.min-w-\\[40px\\]');
+      const progressTextElement = fileItem.querySelector('.attendance-progress-percent');
 
       scanBtn.disabled = true;
       scanBtn.classList.add('opacity-50', 'cursor-not-allowed');

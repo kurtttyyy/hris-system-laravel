@@ -165,14 +165,11 @@
       <section class="grid grid-cols-1 gap-6 xl:grid-cols-[1.5fr_0.85fr]">
         <div class="space-y-6">
           <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div class="mb-5 flex items-center justify-between gap-3">
+            <div class="mb-5">
               <div>
                 <p class="admin-kicker text-xs font-semibold uppercase text-emerald-700">Workforce Snapshot</p>
                 <h3 class="admin-display mt-2 text-2xl text-slate-900">Recent Employees</h3>
               </div>
-              <button type="button" class="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
-                View All
-              </button>
             </div>
 
             <div class="overflow-x-auto rounded-[1.5rem] border border-slate-200">
@@ -230,17 +227,53 @@
                 </tbody>
               </table>
             </div>
+
+            @if ($accept instanceof \Illuminate\Pagination\AbstractPaginator)
+              <div class="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-slate-600">
+                  Showing
+                  <span class="font-bold text-slate-900">{{ $accept->firstItem() ?? 0 }}</span>
+                  to
+                  <span class="font-bold text-slate-900">{{ $accept->lastItem() ?? 0 }}</span>
+                  of
+                  <span class="font-bold text-slate-900">{{ $accept->total() }}</span>
+                  recent employees
+                </p>
+                <div class="flex items-center gap-2">
+                  @if ($accept->onFirstPage())
+                    <span class="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-300">
+                      <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </span>
+                  @else
+                    <a href="{{ $accept->previousPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">
+                      <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </a>
+                  @endif
+
+                  <span class="rounded-xl bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                    {{ $accept->currentPage() }} / {{ $accept->lastPage() }}
+                  </span>
+
+                  @if ($accept->hasMorePages())
+                    <a href="{{ $accept->nextPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">
+                      <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </a>
+                  @else
+                    <span class="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-300">
+                      <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </span>
+                  @endif
+                </div>
+              </div>
+            @endif
           </div>
 
           <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <div class="mb-5 flex items-center justify-between gap-3">
+            <div class="mb-5">
               <div>
                 <p class="admin-kicker text-xs font-semibold uppercase text-violet-700">New Accounts</p>
                 <h3 class="admin-display mt-2 text-2xl text-slate-900">New Employee Access Requests</h3>
               </div>
-              <button type="button" class="rounded-full bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 transition hover:bg-violet-100">
-                View All
-              </button>
             </div>
 
             <div class="space-y-4">
@@ -297,6 +330,45 @@
               </div>
               @endforelse
             </div>
+
+            @if ($employee instanceof \Illuminate\Pagination\AbstractPaginator)
+              <div class="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-slate-600">
+                  Showing
+                  <span class="font-bold text-slate-900">{{ $employee->firstItem() ?? 0 }}</span>
+                  to
+                  <span class="font-bold text-slate-900">{{ $employee->lastItem() ?? 0 }}</span>
+                  of
+                  <span class="font-bold text-slate-900">{{ $employee->total() }}</span>
+                  requests
+                </p>
+                <div class="flex items-center gap-2">
+                  @if ($employee->onFirstPage())
+                    <span class="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-300">
+                      <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </span>
+                  @else
+                    <a href="{{ $employee->previousPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700">
+                      <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </a>
+                  @endif
+
+                  <span class="rounded-xl bg-white px-3 py-2 text-sm font-bold text-slate-700">
+                    {{ $employee->currentPage() }} / {{ $employee->lastPage() }}
+                  </span>
+
+                  @if ($employee->hasMorePages())
+                    <a href="{{ $employee->nextPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700">
+                      <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </a>
+                  @else
+                    <span class="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-300">
+                      <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </span>
+                  @endif
+                </div>
+              </div>
+            @endif
           </div>
         </div>
 

@@ -22,11 +22,13 @@ use App\Support\EmployeeAccountStatusManager;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 
 class AdministratorPageController extends Controller
@@ -35,7 +37,7 @@ class AdministratorPageController extends Controller
     private ?array $calendarHolidayConfigCache = null;
     private array $holidayDateCheckCache = [];
 
-    public function display_home(){
+    public function display_home(Request $request){
         $employee = User::with([
                         'applicant.documents' => function ($query) {
                             $query->select([
@@ -52,7 +54,8 @@ class AdministratorPageController extends Controller
                         ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
                         ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
                         ->latest()
-                        ->get();
+                        ->paginate(5, ['*'], 'pending_page')
+                        ->withQueryString();
         $accept = User::with([
             'employee',
             'applicant',
@@ -71,7 +74,8 @@ class AdministratorPageController extends Controller
         ])->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
                         ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
                         ->latest()
-                        ->get();
+                        ->paginate(5, ['*'], 'recent_page')
+                        ->withQueryString();
         
         // Get department overview (prefer users.department as source of truth)
         $resolveDepartmentName = function (User $user): string {
@@ -242,8 +246,18 @@ class AdministratorPageController extends Controller
 
         $openPositionsCount = OpenPosition::query()->count();
         $openPositionApplicationsCount = Applicant::query()->count();
+        $pendingEmployeesForNotifications = User::with([
+            'employee',
+            'applicant.position:id,department,job_type',
+        ])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
+            ->latest()
+            ->take(10)
+            ->get();
+
         [$adminNotificationItems, $adminNotificationStats] = $this->buildAdminNotifications(
-            $employee,
+            $pendingEmployeesForNotifications,
             $pendingLeaveRequestsForHome,
             $departments,
             $openPositionApplicationsCount,
@@ -834,7 +848,7 @@ class AdministratorPageController extends Controller
             : $joinDate->copy()->addYears(3);
     }
 
-    public function display_employee(){
+    public function display_employee(Request $request){
         app(EmployeeAccountStatusManager::class)->syncAllEmployeeStatuses();
 
         $employee = User::with([
@@ -969,7 +983,111 @@ class AdministratorPageController extends Controller
         });
 
         $this->attachSubjectLoadsToEmployees($employee);
-        return view('admin.adminEmployee', compact('employee'));
+
+        $employeeDirectory = $employee->values();
+        $employeeSearch = trim((string) $request->query('search', ''));
+        $employeeDepartment = trim((string) $request->query('department', 'All'));
+        $employeeStatus = trim((string) $request->query('status', 'All'));
+        $employeePerPage = (int) $request->query('per_page', 10);
+        if (!in_array($employeePerPage, [5, 10, 15, 25], true)) {
+            $employeePerPage = 10;
+        }
+
+        $resolveEmployeeDepartment = static function ($emp): string {
+            return trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? '')));
+        };
+
+        $isMissingEmployeeValue = static function ($value): bool {
+            if (is_null($value)) {
+                return true;
+            }
+
+            $normalized = strtolower(trim(preg_replace('/\s+/', ' ', (string) $value)));
+            return $normalized === '' || in_array($normalized, [
+                '-',
+                'n/a',
+                'na',
+                'unspecified',
+                'not set',
+                'school n/a',
+                'year n/a',
+                'school n/a, year n/a',
+            ], true);
+        };
+
+        $hasMissingAddressParts = static function ($emp) use ($isMissingEmployeeValue): bool {
+            $rawAddress = trim((string) (data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address') ?: ($emp->address ?? '')));
+            $parts = $rawAddress === '' ? [] : collect(preg_split('/\s*,\s*/', $rawAddress))->map(fn ($item) => trim((string) $item))->values()->all();
+
+            return collect([
+                $parts[0] ?? null,
+                $parts[1] ?? null,
+                $parts[2] ?? null,
+            ])->contains(fn ($value) => $isMissingEmployeeValue($value));
+        };
+
+        $hasMissingEmployeeInfo = static function ($emp) use ($isMissingEmployeeValue, $hasMissingAddressParts): bool {
+            return collect([
+                data_get($emp, 'employee.account_number'),
+                data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender'),
+                data_get($emp, 'employee.civil_status'),
+                data_get($emp, 'employee.contact_number') ?: data_get($emp, 'applicant.phone'),
+                data_get($emp, 'employee.birthday'),
+                data_get($emp, 'license.license'),
+                data_get($emp, 'license.registration_number'),
+                data_get($emp, 'government.SSS'),
+                data_get($emp, 'government.TIN'),
+                data_get($emp, 'government.PhilHealth'),
+                data_get($emp, 'government.MID'),
+                data_get($emp, 'government.RTN'),
+                data_get($emp, 'salary.salary'),
+            ])->contains(fn ($value) => $isMissingEmployeeValue($value))
+                || $hasMissingAddressParts($emp)
+                || (int) data_get($emp, 'missing_required_documents_count', 0) > 0;
+        };
+
+        $filteredEmployees = $employeeDirectory->filter(function ($emp) use ($employeeSearch, $employeeDepartment, $employeeStatus, $resolveEmployeeDepartment, $hasMissingEmployeeInfo) {
+            $name = trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', ');
+            if ($employeeSearch !== '' && !str_contains(strtolower($name), strtolower($employeeSearch))) {
+                return false;
+            }
+
+            if ($employeeDepartment !== '' && strcasecmp($employeeDepartment, 'All') !== 0 && strcasecmp($resolveEmployeeDepartment($emp), $employeeDepartment) !== 0) {
+                return false;
+            }
+
+            if ($employeeStatus !== '' && strcasecmp($employeeStatus, 'All') !== 0) {
+                if (strcasecmp($employeeStatus, 'Missing Info') === 0) {
+                    return $hasMissingEmployeeInfo($emp);
+                }
+
+                return strcasecmp(trim((string) ($emp->account_status ?? 'Active')), $employeeStatus) === 0;
+            }
+
+            return true;
+        })->values();
+
+        $employeeLastPage = max((int) ceil($filteredEmployees->count() / $employeePerPage), 1);
+        $employeePage = min(max((int) $request->query('page', 1), 1), $employeeLastPage);
+        $employeePaginator = new LengthAwarePaginator(
+            $filteredEmployees->forPage($employeePage, $employeePerPage)->values(),
+            $filteredEmployees->count(),
+            $employeePerPage,
+            $employeePage,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
+        $employee = $employeePaginator->getCollection();
+        $employeeFilters = [
+            'search' => $employeeSearch,
+            'department' => $employeeDepartment !== '' ? $employeeDepartment : 'All',
+            'status' => $employeeStatus !== '' ? $employeeStatus : 'All',
+            'per_page' => $employeePerPage,
+        ];
+
+        return view('admin.adminEmployee', compact('employee', 'employeeDirectory', 'employeePaginator', 'employeeFilters'));
     }
 
     public function display_attendance(Request $request){
@@ -1029,6 +1147,15 @@ class AdministratorPageController extends Controller
             $exactDateFilter = $normalizedToDate;
         }
 
+        $defaultedAttendanceTabToToday = false;
+        if (!$hasDateFilter && $activeAttendanceTab !== 'all') {
+            $exactDateFilter = now()->toDateString();
+            $fromDate = $exactDateFilter;
+            $hasDateFilter = true;
+            $selectedUploadId = null;
+            $defaultedAttendanceTabToToday = true;
+        }
+
         $attendanceFiles = AttendanceUpload::query()
             ->when($hasDateFilter, function ($query) use ($exactDateFilter, $rangeStartDate, $rangeEndDate) {
                 $query->whereHas('records', function ($recordsQuery) use ($exactDateFilter, $rangeStartDate, $rangeEndDate) {
@@ -1042,7 +1169,7 @@ class AdministratorPageController extends Controller
             })
             ->orderByDesc('uploaded_at')
             ->orderByDesc('id')
-            ->paginate(50)
+            ->paginate(10, ['*'], 'files_page')
             ->withQueryString();
 
         $attendanceFileItems = collect($attendanceFiles->items());
@@ -1053,9 +1180,106 @@ class AdministratorPageController extends Controller
             )->id;
         }
 
+        $jobTypeOptions = collect($allowedJobTypes);
+
+        if ($activeAttendanceTab === 'all') {
+            $processedUploadIds = AttendanceUpload::query()
+                ->select('id')
+                ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['processed']);
+
+            $summaryQuery = AttendanceRecord::query()
+                ->whereIn('attendance_upload_id', $processedUploadIds);
+
+            if ($hasDateFilter) {
+                if ($exactDateFilter) {
+                    $summaryQuery->whereDate('attendance_date', $exactDateFilter);
+                } elseif ($rangeStartDate && $rangeEndDate) {
+                    $summaryQuery->whereDate('attendance_date', '>=', $rangeStartDate)
+                        ->whereDate('attendance_date', '<=', $rangeEndDate);
+                }
+            } else {
+                $summaryQuery->whereDate('attendance_date', now()->toDateString());
+            }
+
+            $quickTotalCount = (clone $summaryQuery)->count();
+            $tardyCount = (clone $summaryQuery)
+                ->where(function ($query) {
+                    $query->where('is_tardy', true)
+                        ->orWhere('late_minutes', '>', 0);
+                })
+                ->count();
+
+            if (!$hasDateFilter && $quickTotalCount > 0) {
+                $attendanceEmployeeLookupMaps = $this->getAttendanceEmployeeLookupMaps();
+                $allEmployeeIds = collect($attendanceEmployeeLookupMaps['job_type'] ?? [])
+                    ->keys()
+                    ->map(fn ($id) => $this->normalizeEmployeeId($id))
+                    ->filter()
+                    ->unique()
+                    ->values();
+                $presentEmployeeIds = (clone $summaryQuery)
+                    ->where(function ($query) {
+                        $query->whereNotNull('morning_in')
+                            ->orWhereNotNull('afternoon_in');
+                    })
+                    ->pluck('employee_id')
+                    ->map(fn ($id) => $this->normalizeEmployeeId($id))
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                $presentCount = $presentEmployeeIds->count();
+                $absentCount = $allEmployeeIds->diff($presentEmployeeIds)->count();
+                $totalCount = $allEmployeeIds->count();
+            } else {
+                $absentCount = (clone $summaryQuery)
+                    ->where(function ($query) {
+                        $query->where('is_absent', true)
+                            ->orWhere(function ($innerQuery) {
+                                $innerQuery
+                                    ->whereNull('morning_in')
+                                    ->whereNull('morning_out')
+                                    ->whereNull('afternoon_in')
+                                    ->whereNull('afternoon_out');
+                            });
+                    })
+                    ->count();
+                $presentCount = max($quickTotalCount - $absentCount, 0);
+                $totalCount = $quickTotalCount;
+            }
+
+            $presentEmployees = collect();
+            $absentEmployees = collect();
+            $tardyEmployees = collect();
+            $allEmployees = collect();
+            $attendanceRows = null;
+            $attendancePerPage = 25;
+
+            return view('admin.adminAttendance', compact(
+                'attendanceFiles',
+                'fromDate',
+                'toDate',
+                'selectedUploadId',
+                'selectedJobType',
+                'searchName',
+                'jobTypeOptions',
+                'activeAttendanceTab',
+                'presentEmployees',
+                'absentEmployees',
+                'tardyEmployees',
+                'allEmployees',
+                'presentCount',
+                'absentCount',
+                'tardyCount',
+                'totalCount',
+                'attendanceRows',
+                'attendancePerPage'
+            ));
+        }
+
         $records = collect();
         if ($hasDateFilter) {
-            $recordsQuery = AttendanceRecord::query();
+            $recordsQuery = AttendanceRecord::query()->select($this->attendanceRecordSelectColumns());
             if ($exactDateFilter) {
                 $recordsQuery->whereDate('attendance_date', $exactDateFilter);
             } elseif ($rangeStartDate && $rangeEndDate) {
@@ -1069,6 +1293,7 @@ class AdministratorPageController extends Controller
                 ->get();
         } elseif ($selectedUploadId) {
             $records = AttendanceRecord::query()
+                ->select($this->attendanceRecordSelectColumns())
                 ->where('attendance_upload_id', $selectedUploadId)
                 ->orderBy('employee_id')
                 ->get();
@@ -1099,58 +1324,10 @@ class AdministratorPageController extends Controller
             })
             ->values();
 
-        $employeesForLookup = Employee::query()
-            ->with([
-                'user:id,first_name,middle_name,last_name,department',
-                'user.applicant.position:id,department',
-            ])
-            ->select(['employee_id', 'job_type', 'department', 'user_id'])
-            ->whereNotNull('employee_id')
-            ->orderBy('employee_id')
-            ->get();
-
-        $employeeJobTypeMap = $employeesForLookup
-            ->mapWithKeys(function ($employee) {
-                $employeeId = $this->normalizeEmployeeId($employee->employee_id);
-                if ($employeeId === '') {
-                    return [];
-                }
-
-                return [$employeeId => $this->normalizeJobType($employee->job_type)];
-            });
-
-        $employeeDepartmentMap = $employeesForLookup
-            ->mapWithKeys(function ($employee) {
-                $employeeId = $this->normalizeEmployeeId($employee->employee_id);
-                if ($employeeId === '') {
-                    return [];
-                }
-
-                $employeeDepartment = trim((string) ($employee->department ?? ''));
-                $userDepartment = trim((string) ($employee->user?->department ?? ''));
-                $applicantDepartment = trim((string) (optional(optional($employee->user?->applicant)->position)->department ?? ''));
-                $resolvedDepartment = $employeeDepartment !== ''
-                    ? $employeeDepartment
-                    : ($userDepartment !== '' ? $userDepartment : ($applicantDepartment !== '' ? $applicantDepartment : null));
-
-                return [$employeeId => $resolvedDepartment];
-            });
-
-        $employeeDisplayNameMap = $employeesForLookup
-            ->mapWithKeys(function ($employee) {
-                $employeeId = $this->normalizeEmployeeId($employee->employee_id);
-                if ($employeeId === '') {
-                    return [];
-                }
-
-                return [$employeeId => $this->formatEmployeeDisplayName(
-                    $employee->user?->first_name,
-                    $employee->user?->middle_name,
-                    $employee->user?->last_name
-                )];
-            });
-
-        $jobTypeOptions = collect($allowedJobTypes);
+        $attendanceEmployeeLookupMaps = $this->getAttendanceEmployeeLookupMaps();
+        $employeeJobTypeMap = collect($attendanceEmployeeLookupMaps['job_type'] ?? []);
+        $employeeDepartmentMap = collect($attendanceEmployeeLookupMaps['department'] ?? []);
+        $employeeDisplayNameMap = collect($attendanceEmployeeLookupMaps['display_name'] ?? []);
 
         $isSundayNoClassDate = $exactDateFilter ? $this->isSundayDate($exactDateFilter) : false;
         $isHolidayDate = $exactDateFilter ? $this->isHolidayDate($exactDateFilter) : false;
@@ -1299,7 +1476,7 @@ class AdministratorPageController extends Controller
         $absentEmployees = $rowLevelAbsentEmployees;
 
         // Business rule: employees with no attendance row for a day are also absent.
-        if (!$shouldAutoPresentHolidayDate && !$isSundayNoClassDate) {
+        if (!$shouldAutoPresentHolidayDate && !$isSundayNoClassDate && (!$defaultedAttendanceTabToToday || $records->isNotEmpty())) {
             if ($exactDateFilter) {
                 $absentEmployees = $absentEmployees
                     ->concat($this->buildMissingEmployeeAbsences($records, $exactDateFilter, $selectedJobType, $employeeJobTypeMap, $employeeDepartmentMap))
@@ -1401,6 +1578,37 @@ class AdministratorPageController extends Controller
         $tardyCount = $tardyEmployees->count();
         $totalCount = $presentEmployees->count() + $absentEmployees->count();
 
+        $attendancePerPage = (int) $request->query('attendance_per_page', 25);
+        if (!in_array($attendancePerPage, [10, 25, 50], true)) {
+            $attendancePerPage = 25;
+        }
+
+        $paginateAttendanceRows = function ($rows) use ($request, $attendancePerPage) {
+            $rows = collect($rows)->values();
+            $lastPage = max((int) ceil($rows->count() / $attendancePerPage), 1);
+            $page = min(max((int) $request->query('attendance_page', 1), 1), $lastPage);
+
+            return new LengthAwarePaginator(
+                $rows->forPage($page, $attendancePerPage)->values(),
+                $rows->count(),
+                $attendancePerPage,
+                $page,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                    'pageName' => 'attendance_page',
+                ]
+            );
+        };
+
+        $attendanceRows = match ($activeAttendanceTab) {
+            'present' => $paginateAttendanceRows($presentEmployees),
+            'absent' => $paginateAttendanceRows($absentEmployees),
+            'tardiness' => $paginateAttendanceRows($tardyEmployees),
+            'total_employee' => $paginateAttendanceRows($allEmployees),
+            default => null,
+        };
+
         return view('admin.adminAttendance', compact(
             'attendanceFiles',
             'fromDate',
@@ -1417,7 +1625,9 @@ class AdministratorPageController extends Controller
             'presentCount',
             'absentCount',
             'tardyCount',
-            'totalCount'
+            'totalCount',
+            'attendanceRows',
+            'attendancePerPage'
         ));
     }
 
@@ -1434,6 +1644,92 @@ class AdministratorPageController extends Controller
         }
 
         return $date->isSunday();
+    }
+
+    private function getAttendanceEmployeeLookupMaps(): array
+    {
+        return Cache::remember('admin_attendance_employee_lookup_maps', now()->addMinutes(10), function () {
+            $jobTypeMap = [];
+            $departmentMap = [];
+            $displayNameMap = [];
+
+            Employee::query()
+                ->with([
+                    'user:id,first_name,middle_name,last_name,department',
+                    'user.applicant.position:id,department',
+                ])
+                ->select(['employee_id', 'job_type', 'department', 'user_id'])
+                ->whereNotNull('employee_id')
+                ->orderBy('employee_id')
+                ->chunk(300, function ($employees) use (&$jobTypeMap, &$departmentMap, &$displayNameMap) {
+                    foreach ($employees as $employee) {
+                        $employeeId = $this->normalizeEmployeeId($employee->employee_id);
+                        if ($employeeId === '') {
+                            continue;
+                        }
+
+                        $employeeDepartment = trim((string) ($employee->department ?? ''));
+                        $userDepartment = trim((string) ($employee->user?->department ?? ''));
+                        $applicantDepartment = trim((string) (optional(optional($employee->user?->applicant)->position)->department ?? ''));
+
+                        $jobTypeMap[$employeeId] = $this->normalizeJobType($employee->job_type);
+                        $departmentMap[$employeeId] = $employeeDepartment !== ''
+                            ? $employeeDepartment
+                            : ($userDepartment !== '' ? $userDepartment : ($applicantDepartment !== '' ? $applicantDepartment : null));
+                        $displayNameMap[$employeeId] = $this->formatEmployeeDisplayName(
+                            $employee->user?->first_name,
+                            $employee->user?->middle_name,
+                            $employee->user?->last_name
+                        );
+                    }
+                });
+
+            return [
+                'job_type' => $jobTypeMap,
+                'department' => $departmentMap,
+                'display_name' => $displayNameMap,
+            ];
+        });
+    }
+
+    private function attendanceRecordSelectColumns(): array
+    {
+        static $columns = null;
+
+        if (!is_null($columns)) {
+            return $columns;
+        }
+
+        $baseColumns = [
+            'id',
+            'attendance_upload_id',
+            'employee_id',
+            'attendance_date',
+            'morning_in',
+            'morning_out',
+            'afternoon_in',
+            'afternoon_out',
+            'late_minutes',
+            'missing_time_logs',
+            'is_absent',
+            'is_tardy',
+        ];
+
+        $optionalColumns = [
+            'employee_name',
+            'main_gate',
+            'job_type',
+            'department',
+            'is_holiday_present',
+        ];
+
+        $columns = collect($baseColumns)
+            ->concat(collect($optionalColumns)->filter(fn ($column) => Schema::hasColumn('attendance_records', $column)))
+            ->unique()
+            ->values()
+            ->all();
+
+        return $columns;
     }
 
     private function isHolidayDate(?string $fromDate): bool
@@ -1706,6 +2002,7 @@ class AdministratorPageController extends Controller
     private function getAttendanceRecordsByDate(string $date)  // Retrieves attendance records for a specific date, ensuring uniqueness by normalized employee ID and sorted by employee ID for consistent display.
     {
         return AttendanceRecord::query()
+            ->select($this->attendanceRecordSelectColumns())
             ->whereDate('attendance_date', $date)
             ->orderByDesc('id')
             ->get()

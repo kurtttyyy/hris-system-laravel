@@ -19,15 +19,16 @@
       font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; transition: margin-left 0.3s ease;
     }
     main {
+      --admin-employee-sidebar-gap: 2rem;
       transition: margin-left 0.3s ease, width 0.3s ease;
     }
     main.main-with-collapsed-sidebar {
-      margin-left: 4rem;
-      width: calc(100vw - 4rem);
+      margin-left: calc(4rem + var(--admin-employee-sidebar-gap));
+      width: calc(100vw - (4rem + var(--admin-employee-sidebar-gap)));
     }
     main.main-with-expanded-sidebar {
-      margin-left: 16rem;
-      width: calc(100vw - 16rem);
+      margin-left: calc(18rem + var(--admin-employee-sidebar-gap));
+      width: calc(100vw - (18rem + var(--admin-employee-sidebar-gap)));
     }
     .employee-missing-badge {
       position: absolute;
@@ -278,9 +279,9 @@
         tab:'overview',
         viewMode:'cards',
         showDepartmentSummary:false,
-        department:'All',
-        statusFilter:'All',
-        search:'',
+        department:@js($employeeFilters['department'] ?? 'All'),
+        statusFilter:@js($employeeFilters['status'] ?? 'All'),
+        search:@js($employeeFilters['search'] ?? ''),
         openImageZoom: false,
         zoomImageUrl: '',
         employeeIndex: [],
@@ -605,6 +606,20 @@
             this.matchesSearch(emp.name) &&
             this.matchesStatus(emp.status, emp.has_missing_info)
           );
+        },
+        applyEmployeeDirectoryFilters() {
+          const params = new URLSearchParams(window.location.search);
+          const search = (this.search ?? '').toString().trim();
+          const department = (this.department ?? 'All').toString().trim();
+          const status = (this.statusFilter ?? 'All').toString().trim();
+
+          search ? params.set('search', search) : params.delete('search');
+          department && department !== 'All' ? params.set('department', department) : params.delete('department');
+          status && status !== 'All' ? params.set('status', status) : params.delete('status');
+          params.delete('page');
+
+          const query = params.toString();
+          window.location.href = query ? `${window.location.pathname}?${query}` : window.location.pathname;
         },
         degreeRows(level) {
           const rows = Array.isArray(this.selectedEmployee?.applicant?.degrees)
@@ -1536,7 +1551,7 @@
         },
       }"
       x-init="employeeIndex = @js(
-        $employee->map(fn($emp) => [
+        $employeeDirectory->map(fn($emp) => [
           'name' => trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', '),
           'department' => trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? ''))),
           'status' => $resolveDisplayAccountStatus($emp),
@@ -1567,6 +1582,13 @@
 
     <!-- Header -->
     @php
+      $employeeDirectory = collect($employeeDirectory ?? $employee);
+      $employeeFilterState = array_merge([
+        'search' => '',
+        'department' => 'All',
+        'status' => 'All',
+        'per_page' => 10,
+      ], $employeeFilters ?? []);
       $resolveDepartment = function ($emp) {
         return trim((string) (data_get($emp, 'applicant.position.department') ?: data_get($emp, 'employee.department') ?: ($emp->department ?? '')));
       };
@@ -1837,13 +1859,13 @@
         ];
       })->values();
 
-      $departmentOptions = $employee
+      $departmentOptions = $employeeDirectory
         ->map(fn($emp) => $resolveDepartment($emp))
         ->filter(fn($dept) => $dept !== '')
         ->unique(fn($dept) => strtolower($dept))
         ->sort()
         ->values();
-      $departmentStaffingSummary = $employee
+      $departmentStaffingSummary = $employeeDirectory
         ->groupBy(fn ($emp) => ($resolveDepartment($emp) !== '' ? $resolveDepartment($emp) : 'Unassigned'))
         ->map(function ($departmentEmployees, $department) {
           $employeeFlags = $departmentEmployees->map(function ($emp) {
@@ -2122,7 +2144,7 @@
         + (int) ($departmentStaffingTotals['staff'] ?? 0);
       $teachingCategoryTotal = (int) ($departmentStaffingTotals['instructors_ft'] ?? 0)
         + (int) ($departmentStaffingTotals['instructors_pt'] ?? 0);
-      $employeeCategoryTotals = $employee->reduce(function ($carry, $emp) use ($resolveDepartment) {
+      $employeeCategoryTotals = $employeeDirectory->reduce(function ($carry, $emp) use ($resolveDepartment) {
         $department = strtolower(trim((string) ($resolveDepartment($emp) ?? '')));
         $jobTypeValue = strtolower(trim((string) (data_get($emp, 'applicant.position.job_type') ?: data_get($emp, 'employee.job_type') ?: ($emp->job_type ?? ''))));
         $classificationValue = strtolower(trim((string) (data_get($emp, 'employee.classification') ?: data_get($emp, 'applicant.position.employment') ?: ($emp->classification ?? ''))));
@@ -2548,6 +2570,91 @@
         </div>
         @endforeach
     </div>
+
+    @if (isset($employeePaginator) && $employeePaginator->hasPages())
+      <div
+        x-show="!showDepartmentSummary"
+        class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm md:flex-row md:items-center md:justify-between"
+      >
+        <div class="text-sm text-slate-600">
+          Showing
+          <span class="font-bold text-slate-900">{{ $employeePaginator->firstItem() }}</span>
+          to
+          <span class="font-bold text-slate-900">{{ $employeePaginator->lastItem() }}</span>
+          of
+          <span class="font-bold text-slate-900">{{ $employeePaginator->total() }}</span>
+          employees
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="flex items-center gap-2 text-sm font-semibold text-slate-600">
+            Per page
+            <select
+              class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+              @change="
+                const params = new URLSearchParams(window.location.search);
+                params.set('per_page', $event.target.value);
+                params.delete('page');
+                window.location.href = `${window.location.pathname}?${params.toString()}`;
+              "
+            >
+              @foreach ([5, 10, 15, 25] as $pageSize)
+                <option value="{{ $pageSize }}" @selected((int) ($employeeFilterState['per_page'] ?? 10) === $pageSize)>{{ $pageSize }}</option>
+              @endforeach
+            </select>
+          </label>
+
+          <nav class="flex flex-wrap items-center gap-2" aria-label="Employee pagination">
+            @if ($employeePaginator->onFirstPage())
+              <span class="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-400">
+                <i class="fa-solid fa-chevron-left text-xs"></i>
+              </span>
+            @else
+              <a href="{{ $employeePaginator->previousPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">
+                <i class="fa-solid fa-chevron-left text-xs"></i>
+              </a>
+            @endif
+
+            @php
+              $paginationStart = max(1, $employeePaginator->currentPage() - 1);
+              $paginationEnd = min($employeePaginator->lastPage(), $employeePaginator->currentPage() + 1);
+            @endphp
+
+            @if ($paginationStart > 1)
+              <a href="{{ $employeePaginator->url(1) }}" class="inline-flex h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">1</a>
+              @if ($paginationStart > 2)
+                <span class="inline-flex h-10 min-w-10 items-center justify-center px-2 text-sm font-bold text-slate-400">...</span>
+              @endif
+            @endif
+
+            @foreach (range($paginationStart, $paginationEnd) as $page)
+              @if ($page === $employeePaginator->currentPage())
+                <span class="inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-emerald-600 px-3 text-sm font-bold text-white">{{ $page }}</span>
+              @else
+                <a href="{{ $employeePaginator->url($page) }}" class="inline-flex h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">{{ $page }}</a>
+              @endif
+            @endforeach
+
+            @if ($paginationEnd < $employeePaginator->lastPage())
+              @if ($paginationEnd < $employeePaginator->lastPage() - 1)
+                <span class="inline-flex h-10 min-w-10 items-center justify-center px-2 text-sm font-bold text-slate-400">...</span>
+              @endif
+              <a href="{{ $employeePaginator->url($employeePaginator->lastPage()) }}" class="inline-flex h-10 min-w-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">{{ $employeePaginator->lastPage() }}</a>
+            @endif
+
+            @if ($employeePaginator->hasMorePages())
+              <a href="{{ $employeePaginator->nextPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">
+                <i class="fa-solid fa-chevron-right text-xs"></i>
+              </a>
+            @else
+              <span class="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-400">
+                <i class="fa-solid fa-chevron-right text-xs"></i>
+              </span>
+            @endif
+          </nav>
+        </div>
+      </div>
+    @endif
 
     <div
       x-show="!showDepartmentSummary && viewMode === 'cards' && !hasVisibleEmployees()"

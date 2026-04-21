@@ -47,6 +47,7 @@
                             <input
                                 type="text"
                                 x-model="search"
+                                @input.debounce.500ms="applyEmployeeDirectoryFilters()"
                                 placeholder="Search by employee name..."
                                 class="w-full bg-transparent pl-3 pr-2 text-sm text-slate-700 outline-none placeholder:text-slate-400"
                             >
@@ -56,6 +57,7 @@
                             <i class="fa-solid fa-layer-group text-slate-400"></i>
                             <select
                                 x-model="department"
+                                @change="applyEmployeeDirectoryFilters()"
                                 class="w-full bg-transparent text-sm font-medium text-slate-700 outline-none"
                             >
                                 <option value="All">All Departments</option>
@@ -70,7 +72,7 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <button
                                 type="button"
-                                @click="statusFilter = 'All'"
+                                @click="statusFilter = 'All'; applyEmployeeDirectoryFilters()"
                                 :class="statusFilter === 'All'
                                     ? 'border-white/15 bg-slate-950 text-white shadow-md'
                                     : 'border-white/10 bg-white/10 text-emerald-50 hover:border-white/20 hover:bg-white/15'"
@@ -80,7 +82,7 @@
                             </button>
                             <button
                                 type="button"
-                                @click="statusFilter = 'Active'"
+                                @click="statusFilter = 'Active'; applyEmployeeDirectoryFilters()"
                                 :class="statusFilter === 'Active'
                                     ? 'border-emerald-300 bg-emerald-300 text-slate-950 shadow-md'
                                     : 'border-emerald-300/20 bg-emerald-300/10 text-emerald-50 hover:bg-emerald-300/20'"
@@ -90,7 +92,7 @@
                             </button>
                             <button
                                 type="button"
-                                @click="statusFilter = 'On Leave'"
+                                @click="statusFilter = 'On Leave'; applyEmployeeDirectoryFilters()"
                                 :class="statusFilter === 'On Leave'
                                     ? 'border-amber-300 bg-amber-300 text-slate-950 shadow-md'
                                     : 'border-amber-300/20 bg-amber-300/10 text-amber-100 hover:bg-amber-300/20'"
@@ -100,7 +102,7 @@
                             </button>
                             <button
                                 type="button"
-                                @click="statusFilter = 'Inactive'"
+                                @click="statusFilter = 'Inactive'; applyEmployeeDirectoryFilters()"
                                 :class="statusFilter === 'Inactive'
                                     ? 'border-rose-300 bg-rose-300 text-slate-950 shadow-md'
                                     : 'border-rose-300/20 bg-rose-300/10 text-rose-100 hover:bg-rose-300/20'"
@@ -110,7 +112,7 @@
                             </button>
                             <button
                                 type="button"
-                                @click="statusFilter = 'Missing Info'"
+                                @click="statusFilter = 'Missing Info'; applyEmployeeDirectoryFilters()"
                                 :class="statusFilter === 'Missing Info'
                                     ? 'border-orange-200 bg-orange-200 text-slate-950 shadow-md'
                                     : 'border-orange-300/25 bg-orange-300/10 text-orange-100 hover:bg-orange-300/20'"
@@ -135,7 +137,7 @@
                             </button>
                             <button
                                 type="button"
-                                @click="search = ''; department = 'All'; statusFilter = 'All'"
+                                @click="search = ''; department = 'All'; statusFilter = 'All'; applyEmployeeDirectoryFilters()"
                                 class="inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-2 text-sm font-semibold text-emerald-50 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/15"
                             >
                                 <i class="fa-solid fa-rotate-left text-xs"></i>
