@@ -15,10 +15,14 @@ return new class extends Migration
             return;
         }
 
-        // Prevent users->employees trigger from bouncing writes during this one-time backfill.
-        DB::statement("SET @sync_origin = 'employees'");
+        $usesMysqlTriggers = in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true);
 
-        DB::table('users as u')
+        // Prevent users->employees trigger from bouncing writes during this one-time backfill.
+        if ($usesMysqlTriggers) {
+            DB::statement("SET @sync_origin = 'employees'");
+        }
+
+        $rows = DB::table('users as u')
             ->join('employees as e', 'e.user_id', '=', 'u.id')
             ->whereRaw("LOWER(TRIM(COALESCE(u.role, ''))) = ?", ['employee'])
             ->where(function ($query) {
@@ -27,12 +31,21 @@ return new class extends Migration
                     ->orWhereNotNull('e.position')
                     ->whereRaw("TRIM(e.position) <> ''");
             })
-            ->update([
-                'u.department' => DB::raw("COALESCE(NULLIF(TRIM(e.department), ''), NULL)"),
-                'u.position' => DB::raw("COALESCE(NULLIF(TRIM(e.position), ''), NULL)"),
-            ]);
+            ->select('u.id as user_id', 'e.department as employee_department', 'e.position as employee_position')
+            ->get();
 
-        DB::statement('SET @sync_origin = NULL');
+        foreach ($rows as $row) {
+            DB::table('users')
+                ->where('id', $row->user_id)
+                ->update([
+                    'department' => trim((string) ($row->employee_department ?? '')) !== '' ? $row->employee_department : null,
+                    'position' => trim((string) ($row->employee_position ?? '')) !== '' ? $row->employee_position : null,
+                ]);
+        }
+
+        if ($usesMysqlTriggers) {
+            DB::statement('SET @sync_origin = NULL');
+        }
     }
 
     /**
@@ -43,4 +56,3 @@ return new class extends Migration
         // No rollback for data backfill.
     }
 };
-

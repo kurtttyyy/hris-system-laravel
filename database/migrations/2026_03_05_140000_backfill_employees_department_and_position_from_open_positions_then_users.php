@@ -20,8 +20,12 @@ return new class extends Migration
             ->select(['id', 'department', 'position', 'job_role'])
             ->get();
 
+        $usesMysqlTriggers = in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true);
+
         // Prevent employees->users trigger from writing back during this one-time backfill.
-        DB::statement("SET @sync_origin = 'users'");
+        if ($usesMysqlTriggers) {
+            DB::statement("SET @sync_origin = 'users'");
+        }
 
         foreach ($users as $user) {
             $openPosition = DB::table('applicants as a')
@@ -61,7 +65,9 @@ return new class extends Migration
                 ]);
         }
 
-        DB::statement('SET @sync_origin = NULL');
+        if ($usesMysqlTriggers) {
+            DB::statement('SET @sync_origin = NULL');
+        }
     }
 
     /**
@@ -72,4 +78,3 @@ return new class extends Migration
         // No rollback for backfill.
     }
 };
-

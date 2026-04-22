@@ -19,14 +19,21 @@ return new class extends Migration
             return;
         }
 
-        DB::table('employees as e')
+        $rows = DB::table('employees as e')
             ->join('applicants as a', 'a.user_id', '=', 'e.user_id')
             ->whereNotNull('a.phone')
             ->whereRaw("TRIM(a.phone) <> ''")
-            ->update([
-                'e.contact_number' => DB::raw('a.phone'),
-                'e.updated_at' => now(),
-            ]);
+            ->select('e.id as employee_id', 'a.phone as applicant_phone')
+            ->get();
+
+        foreach ($rows as $row) {
+            DB::table('employees')
+                ->where('id', $row->employee_id)
+                ->update([
+                    'contact_number' => $row->applicant_phone,
+                    'updated_at' => now(),
+                ]);
+        }
     }
 
     /**
@@ -37,4 +44,3 @@ return new class extends Migration
         // No rollback for data backfill.
     }
 };
-
