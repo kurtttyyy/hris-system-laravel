@@ -2947,7 +2947,7 @@
         @include('Admin.PersonalDetail.adminEmployeePerformance')
         @include('Admin.PersonalDetail.adminEmployeeDocuments')
         @include('Admin.PersonalDetail.adminServiceRecord')
-        @include('Admin.PersonalDetail.adminbioMetric')
+        @include('Admin.PersonalDetail.adminBioMetric')
 
 
 
