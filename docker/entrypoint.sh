@@ -58,6 +58,7 @@ if [ -z "${APP_KEY:-}" ]; then
 fi
 
 php artisan migrate --force
+php artisan db:seed --force
 php artisan storage:link || true
 
 exec "$@"
