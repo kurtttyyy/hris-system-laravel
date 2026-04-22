@@ -40,8 +40,7 @@ RUN apt-get update \
         pdo_mysql \
         pdo_sqlite \
         zip \
-    && a2dismod mpm_prefork \
-    && a2enmod mpm_event rewrite \
+    && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 
 COPY . .
