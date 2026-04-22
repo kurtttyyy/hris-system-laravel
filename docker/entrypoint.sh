@@ -48,6 +48,15 @@ chown -R www-data:www-data \
     /var/www/html/database \
     /var/www/html/storage
 
+touch /var/www/html/storage/logs/laravel.log
+chown www-data:www-data /var/www/html/storage/logs/laravel.log
+tail -n 0 -F /var/www/html/storage/logs/laravel.log >&2 &
+
+if [ -z "${APP_KEY:-}" ]; then
+    echo "APP_KEY is not set. Generating a temporary key for this container." >&2
+    export APP_KEY="$(php artisan key:generate --show)"
+fi
+
 php artisan migrate --force
 php artisan storage:link || true
 

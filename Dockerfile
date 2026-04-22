@@ -65,6 +65,10 @@ RUN chmod +x /usr/local/bin/entrypoint \
     && chown -R www-data:www-data bootstrap/cache database storage
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
+ENV LOG_CHANNEL=stderr
+ENV LOG_STACK=stderr
+ENV SESSION_DRIVER=file
+ENV CACHE_STORE=file
 EXPOSE 8080
 
 ENTRYPOINT ["entrypoint"]
