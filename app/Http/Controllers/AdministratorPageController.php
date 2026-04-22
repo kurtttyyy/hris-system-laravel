@@ -264,7 +264,7 @@ class AdministratorPageController extends Controller
             $pendingResignationsForHome
         );
         
-        return view('admin.adminHome', compact(
+        return view('Admin.adminHome', compact(
             'employee',
             'accept',
             'departments',
@@ -1087,7 +1087,7 @@ class AdministratorPageController extends Controller
             'per_page' => $employeePerPage,
         ];
 
-        return view('admin.adminEmployee', compact('employee', 'employeeDirectory', 'employeePaginator', 'employeeFilters'));
+        return view('Admin.adminEmployee', compact('employee', 'employeeDirectory', 'employeePaginator', 'employeeFilters'));
     }
 
     public function display_attendance(Request $request){
@@ -1255,7 +1255,7 @@ class AdministratorPageController extends Controller
             $attendanceRows = null;
             $attendancePerPage = 25;
 
-            return view('admin.adminAttendance', compact(
+            return view('Admin.adminAttendance', compact(
                 'attendanceFiles',
                 'fromDate',
                 'toDate',
@@ -1609,7 +1609,7 @@ class AdministratorPageController extends Controller
             default => null,
         };
 
-        return view('admin.adminAttendance', compact(
+        return view('Admin.adminAttendance', compact(
             'attendanceFiles',
             'fromDate',
             'toDate',
@@ -2744,7 +2744,7 @@ class AdministratorPageController extends Controller
             return (float) ($row->number_of_working_days ?? 0);
         });
 
-        return view('admin.adminLeaveManagement', compact(
+        return view('Admin.adminLeaveManagement', compact(
             'selectedMonth',
             'totalLeaveUsedDays',
             'sickLeaveUsedDays',
@@ -2771,7 +2771,7 @@ class AdministratorPageController extends Controller
             ->orderByDesc('id')
             ->first();
 
-        return view('admin.adminPayslip', compact('payslipFiles', 'uploadedCount', 'scannedCount', 'latestUpload'));
+        return view('Admin.adminPayslip', compact('payslipFiles', 'uploadedCount', 'scannedCount', 'latestUpload'));
     }
 
     public function display_payslip_view(Request $request){
@@ -2811,7 +2811,7 @@ class AdministratorPageController extends Controller
 
 
 
-        return view('admin.adminPaySlipView', compact('records', 'selectedRecord', 'uploadId'));
+        return view('Admin.adminPaySlipView', compact('records', 'selectedRecord', 'uploadId'));
     }
 
     public function display_resignations(Request $request){
@@ -2868,7 +2868,7 @@ class AdministratorPageController extends Controller
             'Cancelled' => (int) Resignation::query()->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['cancelled'])->count(),
         ];
 
-        return view('admin.adminResignations', compact(
+        return view('Admin.adminResignations', compact(
             'resignations',
             'pendingResignations',
             'employees',
@@ -2879,7 +2879,7 @@ class AdministratorPageController extends Controller
     }
 
     public function display_reports(){
-        return view('admin.adminReports');
+        return view('Admin.adminReports');
     }
 
     public function display_school_administrator(){
@@ -3115,7 +3115,7 @@ class AdministratorPageController extends Controller
                                         ->whereYear('created_at', now()->year)
                                         ->count();
 
-        return view('admin.adminApplicant', compact('applicant', 'hired',
+        return view('Admin.adminApplicant', compact('applicant', 'hired',
                                             'count_applicant','count_under_review'
                                             ,'count_final_interview'));
     }
@@ -3172,7 +3172,7 @@ class AdministratorPageController extends Controller
                 ->with('error', 'This position is already closed and can no longer be edited.');
         }
 
-        return view('admin.adminEditPosition', compact('open'));
+        return view('Admin.adminEditPosition', compact('open'));
     }
 
     public function display_interview(){/////sync interview status to applicant status if interview is completed
@@ -3228,7 +3228,7 @@ class AdministratorPageController extends Controller
                 return now()->lt($start);
             })
             ->count();
-        return view('admin.adminInterview', compact(
+        return view('Admin.adminInterview', compact(
             'interview',
             'upcomingInterviews',
             'completedInterviews',
@@ -3323,11 +3323,11 @@ class AdministratorPageController extends Controller
     }
 
     public function display_meeting(){
-        return view('admin.adminMeeting');
+        return view('Admin.adminMeeting');
     }
 
     public function display_calendar(){
-        return view('admin.adminCalendar');
+        return view('Admin.adminCalendar');
     }
 
     public function display_position(){
@@ -3337,7 +3337,7 @@ class AdministratorPageController extends Controller
         $logs = GuestLog::count();
         $positionCounts = $openPositions->count();
         $applicantCounts = Applicant::count();
-        return view('admin.adminPosition', compact('openPosition',
+        return view('Admin.adminPosition', compact('openPosition',
         'logs', 'positionCounts', 'applicantCounts','countApplication'));
     }
 
@@ -3346,11 +3346,11 @@ class AdministratorPageController extends Controller
         $titles = OpenPosition::withTrashed()->pluck('id');
         $admin = User::admins()->get();
         $countApplication = Applicant::whereIn('open_position_id', $titles)->count();
-        return view('admin.adminShowPosition', compact('open','countApplication','admin'));
+        return view('Admin.adminShowPosition', compact('open','countApplication','admin'));
     }
 
     public function display_overview(){
-        return view('admin.adminEmployeeOverview');
+        return view('Admin.adminEmployeeOverview');
     }
 
     public function employee_documents($id){
@@ -3474,23 +3474,23 @@ class AdministratorPageController extends Controller
 
     //Personal Detail
     public function display_documents(){
-        return view('admin.PersonalDetail.adminEmployeeDocuments');
+        return view('Admin.PersonalDetail.adminEmployeeDocuments');
     }
 
     public function display_pd(){
-        return view('admin.PersonalDetail.adminEmployeePD');
+        return view('Admin.PersonalDetail.adminEmployeePD');
     }
 
     public function display_personal_detail_overview(){
-        return view('admin.PersonalDetail.adminEmployeeOverview');
+        return view('Admin.PersonalDetail.adminEmployeeOverview');
     }
 
     public function display_performance(){
-        return view('admin.PersonalDetail.adminEmployeePerformance');
+        return view('Admin.PersonalDetail.adminEmployeePerformance');
     }
 
     public function display_edit(){
-        return view('admin.PersonalDetail.editProfile');
+        return view('Admin.PersonalDetail.editProfile');
     }
 
     public function display_service_record_edit(Request $request){
@@ -3628,7 +3628,7 @@ class AdministratorPageController extends Controller
     }
 
     public function display_create_position(){
-        return view('admin.adminCreatePosition');
+        return view('Admin.adminCreatePosition');
     }
 
     private function getRequiredDocumentConfigForApplicant(int $applicantId): array
