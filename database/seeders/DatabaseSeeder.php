@@ -27,7 +27,7 @@ class DatabaseSeeder extends Seeder
             'position' => 'Administrator',
             'department' => 'Human Resources',
             'department_head' => null,
-            'status' => 'Active',
+            'status' => 'Approved',
             'account_status' => 'Active',
             'password' => Hash::make(env('DEFAULT_ADMIN_PASSWORD', 'ChangeMe123!')),
         ]);
