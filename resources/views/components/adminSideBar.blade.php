@@ -20,6 +20,7 @@
   $adminUnreadMessages = 0;
   $adminPendingLeaveCount = 0;
   $adminPendingApplicantCount = 0;
+  $adminSidebarNotificationCount = (int) data_get($adminNotificationStats ?? [], 'total', 0);
   $hasEmployeeMissingInfoAlert = false;
   $employeeMissingInfoCount = 0;
   $employeeMissingRequiredDocumentsByApplicant = collect();
@@ -349,13 +350,16 @@
          : 'text-white hover:bg-green-600/30' }}">
       <span class="relative inline-flex w-5 items-center justify-center">
         <i class="fa-solid fa-house"></i>
-        <span data-admin-notification-alert class="admin-sidebar-alert-dot hidden group-hover:hidden" aria-hidden="true">!</span>
+        @if ($adminSidebarNotificationCount > 0)
+          <span class="admin-sidebar-alert-dot group-hover:hidden" aria-hidden="true">!</span>
+        @endif
       </span>
       <span class="admin-sidebar-text whitespace-nowrap inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">Dashboard</span>
-      <span
-        data-admin-notification-count
-        class="admin-sidebar-count-badge ml-auto min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white"
-      ></span>
+      @if ($adminSidebarNotificationCount > 0)
+        <span class="admin-sidebar-count-badge ml-auto min-w-[1.4rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+          {{ $adminSidebarNotificationCount > 99 ? '99+' : $adminSidebarNotificationCount }}
+        </span>
+      @endif
     </a>
 
     <!-- Employees -->
@@ -696,12 +700,8 @@
     const sidebar = document.querySelector('.admin-sidebar');
     const sidebarToggle = document.querySelector('[data-admin-sidebar-toggle]');
     const sidebarOverlay = document.querySelector('[data-admin-sidebar-overlay]');
-    const notificationAlertDots = Array.from(document.querySelectorAll('[data-admin-notification-alert]'));
-    const notificationCountBadges = Array.from(document.querySelectorAll('[data-admin-notification-count]'));
     const currentUrl = new URL(window.location.href);
     const tabSession = currentUrl.searchParams.get('tab_session') || '';
-    const notificationSummaryUrl = @json(route('admin.adminNotifications.summary'));
-    const adminNotificationReadKey = 'admin_notifications_read_v1';
     const adminNotificationUnreadKey = 'admin_notifications_unread_v1';
     localStorage.setItem(adminNotificationUnreadKey, '0');
     if (!links.length && !tabSession && !sidebarToggle) {
@@ -785,67 +785,6 @@
       });
     };
 
-    const readNotificationLookup = () => {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(adminNotificationReadKey) || '[]');
-        return parsed && typeof parsed === 'object' ? parsed : {};
-      } catch (error) {
-        return {};
-      }
-    };
-
-    const computeUnreadCount = (items) => {
-      const readLookup = readNotificationLookup();
-      return (Array.isArray(items) ? items : []).reduce((count, item) => {
-        const id = item?.id ? String(item.id) : '';
-        return id && !readLookup[id] ? count + 1 : count;
-      }, 0);
-    };
-
-    const renderNotificationAlerts = (count) => {
-      const hasUnread = Number(count) > 0;
-      notificationAlertDots.forEach((badge) => {
-        badge.classList.toggle('hidden', !hasUnread);
-      });
-      notificationCountBadges.forEach((badge) => {
-        badge.classList.toggle('hidden', !hasUnread);
-        badge.textContent = hasUnread ? (Number(count) > 99 ? '99+' : String(count)) : '';
-      });
-    };
-
-    const syncAdminNotificationAlerts = async () => {
-      if (!notificationAlertDots.length) {
-        return;
-      }
-
-      try {
-        const response = await fetch(notificationSummaryUrl, {
-          headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-          },
-          credentials: 'same-origin',
-        });
-        if (!response.ok) {
-          throw new Error('Unable to load admin notification summary.');
-        }
-
-        const payload = await response.json();
-        const totalCount = Number.parseInt(payload?.total ?? '0', 10);
-        if (!Number.isFinite(totalCount) || totalCount <= 0) {
-          localStorage.setItem(adminNotificationUnreadKey, '0');
-          renderNotificationAlerts(0);
-          return;
-        }
-
-        localStorage.setItem(adminNotificationUnreadKey, String(totalCount));
-        renderNotificationAlerts(totalCount);
-      } catch (error) {
-        localStorage.setItem(adminNotificationUnreadKey, '0');
-        renderNotificationAlerts(0);
-      }
-    };
-
     links.forEach((link) => {
       const href = appendTabSession(link.getAttribute('href'));
       if (!href) {
@@ -883,13 +822,11 @@
       if (overlay) {
         overlay.classList.remove('is-visible');
       }
-      syncAdminNotificationAlerts();
     });
 
     window.addEventListener('storage', (event) => {
       if (event.key === adminNotificationUnreadKey) {
-        const unreadCount = Number.parseInt(event.newValue || '', 10);
-        renderNotificationAlerts(Number.isNaN(unreadCount) ? 0 : unreadCount);
+        localStorage.setItem(adminNotificationUnreadKey, '0');
       }
     });
 
@@ -946,6 +883,5 @@
       });
     });
 
-    syncAdminNotificationAlerts();
   })();
 </script>
