@@ -614,6 +614,7 @@
     const notificationSummaryUrl = @json(route('admin.adminNotifications.summary'));
     const adminNotificationReadKey = 'admin_notifications_read_v1';
     const adminNotificationUnreadKey = 'admin_notifications_unread_v1';
+    localStorage.setItem(adminNotificationUnreadKey, '0');
     if (!links.length && !tabSession && !sidebarToggle) {
       return;
     }
@@ -741,6 +742,13 @@
         }
 
         const payload = await response.json();
+        const totalCount = Number.parseInt(payload?.total ?? '0', 10);
+        if (!Number.isFinite(totalCount) || totalCount <= 0) {
+          localStorage.setItem(adminNotificationUnreadKey, '0');
+          renderNotificationAlerts(0);
+          return;
+        }
+
         const unreadCount = computeUnreadCount(payload?.items ?? []);
         localStorage.setItem(adminNotificationUnreadKey, String(unreadCount));
         renderNotificationAlerts(unreadCount);

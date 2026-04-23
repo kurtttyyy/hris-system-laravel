@@ -297,6 +297,7 @@
         const readKey = 'admin_notifications_read_v1';
         const unreadKey = 'admin_notifications_unread_v1';
         const fallbackCount = Number.parseInt(badges[0].getAttribute('data-fallback-count') || '0', 10) || 0;
+        localStorage.setItem(unreadKey, '0');
 
         const renderBadges = (count) => {
             badges.forEach((badge) => {
@@ -337,6 +338,13 @@
                 }
 
                 const payload = await response.json();
+                const totalCount = Number.parseInt(payload?.total ?? '0', 10);
+                if (!Number.isFinite(totalCount) || totalCount <= 0) {
+                    localStorage.setItem(unreadKey, '0');
+                    renderBadges(0);
+                    return;
+                }
+
                 const unreadCount = computeUnreadCount(payload?.items ?? []);
                 localStorage.setItem(unreadKey, String(unreadCount));
                 renderBadges(unreadCount);
