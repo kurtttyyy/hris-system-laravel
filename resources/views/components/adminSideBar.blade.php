@@ -22,6 +22,7 @@
   $adminPendingApplicantCount = 0;
   $hasEmployeeMissingInfoAlert = false;
   $employeeMissingInfoCount = 0;
+  $employeeMissingRequiredDocumentsByApplicant = collect();
   if (
     $adminUser
     && \Illuminate\Support\Facades\Schema::hasTable('conversations')
@@ -74,10 +75,19 @@
       return false;
     };
 
+    $normalizeEmployeeDocumentLabel = static function (string $value): string {
+      $normalized = strtolower(trim($value));
+      if ($normalized === '') {
+        return '';
+      }
+
+      return preg_replace('/\s+/', ' ', $normalized);
+    };
+
     $employeeAlertCandidates = \App\Models\User::query()
       ->with([
         'employee:id,user_id,account_number,sex,civil_status,contact_number,birthday,address',
-        'applicant',
+        'applicant:applicants.id,applicants.user_id,applicants.phone,applicants.address',
         'license:id,user_id,license,registration_number',
         'government:id,user_id,SSS,TIN,PhilHealth,MID,RTN',
         'salary:id,user_id,salary',
@@ -85,7 +95,85 @@
       ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
       ->get();
 
-    $employeeMissingInfoCount = $employeeAlertCandidates->filter(function ($emp) use ($isMissingEmployeeValue) {
+    if (
+      \Illuminate\Support\Facades\Schema::hasTable('applicant_documents')
+      && $employeeAlertCandidates->isNotEmpty()
+    ) {
+      $defaultRequiredDocuments = collect([
+        'Resume/CV',
+        'Cover Letter',
+        'Personal Data Sheet',
+        'Transcript Of Records',
+        'Diploma',
+        'PRC License/Board Rating',
+        'Certificate Of Eligibility / Certificate of Passing',
+        'Certifications & Supporting Document',
+        'Membership/Affiliation',
+      ]);
+
+      $employeeApplicantIds = $employeeAlertCandidates
+        ->pluck('applicant.id')
+        ->filter()
+        ->map(fn ($id) => (int) $id)
+        ->unique()
+        ->values();
+
+      if ($employeeApplicantIds->isNotEmpty()) {
+        $employeeUploadedDocumentTypesByApplicant = \App\Models\ApplicantDocument::query()
+          ->select(['applicant_id', 'type', 'filename'])
+          ->whereIn('applicant_id', $employeeApplicantIds)
+          ->where('type', 'not like', '__REQUIRED__::%')
+          ->where('type', '!=', '__NOTICE__')
+          ->where('type', '!=', '__FOLDER__')
+          ->get()
+          ->groupBy('applicant_id')
+          ->map(function ($documents) use ($normalizeEmployeeDocumentLabel) {
+            return $documents
+              ->map(fn ($doc) => $normalizeEmployeeDocumentLabel((string) ($doc->type ?: $doc->filename)))
+              ->filter()
+              ->unique()
+              ->values();
+          });
+
+        $employeeRequiredDocumentsByApplicant = \App\Models\ApplicantDocument::query()
+          ->select(['applicant_id', 'type'])
+          ->whereIn('applicant_id', $employeeApplicantIds)
+          ->where('type', 'like', '__REQUIRED__::%')
+          ->get()
+          ->groupBy('applicant_id')
+          ->map(function ($documents) {
+            return $documents
+              ->map(fn ($doc) => trim((string) substr((string) ($doc->type ?? ''), strlen('__REQUIRED__::'))))
+              ->filter()
+              ->unique(fn ($value) => strtolower($value))
+              ->values();
+          });
+
+        $employeeMissingRequiredDocumentsByApplicant = $employeeApplicantIds
+          ->mapWithKeys(function ($applicantId) use (
+            $defaultRequiredDocuments,
+            $employeeRequiredDocumentsByApplicant,
+            $employeeUploadedDocumentTypesByApplicant,
+            $normalizeEmployeeDocumentLabel
+          ) {
+            $requiredDocuments = $employeeRequiredDocumentsByApplicant->get($applicantId, $defaultRequiredDocuments)
+              ->map(fn ($item) => trim((string) $item))
+              ->filter()
+              ->values();
+
+            $uploadedDocuments = $employeeUploadedDocumentTypesByApplicant->get($applicantId, collect());
+            $missingCount = $requiredDocuments
+              ->filter(function ($required) use ($uploadedDocuments, $normalizeEmployeeDocumentLabel) {
+                return !$uploadedDocuments->contains($normalizeEmployeeDocumentLabel((string) $required));
+              })
+              ->count();
+
+            return [$applicantId => $missingCount];
+          });
+      }
+    }
+
+    $employeeMissingInfoCount = $employeeAlertCandidates->filter(function ($emp) use ($isMissingEmployeeValue, $employeeMissingRequiredDocumentsByApplicant) {
       return collect([
         data_get($emp, 'employee.account_number'),
         data_get($emp, 'employee.sex'),
@@ -101,7 +189,8 @@
         data_get($emp, 'government.MID'),
         data_get($emp, 'government.RTN'),
         data_get($emp, 'salary.salary'),
-      ])->contains(fn ($value) => $isMissingEmployeeValue($value));
+      ])->contains(fn ($value) => $isMissingEmployeeValue($value))
+        || (int) $employeeMissingRequiredDocumentsByApplicant->get((int) data_get($emp, 'applicant.id'), 0) > 0;
     })->count();
 
     $hasEmployeeMissingInfoAlert = $employeeMissingInfoCount > 0;
@@ -749,9 +838,8 @@
           return;
         }
 
-        const unreadCount = computeUnreadCount(payload?.items ?? []);
-        localStorage.setItem(adminNotificationUnreadKey, String(unreadCount));
-        renderNotificationAlerts(unreadCount);
+        localStorage.setItem(adminNotificationUnreadKey, String(totalCount));
+        renderNotificationAlerts(totalCount);
       } catch (error) {
         localStorage.setItem(adminNotificationUnreadKey, '0');
         renderNotificationAlerts(0);

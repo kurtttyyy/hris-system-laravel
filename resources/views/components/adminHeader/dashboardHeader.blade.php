@@ -345,9 +345,8 @@
                     return;
                 }
 
-                const unreadCount = computeUnreadCount(payload?.items ?? []);
-                localStorage.setItem(unreadKey, String(unreadCount));
-                renderBadges(unreadCount);
+                localStorage.setItem(unreadKey, String(totalCount));
+                renderBadges(totalCount);
             } catch (error) {
                 localStorage.setItem(unreadKey, '0');
                 renderBadges(0);
