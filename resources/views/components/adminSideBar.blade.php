@@ -745,8 +745,8 @@
         localStorage.setItem(adminNotificationUnreadKey, String(unreadCount));
         renderNotificationAlerts(unreadCount);
       } catch (error) {
-        const storedUnread = Number.parseInt(localStorage.getItem(adminNotificationUnreadKey) || '', 10);
-        renderNotificationAlerts(Number.isNaN(storedUnread) ? 0 : storedUnread);
+        localStorage.setItem(adminNotificationUnreadKey, '0');
+        renderNotificationAlerts(0);
       }
     };
 

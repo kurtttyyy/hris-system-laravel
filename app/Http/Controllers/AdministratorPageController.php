@@ -259,7 +259,6 @@ class AdministratorPageController extends Controller
         [$adminNotificationItems, $adminNotificationStats] = $this->buildAdminNotifications(
             $pendingEmployeesForNotifications,
             $pendingLeaveRequestsForHome,
-            $departments,
             $openPositionApplicationsCount,
             $pendingResignationsForHome
         );
@@ -350,7 +349,6 @@ class AdministratorPageController extends Controller
         [$adminNotificationItems, $adminNotificationStats] = $this->buildAdminNotifications(
             $employee,
             $pendingLeaveRequestsForHome,
-            $departments,
             $openPositionApplicationsCount,
             $pendingResignations
         );
@@ -420,7 +418,6 @@ class AdministratorPageController extends Controller
         [$adminNotificationItems, $adminNotificationStats] = $this->buildAdminNotifications(
             $employee,
             $pendingLeaveRequests,
-            $departments,
             $openPositionApplicationsCount,
             $pendingResignations
         );
@@ -576,11 +573,10 @@ class AdministratorPageController extends Controller
         ));
     }
 
-    private function buildAdminNotifications($pendingEmployees, $pendingLeaveRequests, $departments, int $openPositionApplicationsCount, $pendingResignations = null): array
+    private function buildAdminNotifications($pendingEmployees, $pendingLeaveRequests, int $openPositionApplicationsCount, $pendingResignations = null): array
     {
         $pendingEmployees = collect($pendingEmployees ?? []);
         $pendingLeaveRequests = collect($pendingLeaveRequests ?? []);
-        $departments = collect($departments ?? []);
         $pendingResignations = collect($pendingResignations ?? []);
         $appTimezone = config('app.timezone');
         $permanentStatusNotifications = User::query()
@@ -644,42 +640,6 @@ class AdministratorPageController extends Controller
                 return Carbon::parse($date)->setTimezone($appTimezone);
             })->sortByDesc(fn (Carbon $date) => $date->timestamp)->first();
         }
-
-        $resolveDepartmentName = function (User $user): string {
-            $userDepartment = trim((string) ($user->department ?? ''));
-            if ($userDepartment !== '') {
-                return $userDepartment;
-            }
-
-            $employeeDepartment = trim((string) (optional($user->employee)->department ?? ''));
-            if ($employeeDepartment !== '') {
-                return $employeeDepartment;
-            }
-
-            $applicantDepartment = trim((string) (optional(optional($user->applicant)->position)->department ?? ''));
-            return $applicantDepartment !== '' ? $applicantDepartment : 'Unassigned';
-        };
-
-        $departmentActivityDates = User::with(['employee', 'applicant.position:id,department'])
-            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
-            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
-            ->get()
-            ->groupBy(function (User $user) use ($resolveDepartmentName) {
-                return Str::lower($resolveDepartmentName($user));
-            })
-            ->map(function ($group) use ($appTimezone) {
-                return $group
-                    ->map(function (User $user) use ($appTimezone) {
-                        return collect([$user->updated_at, $user->created_at])
-                            ->filter()
-                            ->map(fn ($date) => Carbon::parse($date)->setTimezone($appTimezone))
-                            ->sortByDesc(fn (Carbon $date) => $date->timestamp)
-                            ->first();
-                    })
-                    ->filter()
-                    ->sortByDesc(fn (Carbon $date) => $date->timestamp)
-                    ->first();
-            });
 
         $approvalNotifications = $pendingEmployees
             ->take(6)
@@ -763,32 +723,12 @@ class AdministratorPageController extends Controller
                 ];
             });
 
-        $coverageNotifications = $departments
-            ->sortByDesc('count')
-            ->take(4)
-            ->map(function ($department) use ($departmentActivityDates) {
-                $count = (int) ($department['count'] ?? 0);
-                $departmentName = trim((string) ($department['name'] ?? 'Department'));
-                $departmentDate = $departmentActivityDates->get(Str::lower($departmentName));
-
-                return [
-                    'category' => 'Workforce',
-                    'title' => 'Department coverage snapshot',
-                    'message' => $departmentName.' currently has '.number_format($count).' active employee'.($count === 1 ? '' : 's').'.',
-                    'date' => $departmentDate,
-                    'href' => route('admin.adminHome'),
-                    'badge' => 'Coverage',
-                    'tone' => 'slate',
-                ];
-            });
-
         $notificationItems = collect()
             ->concat($approvalNotifications)
             ->concat($leaveNotifications)
             ->concat($hiringNotifications)
             ->concat($requestNotifications)
             ->concat($permanentStatusNotifications)
-            ->concat($coverageNotifications)
             ->sortByDesc(function ($item) {
                 return optional($item['date'] ?? null)->timestamp ?? 0;
             })
@@ -810,7 +750,7 @@ class AdministratorPageController extends Controller
             'leave' => $leaveNotifications->count(),
             'hiring' => $hiringNotifications->count(),
             'requests' => $requestNotifications->count(),
-            'workforce' => $coverageNotifications->count() + $permanentStatusNotifications->count(),
+            'workforce' => $permanentStatusNotifications->count(),
         ];
 
         return [$notificationItems, $notificationStats];

@@ -341,9 +341,8 @@
                 localStorage.setItem(unreadKey, String(unreadCount));
                 renderBadges(unreadCount);
             } catch (error) {
-                const storedUnread = Number.parseInt(localStorage.getItem(unreadKey) || '', 10);
-                const nextCount = Number.isFinite(storedUnread) ? storedUnread : fallbackCount;
-                renderBadges(nextCount);
+                localStorage.setItem(unreadKey, '0');
+                renderBadges(0);
             }
         };
 
