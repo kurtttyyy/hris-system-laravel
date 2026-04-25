@@ -2,21 +2,25 @@
 body {
   background-color: #f7f8fa;
   color: #222;
+  overflow-x: hidden;
 }
 
 
 /* Tighter logo and name */
 .navbar-brand {
   gap: .4rem;
+  min-width: 0;
 }
 .navbar-brand img {
   display: inline-block;
+  flex: 0 0 auto;
 }
 
 /* Slightly larger site title */
 .navbar-brand .fw-bold {
   font-size: 1.15rem;
   line-height: 1;
+  white-space: normal;
 }
 
 /* Card base animation */
@@ -116,6 +120,14 @@ body {
 /* Navbar green theme */
 .navbar-custom {
   background: linear-gradient(180deg, #0b6623 0%, #18df32 100%);
+}
+.navbar-custom .container-fluid {
+  gap: 1rem;
+}
+.navbar-custom .ms-auto {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
 }
 .navbar-custom .navbar-brand .fw-bold {
   color: #fff !important;
@@ -673,7 +685,7 @@ header.navbar.loaded {
     position: fixed;
     top: 0;
     right: -800px;
-    width: 800px;
+    width: min(800px, 100vw);
     height: 100%;
     background: #fff;
     box-shadow: -4px 0 8px rgba(0,0,0,0.2);
@@ -994,6 +1006,55 @@ header.navbar.loaded {
 
 @media (min-width: 992px) {
   .hero .display-5 { font-size: 3rem; }
+}
+
+@media (max-width: 767.98px) {
+  .navbar-custom .container-fluid {
+    flex-direction: column;
+    align-items: stretch;
+    padding-inline: 0.75rem;
+  }
+
+  .navbar-custom .navbar-brand {
+    width: 100%;
+    align-items: center;
+    gap: 0.65rem !important;
+  }
+
+  .navbar-custom .navbar-brand img {
+    height: 52px;
+  }
+
+  .navbar-custom .navbar-brand .fw-bold {
+    font-size: clamp(0.95rem, 4.4vw, 1.18rem);
+    line-height: 1.12;
+    overflow-wrap: anywhere;
+  }
+
+  .navbar-brand .subtext {
+    font-size: 0.86rem;
+  }
+
+  .navbar-custom .ms-auto {
+    width: 100%;
+    margin-left: 0 !important;
+    gap: 0.35rem !important;
+    justify-content: center;
+  }
+
+  .navbar-custom .nav-home-link {
+    flex: 1 1 calc(50% - 0.35rem);
+    min-height: 42px;
+    padding: 0.55rem 0.45rem;
+    font-size: 0.9rem;
+    line-height: 1.15;
+    white-space: normal;
+  }
+
+  #jobSidebar {
+    right: -100vw;
+    padding: 1rem;
+  }
 }
 
 /* --------------------Page loader styles--------------------- */

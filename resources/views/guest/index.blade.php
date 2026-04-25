@@ -1333,12 +1333,58 @@
     }
 
     @media (max-width: 767.98px) {
+        .careers-page {
+            overflow-x: hidden;
+        }
+
+        .careers-hero {
+            min-height: auto;
+            padding: 3rem 0 4.5rem;
+        }
+
+        .careers-hero::after {
+            width: 10rem;
+            height: 10rem;
+            left: 1rem;
+            bottom: 1rem;
+        }
+
+        .careers-hero .container,
+        .careers-page > .container,
+        .job-section {
+            max-width: 100%;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
         .hero-shell {
-            padding: 1.5rem;
-            border-radius: 1.5rem;
+            width: 100%;
+            padding: 1.15rem;
+            border-radius: 1.1rem;
+        }
+
+        .hero-kicker {
+            max-width: 100%;
+            justify-content: center;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.68rem;
+            letter-spacing: 0.1em;
+            white-space: normal;
+        }
+
+        .hero-title {
+            font-size: clamp(2rem, 12vw, 3rem);
+            line-height: 1.08;
+        }
+
+        .hero-copy {
+            margin-bottom: 1.25rem;
+            font-size: 0.95rem;
+            line-height: 1.65;
         }
 
         .hero-search-card {
+            width: 100%;
             padding: 0.7rem;
             border-radius: 1.2rem;
         }
@@ -1360,15 +1406,40 @@
 
         .hero-metric {
             min-width: calc(50% - 0.5rem);
+            padding: 0.8rem;
+            border-radius: 0.95rem;
         }
 
         .filter-panel {
+            margin-top: -2.2rem;
             padding: 1rem;
             border-radius: 1.35rem;
         }
 
+        .filter-chip,
+        .section-pill {
+            width: 100%;
+            justify-content: center;
+            text-align: center;
+            white-space: normal;
+        }
+
+        .stats-shell {
+            margin-top: 1rem;
+        }
+
+        .job-section {
+            margin-top: 2.4rem;
+            padding-bottom: 2.5rem;
+        }
+
         .job-card {
             padding: 1.15rem;
+        }
+
+        .job-card-top {
+            flex-direction: column;
+            align-items: flex-start;
         }
 
         .footer-shell {
@@ -1430,8 +1501,26 @@
     }
 
     @media (max-width: 575.98px) {
+        .careers-hero {
+            padding-top: 2rem;
+            padding-bottom: 3.7rem;
+        }
+
+        .hero-shell {
+            padding: 1rem;
+        }
+
         .hero-metric {
             width: 100%;
+            min-width: 100%;
+        }
+
+        .filter-panel {
+            margin-top: -1.5rem;
+        }
+
+        .section-heading h2 {
+            font-size: 1.65rem;
         }
     }
 </style>
