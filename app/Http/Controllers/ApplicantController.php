@@ -305,7 +305,10 @@ class ApplicantController extends Controller
         $this->applyApplicantEmailHistoryFilter($applicantsQuery, (string) $attrs['email']);
 
         if (!(clone $applicantsQuery)->exists()) {
-            return redirect('/');
+            return view('guest.application', [
+                'applicants' => collect(),
+                'searchedEmail' => $attrs['email'],
+            ]);
         }
 
         $applicants = $applicantsQuery
@@ -322,7 +325,10 @@ class ApplicantController extends Controller
             });
 
 
-        return view('guest.application', compact('applicants'));
+        return view('guest.application', [
+            'applicants' => $applicants,
+            'searchedEmail' => $attrs['email'],
+        ]);
     }
 
     private function findLatestResignedEmployeeByEmail(string $email): ?User

@@ -220,6 +220,17 @@
     <h2 class="fw-bold mb-1">Your Applications</h2>
     <p class="text-muted mb-4">Track the status of your job applications</p>
 
+    @if(($applicants ?? collect())->isEmpty())
+        <div class="rounded-4 border bg-light-subtle p-4 text-center">
+            <h5 class="fw-bold mb-2">No application found</h5>
+            @if(!empty($searchedEmail))
+                <p class="text-muted mb-0">We could not find an application submitted with {{ $searchedEmail }}.</p>
+            @else
+                <p class="text-muted mb-0">Enter your email from the Application Status button to view your submitted applications.</p>
+            @endif
+        </div>
+    @endif
+
     @foreach($applicants as $applicant)
         <div class="card shadow-sm mb-4 animated-card delay-5">
             <div class="card-body">
@@ -227,7 +238,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
                         <div class="d-flex flex-wrap align-items-center gap-2">
-                            <h5 class="mb-1">{{ $applicant->position->title }}</h5>
+                            <h5 class="mb-1">{{ optional($applicant->position)->title ?: 'Application' }}</h5>
                             @if((bool) ($applicant->is_email_history_match ?? false))
                                 <span class="badge rounded-pill px-3 py-2" style="background-color: rgba(108, 117, 125, 0.12); color: #495057; border: 1px solid rgba(108, 117, 125, 0.35);">
                                     Previous Application
@@ -277,7 +288,7 @@
                 {{-- Rejection Message --}}
                 @if($applicant->application_status === 'Rejected')
                     <div class="alert alert-danger mt-3">
-                        <p>Thank you very much for your interest in the <strong>{{ $applicant->position->title }}</strong> position and for the time you invested in the application process.</p>
+                        <p>Thank you very much for your interest in the <strong>{{ optional($applicant->position)->title ?: 'selected' }}</strong> position and for the time you invested in the application process.</p>
 
                         <p>After careful consideration, we regret to inform you that we will not be moving forward with your application at this time. While your qualifications are impressive, we have chosen to proceed with candidates whose experience more closely matches the requirements of this role.</p>
 
