@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 class GuestPageController extends Controller
 {
     public function display_application(){
-        return view('guest.Application', [
+        return view('guest.application', [
                     'applicants' => collect(), // avoid undefined variable
                 ]);
     }
