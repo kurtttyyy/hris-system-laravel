@@ -17,10 +17,10 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate([
-            'email' => env('DEFAULT_ADMIN_EMAIL', 'admin@example.com'),
+            'email' => env('DEFAULT_ADMIN_EMAIL', 'kurtrobin20031118@gmail.com'),
         ], [
-            'first_name' => env('DEFAULT_ADMIN_FIRST_NAME', 'System'),
-            'last_name' => env('DEFAULT_ADMIN_LAST_NAME', 'Administrator'),
+            'first_name' => env('DEFAULT_ADMIN_FIRST_NAME', 'Kurt'),
+            'last_name' => env('DEFAULT_ADMIN_LAST_NAME', 'Robin'),
             'middle_name' => env('DEFAULT_ADMIN_MIDDLE_NAME', 'Admin'),
             'role' => 'Admin',
             'job_role' => 'Administrator',
@@ -29,7 +29,7 @@ class DatabaseSeeder extends Seeder
             'department_head' => null,
             'status' => 'Approved',
             'account_status' => 'Active',
-            'password' => Hash::make(env('DEFAULT_ADMIN_PASSWORD', 'ChangeMe123!')),
+            'password' => Hash::make(env('DEFAULT_ADMIN_PASSWORD', 'Kurt12345')),
         ]);
     }
 }
