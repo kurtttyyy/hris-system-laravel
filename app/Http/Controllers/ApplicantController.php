@@ -322,7 +322,7 @@ class ApplicantController extends Controller
             });
 
 
-        return view('guest.Application', compact('applicants'));
+        return view('guest.application', compact('applicants'));
     }
 
     private function findLatestResignedEmployeeByEmail(string $email): ?User
