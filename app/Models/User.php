@@ -178,13 +178,13 @@ class User extends Authenticatable
 
         $employee->department = $openDepartment !== ''
             ? $openDepartment
-            : ($userDepartment !== '' ? $userDepartment : null);
+            : ($userDepartment !== '' ? $userDepartment : 'Unassigned');
 
         $employee->position = $openTitle !== ''
             ? $openTitle
             : ($userPosition !== ''
                 ? $userPosition
-                : ($userJobRole !== '' ? $userJobRole : null));
+                : ($userJobRole !== '' ? $userJobRole : 'Employee'));
 
         $employee->email = trim((string) ($this->email ?? '')) !== '' ? $this->email : ($employee->email ?: null);
 

@@ -22,7 +22,6 @@ class RegisterLoginController extends Controller
     private const TAB_AUTH_MAP_EMPLOYEE = 'tab_auth_users_employee';
 
     public function register_store(Request $request){
-        Log::info($request);
         $attrs = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -44,6 +43,7 @@ class RegisterLoginController extends Controller
         $normalizedEmail = strtolower(trim((string) $attrs['email']));
 
         $matchingApplicant = Applicant::query()
+            ->with('position')
             ->whereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail])
             ->latest('id')
             ->first();
@@ -69,6 +69,9 @@ class RegisterLoginController extends Controller
             ->first();
 
         $rehireUser = $this->resolveRehireUser($matchingApplicant, $existingUser);
+        $position = $matchingApplicant->position;
+        $userDepartment = trim((string) ($position->department ?? ''));
+        $userPosition = trim((string) ($position->title ?? $matchingApplicant->work_position ?? ''));
 
         if ($existingUser && !$rehireUser) {
             return redirect()->back()
@@ -87,6 +90,9 @@ class RegisterLoginController extends Controller
                 'status' => 'Approved',
                 'account_status' => 'Active',
                 'email' => $attrs['email'],
+                'job_role' => $userPosition !== '' ? $userPosition : 'Employee',
+                'position' => $userPosition !== '' ? $userPosition : 'Employee',
+                'department' => $userDepartment !== '' ? $userDepartment : 'Unassigned',
                 'password' => Hash::make($attrs['password']),
             ]);
 
@@ -100,6 +106,9 @@ class RegisterLoginController extends Controller
                 'status' => 'Pending',
                 'account_status' => 'Active',
                 'email' => $attrs['email'],
+                'job_role' => $userPosition !== '' ? $userPosition : 'Employee',
+                'position' => $userPosition !== '' ? $userPosition : 'Employee',
+                'department' => $userDepartment !== '' ? $userDepartment : 'Unassigned',
                 'password' => Hash::make($attrs['password']),
             ]);
         }
@@ -110,7 +119,7 @@ class RegisterLoginController extends Controller
                         'user_id' => $user->id,
                     ]);
 
-        return redirect()->route('login');
+        return redirect()->route('login_display');
     }
 
     public function login_store(Request $request)
