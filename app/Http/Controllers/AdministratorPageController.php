@@ -869,7 +869,10 @@ class AdministratorPageController extends Controller
                     ->orderByDesc('changed_at')
                     ->orderByDesc('id');
             },
-            ])->where('role','Employee')->get();
+            ])
+            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
+            ->get();
 
         $applicantIds = $employee
             ->pluck('applicant.id')
