@@ -4,7 +4,7 @@
 
 <p>Your application status is now:</p>
 
-<strong>{{ $review->status }}</strong>
+<strong>{{ $review->application_status }}</strong>
 
 <strong>Check the website for more info.</strong>
 
