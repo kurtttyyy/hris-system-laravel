@@ -94,6 +94,7 @@
         'salary:id,user_id,salary',
       ])
       ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+      ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['approved'])
       ->get();
 
     if (
