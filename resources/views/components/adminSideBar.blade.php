@@ -49,6 +49,33 @@
       })
       ->count();
   }
+  if ($adminSidebarNotificationCount <= 0 && !isset($adminNotificationStats)) {
+    $adminPendingEmployeeApprovalCount = 0;
+    $adminPendingResignationCount = 0;
+    $adminHiringNotificationCount = 0;
+
+    if (\Illuminate\Support\Facades\Schema::hasTable('users')) {
+      $adminPendingEmployeeApprovalCount = \App\Models\User::query()
+        ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
+        ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
+        ->count();
+    }
+
+    if (\Illuminate\Support\Facades\Schema::hasTable('applicants')) {
+      $adminHiringNotificationCount = \App\Models\Applicant::query()->exists() ? 1 : 0;
+    }
+
+    if (\Illuminate\Support\Facades\Schema::hasTable('resignations')) {
+      $adminPendingResignationCount = \App\Models\Resignation::query()
+        ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
+        ->count();
+    }
+
+    $adminSidebarNotificationCount = $adminPendingEmployeeApprovalCount
+      + $adminPendingLeaveCount
+      + $adminHiringNotificationCount
+      + $adminPendingResignationCount;
+  }
   if (\Illuminate\Support\Facades\Schema::hasTable('applicants')) {
     $adminPendingApplicantCount = \App\Models\Applicant::query()
       ->where(function ($query) {
