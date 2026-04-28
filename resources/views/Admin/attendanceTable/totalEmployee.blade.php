@@ -51,6 +51,30 @@
       <tbody>
         @forelse ($rows as $row)
           @php
+            $formatDate = function ($value) {
+              if (empty($value)) {
+                return '-';
+              }
+
+              try {
+                return $value instanceof \DateTimeInterface
+                  ? \Carbon\Carbon::instance($value)->format('Y-m-d')
+                  : \Carbon\Carbon::parse($value)->format('Y-m-d');
+              } catch (\Throwable $e) {
+                return '-';
+              }
+            };
+            $formatTime = function ($value) {
+              if (empty($value)) {
+                return '-';
+              }
+
+              try {
+                return \Carbon\Carbon::parse($value)->format('h:i A');
+              } catch (\Throwable $e) {
+                return '-';
+              }
+            };
             $lateMinutes = (int) ($row->late_minutes ?? 0);
             $lateHours = intdiv($lateMinutes, 60);
             $remainingMinutes = $lateMinutes % 60;
@@ -70,7 +94,7 @@
               $summaryStatus = 'tardy';
             }
 
-            $attendanceDateText = optional($row->attendance_date)->format('Y-m-d') ?? '-';
+            $attendanceDateText = $formatDate($row->attendance_date ?? null);
             $missingLogs = $row->missing_time_logs ?? [];
             if (is_string($missingLogs)) {
               $decoded = json_decode($missingLogs, true);
@@ -110,10 +134,10 @@
             <td class="px-3 py-2">{{ $row->employee_name ?? '-' }}</td>
             <td class="px-3 py-2">{{ $row->main_gate ?? '-' }}</td>
             <td class="px-3 py-2">{{ $attendanceDateText }}</td>
-            <td class="px-3 py-2">{{ $row->morning_in ? \Carbon\Carbon::parse($row->morning_in)->format('h:i A') : '-' }}</td>
-            <td class="px-3 py-2">{{ $row->morning_out ? \Carbon\Carbon::parse($row->morning_out)->format('h:i A') : '-' }}</td>
-            <td class="px-3 py-2">{{ $row->afternoon_in ? \Carbon\Carbon::parse($row->afternoon_in)->format('h:i A') : '-' }}</td>
-            <td class="px-3 py-2">{{ $row->afternoon_out ? \Carbon\Carbon::parse($row->afternoon_out)->format('h:i A') : '-' }}</td>
+            <td class="px-3 py-2">{{ $formatTime($row->morning_in ?? null) }}</td>
+            <td class="px-3 py-2">{{ $formatTime($row->morning_out ?? null) }}</td>
+            <td class="px-3 py-2">{{ $formatTime($row->afternoon_in ?? null) }}</td>
+            <td class="px-3 py-2">{{ $formatTime($row->afternoon_out ?? null) }}</td>
             <td class="px-3 py-2">
               @if ($lateMinutes <= 0)
                 -

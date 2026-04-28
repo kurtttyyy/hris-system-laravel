@@ -14,11 +14,26 @@
       </thead>
       <tbody>
         @forelse ($rows as $row)
+          @php
+            $formatDate = function ($value) {
+              if (empty($value)) {
+                return '-';
+              }
+
+              try {
+                return $value instanceof \DateTimeInterface
+                  ? \Carbon\Carbon::instance($value)->format('Y-m-d')
+                  : \Carbon\Carbon::parse($value)->format('Y-m-d');
+              } catch (\Throwable $e) {
+                return '-';
+              }
+            };
+          @endphp
           <tr class="border-b border-slate-100">
             <td class="px-3 py-2">{{ $row->employee_id }}</td>
             <td class="px-3 py-2">{{ $row->employee_name ?? '-' }}</td>
             <td class="px-3 py-2">{{ $row->main_gate ?? '-' }}</td>
-            <td class="px-3 py-2">{{ optional($row->attendance_date)->format('Y-m-d') ?? '-' }}</td>
+            <td class="px-3 py-2">{{ $formatDate($row->attendance_date ?? null) }}</td>
             <td class="px-3 py-2">No attendance record</td>
             <td class="px-3 py-2">
               <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">

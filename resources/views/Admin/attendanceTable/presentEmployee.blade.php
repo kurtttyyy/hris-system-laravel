@@ -18,6 +18,30 @@
       <tbody>
         @forelse ($rows as $row)
           @php
+            $formatDate = function ($value) {
+              if (empty($value)) {
+                return '-';
+              }
+
+              try {
+                return $value instanceof \DateTimeInterface
+                  ? \Carbon\Carbon::instance($value)->format('Y-m-d')
+                  : \Carbon\Carbon::parse($value)->format('Y-m-d');
+              } catch (\Throwable $e) {
+                return '-';
+              }
+            };
+            $formatTime = function ($value) {
+              if (empty($value)) {
+                return '-';
+              }
+
+              try {
+                return \Carbon\Carbon::parse($value)->format('h:i A');
+              } catch (\Throwable $e) {
+                return '-';
+              }
+            };
             $missing = is_array($row->missing_time_logs) ? $row->missing_time_logs : [];
             $missingLabelMap = [
               'morning_in' => 'NTI',
@@ -32,15 +56,15 @@
             <td class="px-3 py-2">{{ $row->employee_name ?? '-' }}</td>
             <td class="px-3 py-2">{{ $row->main_gate ?? '-' }}</td>
             <td class="px-3 py-2">
-              {{ optional($row->attendance_date)->format('Y-m-d') ?? '-' }}
+              {{ $formatDate($row->attendance_date ?? null) }}
               @if (!empty($row->is_holiday_present))
                 <span class="ml-1 rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-medium text-rose-700">Holiday</span>
               @endif
             </td>
-            <td class="px-3 py-2">{{ $row->morning_in ? \Carbon\Carbon::parse($row->morning_in)->format('h:i A') : '-' }}</td>
-            <td class="px-3 py-2">{{ $row->morning_out ? \Carbon\Carbon::parse($row->morning_out)->format('h:i A') : '-' }}</td>
-            <td class="px-3 py-2">{{ $row->afternoon_in ? \Carbon\Carbon::parse($row->afternoon_in)->format('h:i A') : '-' }}</td>
-            <td class="px-3 py-2">{{ $row->afternoon_out ? \Carbon\Carbon::parse($row->afternoon_out)->format('h:i A') : '-' }}</td>
+            <td class="px-3 py-2">{{ $formatTime($row->morning_in ?? null) }}</td>
+            <td class="px-3 py-2">{{ $formatTime($row->morning_out ?? null) }}</td>
+            <td class="px-3 py-2">{{ $formatTime($row->afternoon_in ?? null) }}</td>
+            <td class="px-3 py-2">{{ $formatTime($row->afternoon_out ?? null) }}</td>
             <td class="px-3 py-2">{{ !empty($missingLabels) ? implode(', ', $missingLabels) : '-' }}</td>
           </tr>
         @empty

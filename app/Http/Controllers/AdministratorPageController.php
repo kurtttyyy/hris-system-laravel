@@ -1635,6 +1635,23 @@ class AdministratorPageController extends Controller
         });
     }
 
+    private function formatAttendanceDateValue($value): ?string
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            if ($value instanceof \DateTimeInterface) {
+                return Carbon::instance($value)->toDateString();
+            }
+
+            return Carbon::parse($value)->toDateString();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
     private function attendanceRecordSelectColumns(): array
     {
         static $columns = null;
@@ -2287,7 +2304,7 @@ class AdministratorPageController extends Controller
 
         return $absences
             ->sortBy(function ($row) {
-                $date = optional($row->attendance_date)->format('Y-m-d') ?? '';
+                $date = $this->formatAttendanceDateValue($row->attendance_date ?? null) ?? '';
                 return $date.'|'.$this->normalizeEmployeeId($row->employee_id);
             })
             ->values();
@@ -2312,14 +2329,7 @@ class AdministratorPageController extends Controller
                     return $carry;
                 }
 
-                $date = optional($row->attendance_date)->format('Y-m-d');
-                if (!$date) {
-                    try {
-                        $date = Carbon::parse($row->attendance_date)->toDateString();
-                    } catch (\Throwable $e) {
-                        $date = null;
-                    }
-                }
+                $date = $this->formatAttendanceDateValue($row->attendance_date ?? null);
 
                 if (!$date) {
                     return $carry;
@@ -2403,7 +2413,7 @@ class AdministratorPageController extends Controller
 
         return $expanded
             ->sortBy(function ($row) {
-                $date = optional($row->attendance_date)->format('Y-m-d') ?? '';
+                $date = $this->formatAttendanceDateValue($row->attendance_date ?? null) ?? '';
                 return $date.'|'.$this->normalizeEmployeeId($row->employee_id);
             })
             ->values();
