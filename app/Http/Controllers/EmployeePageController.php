@@ -24,6 +24,12 @@ class EmployeePageController extends Controller
 
     public function display_home(){  // Employee Home page
         $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login_display')->withErrors([
+                'email' => 'Please sign in to continue.',
+            ]);
+        }
+
         $selectedMonth = now()->format('Y-m');
         $leaveMetrics = $this->buildEmployeeLeaveMetrics($user, $selectedMonth);
         $attendanceMetrics = $this->buildEmployeeAttendanceMetrics($user, $selectedMonth);
