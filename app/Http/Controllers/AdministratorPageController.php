@@ -1660,7 +1660,7 @@ class AdministratorPageController extends Controller
             return $columns;
         }
 
-        $baseColumns = [
+        $wantedColumns = [
             'id',
             'attendance_upload_id',
             'employee_id',
@@ -1673,9 +1673,6 @@ class AdministratorPageController extends Controller
             'missing_time_logs',
             'is_absent',
             'is_tardy',
-        ];
-
-        $optionalColumns = [
             'employee_name',
             'main_gate',
             'job_type',
@@ -1683,8 +1680,10 @@ class AdministratorPageController extends Controller
             'is_holiday_present',
         ];
 
-        $columns = collect($baseColumns)
-            ->concat(collect($optionalColumns)->filter(fn ($column) => Schema::hasColumn('attendance_records', $column)))
+        $availableColumns = collect(Schema::getColumnListing('attendance_records'))->flip();
+
+        $columns = collect($wantedColumns)
+            ->filter(fn ($column) => $availableColumns->has($column))
             ->unique()
             ->values()
             ->all();
@@ -2008,6 +2007,7 @@ class AdministratorPageController extends Controller
         $hasDepartmentColumn = Schema::hasColumn('attendance_records', 'department');
         $hasMainGateColumn = Schema::hasColumn('attendance_records', 'main_gate');
         $hasJobTypeColumn = Schema::hasColumn('attendance_records', 'job_type');
+        $hasHolidayPresentColumn = Schema::hasColumn('attendance_records', 'is_holiday_present');
         $now = now();
         $recordsToInsert = [];
 
@@ -2050,6 +2050,9 @@ class AdministratorPageController extends Controller
             }
             if ($hasJobTypeColumn) {
                 $record['job_type'] = $this->normalizeJobType($employeeJobTypeMap?->get($employeeId));
+            }
+            if ($hasHolidayPresentColumn) {
+                $record['is_holiday_present'] = true;
             }
 
             $recordsToInsert[] = $record;

@@ -22,6 +22,7 @@ class AttendanceRecord extends Model
         'missing_time_logs',
         'is_absent',
         'is_tardy',
+        'is_holiday_present',
     ];
 
     protected $casts = [
@@ -30,5 +31,6 @@ class AttendanceRecord extends Model
         'missing_time_logs' => 'array',
         'is_absent' => 'boolean',
         'is_tardy' => 'boolean',
+        'is_holiday_present' => 'boolean',
     ];
 }
