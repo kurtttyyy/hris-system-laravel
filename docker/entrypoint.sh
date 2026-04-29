@@ -73,12 +73,6 @@ touch /var/www/html/storage/logs/laravel.log
 chown www-data:www-data /var/www/html/storage/logs/laravel.log
 tail -n 0 -F /var/www/html/storage/logs/laravel.log >&2 &
 
-if [ -z "${APP_KEY:-}" ] && [ "${APP_ENV:-production}" = "production" ]; then
-    echo "APP_KEY is not set. Set a fixed APP_KEY in Railway before starting production." >&2
-    echo "A temporary APP_KEY changes on every deploy and invalidates encrypted sessions/cookies." >&2
-    exit 1
-fi
-
 if [ -z "${APP_KEY:-}" ]; then
     echo "APP_KEY is not set. Generating a temporary key for this container." >&2
     export APP_KEY="$(php artisan key:generate --show)"
