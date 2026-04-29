@@ -58,7 +58,9 @@ if [ -z "${APP_KEY:-}" ]; then
 fi
 
 php artisan migrate --force
-php artisan db:seed --force
+if [ "${RUN_DATABASE_SEEDER:-false}" = "true" ]; then
+    php artisan db:seed --force
+fi
 php artisan storage:link || true
 
 exec "$@"
