@@ -28,6 +28,27 @@ ln -s /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm
 
 rm -f /var/www/html/bootstrap/cache/*.php
 
+if [ -z "${DB_CONNECTION:-}" ] && [ -n "${MYSQLHOST:-}" ]; then
+    export DB_CONNECTION=mysql
+fi
+
+if [ "${DB_CONNECTION:-sqlite}" = "mysql" ]; then
+    export DB_HOST="${DB_HOST:-${MYSQLHOST:-}}"
+    export DB_PORT="${DB_PORT:-${MYSQLPORT:-3306}}"
+    export DB_DATABASE="${DB_DATABASE:-${MYSQLDATABASE:-}}"
+    export DB_USERNAME="${DB_USERNAME:-${MYSQLUSER:-}}"
+    export DB_PASSWORD="${DB_PASSWORD:-${MYSQLPASSWORD:-}}"
+fi
+
+if [ "${APP_ENV:-production}" = "production" ] \
+    && [ "${DB_CONNECTION:-sqlite}" = "sqlite" ] \
+    && [ "${ALLOW_EPHEMERAL_SQLITE:-false}" != "true" ]; then
+    echo "Refusing to start production with SQLite inside the container." >&2
+    echo "Railway redeploys replace the container filesystem, so SQLite data stored here will disappear." >&2
+    echo "Attach a Railway MySQL database and set DB_CONNECTION=mysql, or set ALLOW_EPHEMERAL_SQLITE=true only if you accept data loss." >&2
+    exit 1
+fi
+
 mkdir -p \
     /var/www/html/bootstrap/cache \
     /var/www/html/database \

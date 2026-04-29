@@ -2933,27 +2933,27 @@
         <div class="flex gap-6 px-6 pt-4 border-b text-sm">
           <button @click="tab='overview'" :class="tab==='overview' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
             <span>Overview</span>
-            <span x-show="tabMissingCount('overview') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('overview')"></span>
+            <span x-show="tabMissingCount('overview') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white">!</span>
           </button>
           <button @click="tab='personal'" :class="tab==='personal' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
             <span>Personal Details</span>
-            <span x-show="tabMissingCount('personal') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('personal')"></span>
+            <span x-show="tabMissingCount('personal') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white">!</span>
           </button>
           <button @click="tab='performance'" :class="tab==='performance' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
             <span>Performance</span>
-            <span x-show="tabMissingCount('performance') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('performance')"></span>
+            <span x-show="tabMissingCount('performance') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white">!</span>
           </button>
           <button @click="tab='documents'" :class="tab==='documents' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
             <span>Documents</span>
-            <span x-show="tabMissingCount('documents') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('documents')"></span>
+            <span x-show="tabMissingCount('documents') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white">!</span>
           </button>
           <button @click="tab='record'" :class="tab==='record' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
             <span>Service Record</span>
-            <span x-show="tabMissingCount('record') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('record')"></span>
+            <span x-show="tabMissingCount('record') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white">!</span>
           </button>
           <button @click="tab='biometric'" :class="tab==='biometric' ? 'text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-2' : 'text-gray-500'" class="inline-flex items-center gap-1.5">
             <span>Biometric</span>
-            <span x-show="tabMissingCount('biometric') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white" x-text="tabMissingCount('biometric')"></span>
+            <span x-show="tabMissingCount('biometric') > 0" class="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold leading-none text-white">!</span>
           </button>
         </div>
 
