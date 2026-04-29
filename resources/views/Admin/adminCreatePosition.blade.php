@@ -164,6 +164,41 @@
   <main class="flex-1 ml-16 transition-all duration-300">
     <div class="p-4 pt-20 md:p-8">
       <div class="position-shell space-y-6">
+        @if (session('position_created') || request()->boolean('created'))
+          <div
+            id="position-success-modal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="position-success-title"
+          >
+            <div class="w-full max-w-md rounded-3xl border border-emerald-100 bg-white p-6 shadow-2xl">
+              <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <i class="fa-solid fa-check text-xl"></i>
+              </div>
+              <div class="mt-5 text-center">
+                <h2 id="position-success-title" class="text-2xl font-black text-slate-900">Successfully created</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-500">Do you want to add more positions?</p>
+              </div>
+              <div class="mt-6 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  id="position-add-more-yes"
+                  class="inline-flex items-center justify-center rounded-2xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-800"
+                >
+                  Yes
+                </button>
+                <a
+                  href="{{ route('admin.adminPosition') }}"
+                  class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                >
+                  No
+                </a>
+              </div>
+            </div>
+          </div>
+        @endif
+
         <section class="position-hero px-6 py-7 text-white md:px-8 md:py-8">
           <div class="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div class="max-w-3xl">
@@ -394,6 +429,21 @@
       }
     });
   });
+
+  const positionSuccessModal = document.getElementById('position-success-modal');
+  const addMoreButton = document.getElementById('position-add-more-yes');
+  if (positionSuccessModal && addMoreButton) {
+    if (window.history.replaceState) {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('created');
+      window.history.replaceState({}, document.title, cleanUrl.toString());
+    }
+
+    addMoreButton.addEventListener('click', () => {
+      positionSuccessModal.classList.add('hidden');
+      document.querySelector('input[name="title"]')?.focus();
+    });
+  }
 </script>
 
 <script>

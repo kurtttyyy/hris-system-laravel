@@ -227,7 +227,10 @@ class AdministratorStoreController extends Controller
             'passionate' => $attrs['passionate'],
         ]);
 
-        return redirect()->back()->with('success','Success Added Position');
+        return redirect()
+            ->route('admin.adminCreatePosition', ['created' => 1])
+            ->with('success', 'Position successfully created.')
+            ->with('position_created', true);
     }
 
     public function store_interview(Request $request){ /// Update applicant status to "For Interview" when interview is scheduled
@@ -2558,7 +2561,7 @@ class AdministratorStoreController extends Controller
         } else {
             $employeeCreatePayload = [
                 'user_id' => (int) $attrs['user_id'],
-                'employee_id' => 'EMP-'.str_pad((string) $attrs['user_id'], 5, '0', STR_PAD_LEFT),
+                'employee_id' => '',
                 'employement_date' => $effectiveDateHired ?? (optional($user->created_at)->toDateString() ?? now()->toDateString()),
                 'birthday' => now()->subYears(18)->toDateString(),
                 'account_number' => 'N/A',

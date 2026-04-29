@@ -1,3 +1,21 @@
+<script>
+window.displayEmployeeId = function displayEmployeeId(employee, emptyValue = '-') {
+  const value = String(employee?.employee?.employee_id ?? '').trim();
+  if (!value) {
+    return emptyValue;
+  }
+
+  const userId = employee?.id;
+  if (userId) {
+    const generatedId = `EMP-${String(userId).padStart(5, '0')}`;
+    if (value.toUpperCase() === generatedId) {
+      return emptyValue;
+    }
+  }
+
+  return value;
+};
+</script>
 
 <div x-show="tab === 'biometric'" x-transition class="w-full p-6 space-y-6">
     <div class="p-8 space-y-6">
@@ -131,7 +149,7 @@
       <div class="border border-gray-500">
         <div class="row row-split">
           <span class="label split-label">ID Number:</span>
-          <span class="value split-value" x-text="selectedEmployee?.employee?.employee_id ?? '-'"></span>
+          <span class="value split-value" x-text="displayEmployeeId(selectedEmployee)"></span>
         </div>
         <div class="row row-split">
           <span class="label split-label">Last Name:</span>
@@ -428,7 +446,7 @@
 
   <div class="row">
     <span class="label">ID Number:</span>
-    <span class="value" x-text="selectedEmployee?.employee?.employee_id ?? '-'"></span>
+    <span class="value" x-text="displayEmployeeId(selectedEmployee)"></span>
   </div>
 
   <div class="row">
@@ -485,7 +503,15 @@
           <div class="edit-field"><label class="edit-label">Last Name</label><input class="edit-input" name="last" x-model="selectedEmployee.last_name"></div>
           <div class="edit-field"><label class="edit-label">First Name</label><input class="edit-input" name="first" x-model="selectedEmployee.first_name"></div>
           <div class="edit-field"><label class="edit-label">Middle Name</label><input class="edit-input" name="middle" x-model="selectedEmployee.middle_name"></div>
-          <div class="edit-field"><label class="edit-label">ID Number</label><input class="edit-input" name="employee_id" x-model="selectedEmployee.employee.employee_id"></div>
+          <div class="edit-field">
+            <label class="edit-label">ID Number</label>
+            <input
+              class="edit-input"
+              name="employee_id"
+              :value="displayEmployeeId(selectedEmployee, '')"
+              @input="selectedEmployee.employee.employee_id = $event.target.value"
+            >
+          </div>
           <div class="edit-field"><label class="edit-label">Account Number</label><input class="edit-input" name="account_number" x-model="selectedEmployee.employee.account_number"></div>
           <div class="edit-field"><label class="edit-label">Sex</label><select name="gender" class="edit-input" x-model="selectedEmployee.employee.sex"><option value="">Select sex</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
           <div class="edit-field"><label class="edit-label">Civil Status</label><input class="edit-input" name="civil_status" x-model="selectedEmployee.employee.civil_status"></div>

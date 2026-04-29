@@ -147,7 +147,7 @@ class User extends Authenticatable
         $employee = Employee::firstOrNew(['user_id' => $this->id]);
 
         if (!$employee->exists) {
-            $employee->employee_id = 'EMP-'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
+            $employee->employee_id = '';
             $employee->employement_date = optional($this->created_at)->toDateString() ?? now()->toDateString();
             $employee->birthday = now()->subYears(18)->toDateString();
             $employee->account_number = 'N/A';

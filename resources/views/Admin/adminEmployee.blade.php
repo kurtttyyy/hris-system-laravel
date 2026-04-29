@@ -108,6 +108,20 @@
         'school n/a, year n/a',
       ], true);
     };
+    $displayEmployeeId = function ($emp, string $emptyValue = '-') {
+      $value = trim((string) (data_get($emp, 'employee.employee_id') ?: ($emp->employee_id ?? '')));
+      if ($value === '') {
+        return $emptyValue;
+      }
+
+      $userId = (int) ($emp->id ?? 0);
+      $generatedId = $userId > 0 ? 'EMP-'.str_pad((string) $userId, 5, '0', STR_PAD_LEFT) : '';
+      if ($generatedId !== '' && strcasecmp($value, $generatedId) === 0) {
+        return $emptyValue;
+      }
+
+      return $value;
+    };
     $employeeAddressParts = function ($emp): array {
       $rawAddress = trim((string) (data_get($emp, 'employee.address') ?: data_get($emp, 'applicant.address') ?: ($emp->address ?? '')));
       if ($rawAddress === '') {
@@ -1698,7 +1712,7 @@
         return $text;
       };
 
-      $employeeTableRecords = $employee->map(function ($emp, $index) use ($resolveDepartment, $blankTableValue, $resolveDisplayAccountStatus, $wasRehiredAfterResignation, $isMissingEmployeeValue, $employeeHasMissingAddressParts) {
+      $employeeTableRecords = $employee->map(function ($emp, $index) use ($resolveDepartment, $blankTableValue, $resolveDisplayAccountStatus, $wasRehiredAfterResignation, $isMissingEmployeeValue, $employeeHasMissingAddressParts, $displayEmployeeId) {
         $themeSeed = (string) ($emp->id ?? data_get($emp, 'employee.employee_id') ?? $index);
         $hue = ((int) sprintf('%u', crc32($themeSeed))) % 360;
         $headerStart = "hsl({$hue}, 78%, 58%)";
@@ -1792,9 +1806,10 @@
           ->filter()
           ->implode(' | ');
 
-        $missingRequiredDocumentsCount = (int) data_get($emp, 'missing_required_documents_count', 0);
+          $missingRequiredDocumentsCount = (int) data_get($emp, 'missing_required_documents_count', 0);
+          $employeeIdDisplay = $displayEmployeeId($emp, '');
 
-        $hasMissingInfo = collect([
+          $hasMissingInfo = collect([
           data_get($emp, 'employee.account_number'),
           data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender'),
           data_get($emp, 'employee.civil_status'),
@@ -1815,7 +1830,7 @@
         return [
           'no' => $index + 1,
           'name' => $blankTableValue(trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', ')),
-          'employee_id' => $blankTableValue(data_get($emp, 'employee.employee_id') ?: ($emp->employee_id ?? '')),
+          'employee_id' => $blankTableValue($employeeIdDisplay),
           'account_number' => $blankTableValue(trim((string) (data_get($emp, 'employee.account_number') ?: data_get($emp, 'employee.user_id') ?: ($emp->account_number ?? $emp->id ?? '')))),
           'sex' => $blankTableValue(trim((string) (data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender') ?: ($emp->gender ?? '')))),
           'civil_status' => $blankTableValue(trim((string) (data_get($emp, 'employee.civil_status') ?: ($emp->civil_status ?? '')))),
@@ -2453,7 +2468,7 @@
             ->sum();
 
           $biometricMissingCount = collect([
-            data_get($emp, 'employee.employee_id'),
+            $displayEmployeeId($emp, ''),
             data_get($emp, 'employee.account_number'),
             $sexValue,
             data_get($emp, 'employee.civil_status'),
@@ -2524,7 +2539,7 @@
                 <div class="mt-4 space-y-1 text-gray-500 text-sm">
                     <div class="flex items-center gap-2">
                         <i class="fa-regular fa-id-badge"></i>
-                        {{ $emp->employee->employee_id ?? '' }}
+                        {{ $displayEmployeeId($emp, '') }}
                     </div>
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-sitemap"></i>
@@ -3005,7 +3020,7 @@
 </body>
 
 @php
-  $adminEmployeeExcelRecords = $employee->map(function ($emp) use ($blankTableValue, $resolveDisplayAccountStatus, $wasRehiredAfterResignation) {
+  $adminEmployeeExcelRecords = $employee->map(function ($emp) use ($blankTableValue, $resolveDisplayAccountStatus, $wasRehiredAfterResignation, $displayEmployeeId) {
     $classValue = trim((string) (data_get($emp, 'employee.classification') ?: data_get($emp, 'applicant.position.employment') ?: ($emp->classification ?? '')));
     $employmentCode = match (strtolower($classValue)) {
       'full-time', 'full time' => 'FT',
@@ -3097,7 +3112,7 @@
 
     return [
       'company' => 'Northeastern College, Inc.',
-      'employee_id' => $blankTableValue(data_get($emp, 'employee.employee_id') ?: ($emp->employee_id ?? '')),
+      'employee_id' => $blankTableValue($displayEmployeeId($emp, '')),
       'name' => $blankTableValue(trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', ')),
       'account_number' => $blankTableValue(trim((string) (data_get($emp, 'employee.account_number') ?: data_get($emp, 'employee.user_id') ?: ($emp->account_number ?? $emp->id ?? '')))),
       'sex' => $blankTableValue(trim((string) (data_get($emp, 'employee.sex') ?: data_get($emp, 'employee.gender') ?: ($emp->gender ?? '')))),
