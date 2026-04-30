@@ -65,6 +65,30 @@ fi
 
 echo "Database startup check: DB_CONNECTION='${DB_CONNECTION:-unset}', DB_HOST set=$([ -n "${DB_HOST:-}" ] && echo yes || echo no), MYSQLHOST set=$([ -n "${MYSQLHOST:-}" ] && echo yes || echo no), DB_URL set=$([ -n "${DB_URL:-}" ] && echo yes || echo no)" >&2
 
+if [ "${DB_CONNECTION:-sqlite}" = "mysql" ] && [ -z "${DB_URL:-}" ]; then
+    missing_mysql_env=false
+
+    if [ -z "${DB_HOST:-}" ]; then
+        echo "DB_CONNECTION=mysql but DB_HOST/MYSQLHOST is not set." >&2
+        missing_mysql_env=true
+    fi
+
+    if [ -z "${DB_DATABASE:-}" ]; then
+        echo "DB_CONNECTION=mysql but DB_DATABASE/MYSQLDATABASE is not set." >&2
+        missing_mysql_env=true
+    fi
+
+    if [ -z "${DB_USERNAME:-}" ]; then
+        echo "DB_CONNECTION=mysql but DB_USERNAME/MYSQLUSER is not set." >&2
+        missing_mysql_env=true
+    fi
+
+    if [ "$missing_mysql_env" = "true" ]; then
+        echo "Attach a Railway MySQL database to this service and set the MySQL environment variables, or set DB_URL to Railway's MySQL connection URL." >&2
+        exit 1
+    fi
+fi
+
 if [ "${APP_ENV:-production}" = "production" ] \
     && [ "${DB_CONNECTION:-sqlite}" = "sqlite" ] \
     && [ "${ALLOW_EPHEMERAL_SQLITE:-false}" != "true" ]; then

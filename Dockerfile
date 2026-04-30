@@ -67,8 +67,14 @@ RUN chmod +x /usr/local/bin/entrypoint \
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 ENV LOG_CHANNEL=stderr
 ENV LOG_STACK=stderr
+ENV APP_ENV=production
+ENV APP_DEBUG=false
+ENV DB_CONNECTION=mysql
+ENV DB_PORT=3306
 ENV SESSION_DRIVER=file
 ENV CACHE_STORE=file
+ENV QUEUE_CONNECTION=sync
+ENV RUN_DATABASE_SEEDER=false
 EXPOSE 8080
 
 ENTRYPOINT ["entrypoint"]
