@@ -28,8 +28,18 @@ ln -s /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm
 
 rm -f /var/www/html/bootstrap/cache/*.php
 
-if [ -z "${DB_CONNECTION:-}" ] && [ -n "${MYSQLHOST:-}" ]; then
-    export DB_CONNECTION=mysql
+if [ -z "${DB_CONNECTION:-}" ]; then
+    if [ -n "${MYSQLHOST:-}" ]; then
+        export DB_CONNECTION=mysql
+    elif [ -n "${DB_URL:-}" ] && echo "$DB_URL" | grep -Eq '^mysql(i)?://'; then
+        export DB_CONNECTION=mysql
+    elif [ -n "${DATABASE_URL:-}" ] && echo "$DATABASE_URL" | grep -Eq '^mysql(i)?://'; then
+        export DB_URL="$DATABASE_URL"
+        export DB_CONNECTION=mysql
+    elif [ -n "${MYSQL_URL:-}" ] && echo "$MYSQL_URL" | grep -Eq '^mysql(i)?://'; then
+        export DB_URL="$MYSQL_URL"
+        export DB_CONNECTION=mysql
+    fi
 fi
 
 if [ "${DB_CONNECTION:-sqlite}" = "mysql" ]; then
