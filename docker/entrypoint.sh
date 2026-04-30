@@ -50,7 +50,7 @@ if [ -z "${DB_URL:-}" ]; then
 fi
 
 if [ -z "${DB_CONNECTION:-}" ] || [ "${DB_CONNECTION:-}" = "sqlite" ]; then
-    if [ -n "${MYSQLHOST:-}" ] || [ -n "${DB_URL:-}" ]; then
+    if [ -n "${MYSQLHOST:-}" ] || [ -n "${DB_HOST:-}" ] || [ -n "${DB_URL:-}" ]; then
         export DB_CONNECTION=mysql
     fi
 fi
@@ -63,7 +63,7 @@ if [ "${DB_CONNECTION:-sqlite}" = "mysql" ]; then
     export DB_PASSWORD="${DB_PASSWORD:-${MYSQLPASSWORD:-}}"
 fi
 
-echo "Database startup check: DB_CONNECTION='${DB_CONNECTION:-unset}', MYSQLHOST set=$([ -n "${MYSQLHOST:-}" ] && echo yes || echo no), DB_URL set=$([ -n "${DB_URL:-}" ] && echo yes || echo no)" >&2
+echo "Database startup check: DB_CONNECTION='${DB_CONNECTION:-unset}', DB_HOST set=$([ -n "${DB_HOST:-}" ] && echo yes || echo no), MYSQLHOST set=$([ -n "${MYSQLHOST:-}" ] && echo yes || echo no), DB_URL set=$([ -n "${DB_URL:-}" ] && echo yes || echo no)" >&2
 
 if [ "${APP_ENV:-production}" = "production" ] \
     && [ "${DB_CONNECTION:-sqlite}" = "sqlite" ] \
