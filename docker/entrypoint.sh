@@ -28,16 +28,29 @@ ln -s /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm
 
 rm -f /var/www/html/bootstrap/cache/*.php
 
-if [ -z "${DB_CONNECTION:-}" ]; then
-    if [ -n "${MYSQLHOST:-}" ]; then
-        export DB_CONNECTION=mysql
-    elif [ -n "${DB_URL:-}" ] && echo "$DB_URL" | grep -Eq '^mysql(i)?://'; then
-        export DB_CONNECTION=mysql
-    elif [ -n "${DATABASE_URL:-}" ] && echo "$DATABASE_URL" | grep -Eq '^mysql(i)?://'; then
+normalize_env_value() {
+    printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
+DB_CONNECTION_NORMALIZED="$(normalize_env_value "${DB_CONNECTION:-}")"
+if [ -n "$DB_CONNECTION_NORMALIZED" ]; then
+    export DB_CONNECTION="$DB_CONNECTION_NORMALIZED"
+fi
+
+if [ -z "${DB_URL:-}" ]; then
+    if [ -n "${DATABASE_URL:-}" ] && echo "$DATABASE_URL" | grep -Eq '^mysql(i)?://'; then
         export DB_URL="$DATABASE_URL"
-        export DB_CONNECTION=mysql
     elif [ -n "${MYSQL_URL:-}" ] && echo "$MYSQL_URL" | grep -Eq '^mysql(i)?://'; then
         export DB_URL="$MYSQL_URL"
+    elif [ -n "${MYSQL_PRIVATE_URL:-}" ] && echo "$MYSQL_PRIVATE_URL" | grep -Eq '^mysql(i)?://'; then
+        export DB_URL="$MYSQL_PRIVATE_URL"
+    elif [ -n "${MYSQL_PUBLIC_URL:-}" ] && echo "$MYSQL_PUBLIC_URL" | grep -Eq '^mysql(i)?://'; then
+        export DB_URL="$MYSQL_PUBLIC_URL"
+    fi
+fi
+
+if [ -z "${DB_CONNECTION:-}" ] || [ "${DB_CONNECTION:-}" = "sqlite" ]; then
+    if [ -n "${MYSQLHOST:-}" ] || [ -n "${DB_URL:-}" ]; then
         export DB_CONNECTION=mysql
     fi
 fi
@@ -49,6 +62,8 @@ if [ "${DB_CONNECTION:-sqlite}" = "mysql" ]; then
     export DB_USERNAME="${DB_USERNAME:-${MYSQLUSER:-}}"
     export DB_PASSWORD="${DB_PASSWORD:-${MYSQLPASSWORD:-}}"
 fi
+
+echo "Database startup check: DB_CONNECTION='${DB_CONNECTION:-unset}', MYSQLHOST set=$([ -n "${MYSQLHOST:-}" ] && echo yes || echo no), DB_URL set=$([ -n "${DB_URL:-}" ] && echo yes || echo no)" >&2
 
 if [ "${APP_ENV:-production}" = "production" ] \
     && [ "${DB_CONNECTION:-sqlite}" = "sqlite" ] \
