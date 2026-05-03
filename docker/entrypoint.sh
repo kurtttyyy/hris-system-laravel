@@ -145,4 +145,16 @@ if [ "${RUN_DATABASE_SEEDER:-false}" = "true" ]; then
 fi
 php artisan storage:link || true
 
+if [ "${RUN_QUEUE_WORKER:-false}" = "true" ]; then
+    if [ "${QUEUE_CONNECTION:-sync}" = "sync" ]; then
+        echo "Queue worker skipped because QUEUE_CONNECTION=sync runs jobs inline." >&2
+    else
+        echo "Starting queue worker: queue:work ${QUEUE_CONNECTION:-database}" >&2
+        php artisan queue:work "${QUEUE_CONNECTION:-database}" \
+            --sleep="${QUEUE_WORKER_SLEEP:-3}" \
+            --tries="${QUEUE_WORKER_TRIES:-3}" \
+            --timeout="${QUEUE_WORKER_TIMEOUT:-90}" >&2 &
+    fi
+fi
+
 exec "$@"

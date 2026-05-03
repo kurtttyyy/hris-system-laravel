@@ -14,8 +14,9 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER', 'resend'),
 
+    'to_override' => env('MAIL_TO_OVERRIDE',null),
     /*
     |--------------------------------------------------------------------------
     | Mailer Configurations

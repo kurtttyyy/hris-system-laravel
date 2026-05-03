@@ -268,12 +268,13 @@ class AdministratorStoreController extends Controller
         $successMessage = 'Success Added Interview';
 
         try {
-            Mail::to($store->applicant->email)
+            Mail::to($this->mailToAddress($store->applicant->email))
                     ->send(new ApplicationInterviewMail($store));
         } catch (\Throwable $exception) {
             Log::warning('Interview created but applicant email could not be sent.', [
                 'applicant_id' => $store->applicant?->id,
                 'email' => $store->applicant?->email,
+                'to_override' => config('mail.to_override'),
                 'error' => $exception->getMessage(),
             ]);
 
@@ -2209,12 +2210,13 @@ class AdministratorStoreController extends Controller
         $successMessage = 'Success Update Application Status';
 
         try {
-            Mail::to($review->email)
+            Mail::to($this->mailToAddress($review->email))
                     ->send(new ApplicationUpdatedMail($review));
         } catch (\Throwable $exception) {
             Log::warning('Applicant status updated but notification email could not be sent.', [
                 'applicant_id' => $review->id,
                 'email' => $review->email,
+                'to_override' => config('mail.to_override'),
                 'status' => $attrs['status'],
                 'error' => $exception->getMessage(),
             ]);
@@ -4054,5 +4056,11 @@ class AdministratorStoreController extends Controller
         }
     }
 
+    private function mailToAddress(?string $recipient): string
+    {
+        $override = trim((string) config('mail.to_override'));
+
+        return $override !== '' ? $override : (string) $recipient;
+    }
 
 }
