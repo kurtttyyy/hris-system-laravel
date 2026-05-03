@@ -7,6 +7,11 @@ cat > /etc/apache2/ports.conf <<EOF
 Listen ${PORT}
 EOF
 
+cat > /etc/apache2/conf-available/server-name.conf <<EOF
+ServerName ${APP_HOST:-localhost}
+EOF
+a2enconf server-name >/dev/null
+
 cat > /etc/apache2/sites-available/000-default.conf <<EOF
 <VirtualHost *:${PORT}>
     ServerAdmin webmaster@localhost
