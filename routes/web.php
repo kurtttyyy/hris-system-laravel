@@ -10,6 +10,10 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\RegisterLoginController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/csrf-token', function () {
+    return response()->json(['token' => csrf_token()]);
+})->name('csrf.token');
+
 Route::controller(PageController::class)->group(function () {
     Route::get('/login', 'display_login')->name('login_display');
     Route::get('/register', 'display_register')->name('register');
@@ -157,4 +161,3 @@ Route::controller(AdministratorStoreController::class)->group(function () {
     Route::post('system/delete/interview/{id}', 'destroy_interview')->name('admin.interviewCancel');
     Route::post('system/delete/employee/{id}', 'destroy_employee')->name('admin.destroyEmployee');
 });
-
