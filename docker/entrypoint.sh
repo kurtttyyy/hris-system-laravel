@@ -71,6 +71,21 @@ fi
 echo "Database startup check: DB_CONNECTION='${DB_CONNECTION:-unset}', DB_HOST set=$([ -n "${DB_HOST:-}" ] && echo yes || echo no), MYSQLHOST set=$([ -n "${MYSQLHOST:-}" ] && echo yes || echo no), DB_URL set=$([ -n "${DB_URL:-}" ] && echo yes || echo no)" >&2
 echo "Session startup check: SESSION_DRIVER='${SESSION_DRIVER:-unset}', SESSION_DOMAIN set=$([ -n "${SESSION_DOMAIN:-}" ] && echo yes || echo no), SESSION_SECURE_COOKIE='${SESSION_SECURE_COOKIE:-unset}'" >&2
 
+MAIL_MAILER_NORMALIZED="$(normalize_env_value "${MAIL_MAILER:-}")"
+if [ -n "${RESEND_API_KEY:-}" ]; then
+    if [ "$MAIL_MAILER_NORMALIZED" = "resend" ] || [ "$MAIL_MAILER_NORMALIZED" = "smtp" ] || [ -z "$MAIL_MAILER_NORMALIZED" ]; then
+        export MAIL_MAILER=smtp
+        export MAIL_HOST="${MAIL_HOST:-smtp.resend.com}"
+        export MAIL_PORT="${MAIL_PORT:-587}"
+        export MAIL_USERNAME="${MAIL_USERNAME:-resend}"
+        export MAIL_PASSWORD="${MAIL_PASSWORD:-${RESEND_API_KEY}}"
+        export MAIL_SCHEME="${MAIL_SCHEME:-tls}"
+        export MAIL_ENCRYPTION="${MAIL_ENCRYPTION:-tls}"
+    fi
+fi
+
+echo "Mail startup check: MAIL_MAILER='${MAIL_MAILER:-unset}', MAIL_HOST set=$([ -n "${MAIL_HOST:-}" ] && echo yes || echo no), MAIL_USERNAME set=$([ -n "${MAIL_USERNAME:-}" ] && echo yes || echo no), MAIL_PASSWORD set=$([ -n "${MAIL_PASSWORD:-}" ] && echo yes || echo no), MAIL_FROM_ADDRESS set=$([ -n "${MAIL_FROM_ADDRESS:-}" ] && echo yes || echo no), MAIL_TO_OVERRIDE set=$([ -n "${MAIL_TO_OVERRIDE:-}" ] && echo yes || echo no)" >&2
+
 if [ "${DB_CONNECTION:-sqlite}" = "mysql" ] && [ -z "${DB_URL:-}" ]; then
     missing_mysql_env=false
 

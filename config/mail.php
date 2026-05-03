@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'resend'),
+    'default' => env('MAIL_MAILER', 'smtp'),
 
     'to_override' => env('MAIL_TO_OVERRIDE',null),
     /*
@@ -112,8 +112,8 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', 'Example'),
+        'address' => env('MAIL_FROM_ADDRESS') ?: 'hello@example.com',
+        'name' => env('MAIL_FROM_NAME') ?: 'Example',
     ],
 
 ];
