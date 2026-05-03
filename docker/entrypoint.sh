@@ -69,6 +69,7 @@ if [ "${DB_CONNECTION:-sqlite}" = "mysql" ]; then
 fi
 
 echo "Database startup check: DB_CONNECTION='${DB_CONNECTION:-unset}', DB_HOST set=$([ -n "${DB_HOST:-}" ] && echo yes || echo no), MYSQLHOST set=$([ -n "${MYSQLHOST:-}" ] && echo yes || echo no), DB_URL set=$([ -n "${DB_URL:-}" ] && echo yes || echo no)" >&2
+echo "Session startup check: SESSION_DRIVER='${SESSION_DRIVER:-unset}', SESSION_DOMAIN set=$([ -n "${SESSION_DOMAIN:-}" ] && echo yes || echo no), SESSION_SECURE_COOKIE='${SESSION_SECURE_COOKIE:-unset}'" >&2
 
 if [ "${DB_CONNECTION:-sqlite}" = "mysql" ] && [ -z "${DB_URL:-}" ]; then
     missing_mysql_env=false

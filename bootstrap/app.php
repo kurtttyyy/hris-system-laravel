@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Symfony\Component\HttpFoundation\Request as SymfonyRequest;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -11,6 +12,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(
+            at: '*',
+            headers: SymfonyRequest::HEADER_X_FORWARDED_FOR
+                | SymfonyRequest::HEADER_X_FORWARDED_HOST
+                | SymfonyRequest::HEADER_X_FORWARDED_PORT
+                | SymfonyRequest::HEADER_X_FORWARDED_PROTO
+        );
+
         $middleware->web(append: [
             \App\Http\TabSessionAuth::class,
         ]);
