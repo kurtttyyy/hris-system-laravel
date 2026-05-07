@@ -1277,6 +1277,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (applicationForm) {
         applicationForm.setAttribute('novalidate', 'novalidate');
+        const csrfRefreshUrl = @json(route('csrf.token'));
+        const nativeSubmit = HTMLFormElement.prototype.submit.bind(applicationForm);
+        let isSubmittingApplication = false;
+
+        const refreshCsrfToken = async () => {
+            const tokenInput = applicationForm.querySelector('input[name="_token"]');
+            if (!tokenInput || !csrfRefreshUrl) return;
+
+            try {
+                const response = await fetch(csrfRefreshUrl, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) return;
+
+                const payload = await response.json();
+                if (payload?.token) {
+                    tokenInput.value = payload.token;
+                    document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', payload.token);
+                }
+            } catch (error) {
+                // Continue with the rendered token if the refresh request is unavailable.
+            }
+        };
 
         applicationForm.querySelectorAll('[required]').forEach((field) => {
             if (!hasRequiredAsterisk(field)) return;
@@ -1284,7 +1313,9 @@ document.addEventListener('DOMContentLoaded', () => {
             field.addEventListener('change', () => clearErrorHighlight(field));
         });
 
-        applicationForm.addEventListener('submit', (event) => {
+        applicationForm.addEventListener('submit', async (event) => {
+            if (isSubmittingApplication) return;
+
             event.preventDefault();
 
             const requiredFields = Array.from(applicationForm.querySelectorAll('[required]'))
@@ -1298,8 +1329,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (!invalidFields.length) {
+                isSubmittingApplication = true;
+                submitButton.disabled = true;
+                await refreshCsrfToken();
                 clearFormDraft();
-                applicationForm.submit();
+                nativeSubmit();
                 return;
             }
 

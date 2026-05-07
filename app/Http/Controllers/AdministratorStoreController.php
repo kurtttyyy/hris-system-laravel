@@ -268,16 +268,17 @@ class AdministratorStoreController extends Controller
         $successMessage = 'Success Added Interview';
 
         try {
-            Mail::to($store->applicant->email)
-                    ->send(new ApplicationInterviewMail($store));
+            Mail::to($this->mailToAddress($store->applicant->email))
+                    ->queue(new ApplicationInterviewMail($store));
         } catch (\Throwable $exception) {
-            Log::warning('Interview created but applicant email could not be sent.', [
+            Log::warning('Interview created but applicant email could not be queued.', [
                 'applicant_id' => $store->applicant?->id,
                 'email' => $store->applicant?->email,
+                'to_override' => config('mail.to_override'),
                 'error' => $exception->getMessage(),
             ]);
 
-            $successMessage .= ' Email notification was skipped because the mail server is currently unreachable.';
+            $successMessage .= ' Email notification was not queued. Please check the queue configuration.';
         }
 
         return redirect()->back()->with('success', $successMessage);
@@ -2209,17 +2210,18 @@ class AdministratorStoreController extends Controller
         $successMessage = 'Success Update Application Status';
 
         try {
-            Mail::to($review->email)
-                    ->send(new ApplicationUpdatedMail($review));
+            Mail::to($this->mailToAddress($review->email))
+                    ->queue(new ApplicationUpdatedMail($review));
         } catch (\Throwable $exception) {
-            Log::warning('Applicant status updated but notification email could not be sent.', [
+            Log::warning('Applicant status updated but notification email could not be queued.', [
                 'applicant_id' => $review->id,
                 'email' => $review->email,
+                'to_override' => config('mail.to_override'),
                 'status' => $attrs['status'],
                 'error' => $exception->getMessage(),
             ]);
 
-            $successMessage .= ' Email notification was skipped because the mail server is currently unreachable.';
+            $successMessage .= ' Email notification was not queued. Please check the queue configuration.';
         }
 
         return redirect()->back()->with('success', $successMessage);
@@ -4054,5 +4056,11 @@ class AdministratorStoreController extends Controller
         }
     }
 
+    private function mailToAddress(?string $recipient): string
+    {
+        $override = trim((string) config('mail.to_override'));
+
+        return $override !== '' ? $override : (string) $recipient;
+    }
 
 }

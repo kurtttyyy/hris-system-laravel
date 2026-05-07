@@ -49,6 +49,7 @@ RUN apt-get update \
 COPY . .
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=assets /app/public/build ./public/build
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
 
 RUN chmod +x /usr/local/bin/entrypoint \
@@ -67,8 +68,18 @@ RUN chmod +x /usr/local/bin/entrypoint \
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 ENV LOG_CHANNEL=stderr
 ENV LOG_STACK=stderr
-ENV SESSION_DRIVER=file
+ENV APP_ENV=production
+ENV APP_DEBUG=false
+ENV DB_CONNECTION=mysql
+ENV DB_PORT=3306
+ENV SESSION_DRIVER=database
 ENV CACHE_STORE=file
+ENV QUEUE_CONNECTION=database
+ENV RUN_QUEUE_WORKER=true
+ENV QUEUE_WORKER_SLEEP=3
+ENV QUEUE_WORKER_TRIES=3
+ENV QUEUE_WORKER_TIMEOUT=90
+ENV RUN_DATABASE_SEEDER=false
 EXPOSE 8080
 
 ENTRYPOINT ["entrypoint"]
