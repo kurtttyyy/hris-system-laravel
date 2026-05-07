@@ -217,6 +217,11 @@
 
     <!-- Navigation -->
     <nav class="p-2 space-y-2">
+        <!-- Main -->
+        <div class="px-4 pt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100 employee-sidebar-label">
+            Main
+        </div>
+
         <!-- Dashboard -->
         <a href="{{ route('employee.employeeHome') }}"
            data-employee-nav
@@ -330,6 +335,26 @@
 
                 <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
                 Resignation
+            </span>
+        </a>
+
+        <!-- Help -->
+        <div class="px-4 pt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100 employee-sidebar-label">
+            Help
+        </div>
+
+        <!-- Staff Guide -->
+        <a href="{{ route('employee.employeeStaffGuide') }}"
+           data-employee-nav
+           class="flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition
+                  {{ request()->routeIs('employee.employeeStaffGuide')
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'text-gray-300 hover:bg-green-600/20 hover:text-white' }}">
+
+            <i class="fa fa-book text-lg w-6 text-center"></i>
+
+            <span class="whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 employee-sidebar-label">
+                Staff Guide
             </span>
         </a>
 

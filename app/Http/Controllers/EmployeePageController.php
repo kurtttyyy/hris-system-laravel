@@ -34,7 +34,7 @@ class EmployeePageController extends Controller
         $leaveMetrics = $this->buildEmployeeLeaveMetrics($user, $selectedMonth);
         $attendanceMetrics = $this->buildEmployeeAttendanceMetrics($user, $selectedMonth);
         $weeklyAttendance = $this->buildWeeklyAttendanceData($user);
-        [$notificationItems, $notificationStats] = $this->buildEmployeeNotifications($user);
+        [, $notificationStats] = $this->buildEmployeeNotifications($user);
         $accountAlerts = $this->buildEmployeeAccountAlerts($user, (int) ($notificationStats['total'] ?? 0));
 
         return view('employee.employeeHome', array_merge(
@@ -318,6 +318,23 @@ class EmployeePageController extends Controller
         return view('employee.employeeEvaluation', [
             'user' => $user,
             'notifications' => 0,
+        ]);
+    }
+
+    public function display_staff_guide()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login_display')->withErrors([
+                'email' => 'Please sign in to continue.',
+            ]);
+        }
+
+        [$notificationItems, $notificationStats] = $this->buildEmployeeNotifications($user);
+
+        return view('employee.employeeStaffGuide', [
+            'user' => $user,
+            'notifications' => (int) ($notificationStats['total'] ?? 0),
         ]);
     }
 

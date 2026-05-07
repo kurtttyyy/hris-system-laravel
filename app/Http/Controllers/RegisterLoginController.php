@@ -172,7 +172,9 @@ class RegisterLoginController extends Controller
             Auth::logout();
 
             return match ($user->role) {
-                'Employee' => redirect()->route('employee.employeeHome', $tabSession !== '' ? ['tab_session' => $tabSession] : []),
+                'Employee' => redirect()
+                    ->route('employee.employeeHome', $tabSession !== '' ? ['tab_session' => $tabSession] : [])
+                    ->with('show_employee_welcome', true),
                 'Admin'    => redirect()->route('admin.adminHome', $tabSession !== '' ? ['tab_session' => $tabSession] : []),
                 default    => redirect()->route('login_display')->with('error', 'Unauthorized role'),
             };

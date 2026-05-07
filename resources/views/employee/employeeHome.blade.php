@@ -14,6 +14,17 @@
     </style>
 </head>
 <body class="bg-slate-100">
+@php
+    $welcomeUser = auth()->user();
+    $welcomeName = trim((string) ($welcomeUser?->first_name ?? ''));
+    if ($welcomeName === '') {
+        $welcomeName = 'Staff';
+    }
+    $showEmployeeWelcome = (bool) session('show_employee_welcome');
+    $staffGuideUrl = route('employee.employeeStaffGuide', array_filter([
+        'tab_session' => request()->query('tab_session'),
+    ]));
+@endphp
 
 <div class="flex min-h-screen">
     @include('components.employeeSideBar')
@@ -274,6 +285,90 @@
     </main>
 </div>
 
+@if ($showEmployeeWelcome)
+    <div
+        id="employeeWelcomeModal"
+        class="fixed inset-0 z-[90] hidden items-center justify-center bg-slate-950/55 px-4 py-6 backdrop-blur-md"
+        data-employee-welcome-modal
+        data-dismiss-key="employee_welcome_seen_{{ (int) ($welcomeUser?->id ?? 0) }}"
+    >
+        <div class="w-full max-w-[40rem] overflow-hidden rounded-[2rem] bg-white shadow-2xl shadow-slate-950/30">
+            <div class="relative overflow-hidden bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 px-6 pb-9 pt-7 text-white md:px-8">
+                <div class="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-emerald-300/10 blur-3xl"></div>
+                <div class="relative flex flex-col items-center text-center">
+                    <div class="flex h-16 w-16 items-center justify-center rounded-[1.25rem] border border-white/20 bg-white/10 p-2.5 shadow-lg shadow-slate-950/25 backdrop-blur-sm">
+                        <img src="{{ asset('images/logo.webp') }}" alt="Northeastern College" class="h-full w-full object-contain">
+                    </div>
+                    <p class="mt-5 text-[11px] font-black uppercase tracking-[0.32em] text-emerald-100">Employee Workspace</p>
+                    <h2 class="mt-3 text-3xl font-black tracking-tight md:text-4xl">Welcome aboard, {{ $welcomeName }}!</h2>
+                </div>
+            </div>
+
+            <div class="px-6 py-6 md:px-8">
+                <p class="mx-auto max-w-2xl text-sm leading-6 text-slate-600">
+                    Start with the <span class="font-bold text-emerald-800">Staff Guide</span> to understand how the HRIS works, how to check your records, submit documents, file leave, review payslips, and follow HR updates.
+                </p>
+
+                <div class="mt-5 rounded-[1.5rem] border border-emerald-200 bg-emerald-50/80 p-3.5 shadow-inner shadow-emerald-900/5">
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <a href="{{ route('employee.employeeHome') }}" class="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-lg shadow-emerald-700/20"><i class="fa fa-dashboard"></i></span>
+                            <span>
+                                Dashboard
+                                <span class="block text-xs font-medium text-slate-500">Attendance, leave, alerts</span>
+                            </span>
+                        </a>
+                        <a href="{{ route('employee.employeeDocument') }}" class="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-white shadow-lg shadow-sky-600/20"><i class="fa fa-folder-open"></i></span>
+                            <span>
+                                Documents
+                                <span class="block text-xs font-medium text-slate-500">201 file requirements</span>
+                            </span>
+                        </a>
+                        <a href="{{ route('employee.employeeLeave') }}" class="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-600 text-white shadow-lg shadow-amber-600/20"><i class="fa fa-calendar-check-o"></i></span>
+                            <span>
+                                Leave Requests
+                                <span class="block text-xs font-medium text-slate-500">File and track status</span>
+                            </span>
+                        </a>
+                        <a href="{{ route('employee.employeePayslip') }}" class="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"><i class="fa fa-file-text-o"></i></span>
+                            <span>
+                                Payslips
+                                <span class="block text-xs font-medium text-slate-500">Payroll records</span>
+                            </span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                    <button
+                        type="button"
+                        class="rounded-xl px-5 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-50"
+                        data-employee-welcome-dismiss
+                    >
+                        Maybe later
+                    </button>
+                    <a
+                        href="{{ $staffGuideUrl }}"
+                        class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-700/25 transition hover:-translate-y-0.5 hover:bg-emerald-800 hover:shadow-xl"
+                        data-employee-welcome-guide
+                    >
+                        <i class="fa fa-book"></i>
+                        Open Staff Guide
+                    </a>
+                </div>
+
+                <p class="mt-6 flex items-start gap-2 text-sm font-medium text-rose-600">
+                    <i class="fa fa-info-circle mt-0.5"></i>
+                    <span>This message will not appear again after you dismiss it or open the Staff Guide.</span>
+                </p>
+            </div>
+        </div>
+    </div>
+@endif
+
 <script>
     const sidebar = document.querySelector('aside');
     const main = document.querySelector('main');
@@ -289,6 +384,46 @@
             main.classList.add('ml-16');
         });
     }
+
+    (function () {
+        const modal = document.querySelector('[data-employee-welcome-modal]');
+        if (!modal) return;
+
+        const dismissKey = modal.getAttribute('data-dismiss-key') || 'employee_welcome_seen';
+        const dismiss = () => {
+            try {
+                localStorage.setItem(dismissKey, '1');
+            } catch (error) {
+            }
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.classList.remove('overflow-hidden');
+        };
+
+        try {
+            if (localStorage.getItem(dismissKey) === '1') {
+                return;
+            }
+        } catch (error) {
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+
+        document.querySelectorAll('[data-employee-welcome-dismiss]').forEach((button) => {
+            button.addEventListener('click', dismiss);
+        });
+
+        document.querySelectorAll('[data-employee-welcome-guide]').forEach((link) => {
+            link.addEventListener('click', () => {
+                try {
+                    localStorage.setItem(dismissKey, '1');
+                } catch (error) {
+                }
+            });
+        });
+    })();
 
     (function () {
         const focusId = @json(request()->query('focus'));
