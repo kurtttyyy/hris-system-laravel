@@ -228,8 +228,8 @@ class AdministratorStoreController extends Controller
         ]);
 
         return redirect()
-            ->route('admin.adminCreatePosition', ['created' => 1])
-            ->with('success', 'Position successfully created.')
+            ->route('admin.adminPosition')
+            ->with('success', 'Position successfully created: '.$store->title.' (#'.$store->id.').')
             ->with('position_created', true);
     }
 
