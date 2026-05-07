@@ -3287,7 +3287,11 @@ class AdministratorPageController extends Controller
     }
 
     public function display_position(){
-        $openPosition = OpenPosition::withTrashed()->withCount('applicants')->get();
+        $openPosition = OpenPosition::withTrashed()
+            ->withCount('applicants')
+            ->latest('created_at')
+            ->latest('id')
+            ->get();
         $openPositions = OpenPosition::withTrashed()->get();
         $countApplication = Applicant::groupBy('open_position_id')->count();
         $logs = GuestLog::count();

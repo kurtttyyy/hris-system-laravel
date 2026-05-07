@@ -106,7 +106,10 @@ class GuestPageController extends Controller
 
         $firstAvailableJob = OpenPosition::when($appliedPositionIds->isNotEmpty(), function ($query) use ($appliedPositionIds) {
             $query->whereNotIn('id', $appliedPositionIds);
-        })->first();
+        })
+            ->latest('created_at')
+            ->latest('id')
+            ->first();
 
         if (!$firstAvailableJob) {
             return redirect()->route('guest.index')
@@ -150,11 +153,16 @@ class GuestPageController extends Controller
             ->when($appliedPositionIds->isNotEmpty(), function ($query) use ($appliedPositionIds) {
                 $query->whereNotIn('id', $appliedPositionIds);
             })
+            ->latest('created_at')
+            ->latest('id')
             ->get();
 
         $jobOpen = OpenPosition::when($appliedPositionIds->isNotEmpty(), function ($query) use ($appliedPositionIds) {
             $query->whereNotIn('id', $appliedPositionIds);
-        })->get();
+        })
+            ->latest('created_at')
+            ->latest('id')
+            ->get();
 
         return view('guest.jobOpen', compact('jobOpen','job','other'));
     }
