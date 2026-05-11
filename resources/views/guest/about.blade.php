@@ -353,6 +353,72 @@
         line-height: 1.75;
     }
 
+    #guest-about-page .guest-about-reveal {
+        opacity: 1;
+        transform: translateY(0);
+        will-change: opacity, transform;
+    }
+
+    #guest-about-page .guest-about-reveal.is-scroll-animated {
+        animation: guest-about-fade-up 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--guest-about-delay, 0ms);
+    }
+
+    #guest-about-page .guest-about-card-motion,
+    .site-footer .guest-about-card-motion {
+        transition:
+            transform 0.25s ease,
+            box-shadow 0.25s ease,
+            border-color 0.25s ease;
+    }
+
+    #guest-about-page .guest-about-card-motion:hover,
+    .site-footer .guest-about-card-motion:hover {
+        transform: translateY(-4px);
+    }
+
+    #guest-about-page .guest-about-pop {
+        animation: guest-about-pop 0.58s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--guest-about-delay, 120ms);
+    }
+
+    @keyframes guest-about-fade-up {
+        0% {
+            opacity: 0;
+            transform: translateY(26px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes guest-about-pop {
+        0% {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #guest-about-page .guest-about-reveal,
+        #guest-about-page .guest-about-pop,
+        #guest-about-page .guest-about-card-motion,
+        .site-footer .guest-about-card-motion {
+            opacity: 1;
+            transform: none;
+            transition: none;
+            animation: none;
+            will-change: auto;
+        }
+    }
+
     .site-footer {
         background:
             radial-gradient(circle at top left, rgba(21, 115, 71, 0.12), transparent 24%),
@@ -587,7 +653,7 @@
     }
 </style>
 
-<main class="about-page">
+<main id="guest-about-page" class="about-page">
     <section class="about-hero">
         <div class="about-hero-shell">
             <div class="about-hero-card">
@@ -792,6 +858,73 @@
         </div>
     </div>
 </footer>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const page = document.getElementById('guest-about-page');
+        if (!page) return;
+
+        const revealGroups = [
+            ['.about-hero-card', 0],
+            ['.about-metric', 120],
+            ['.about-hero-panel', 160],
+            ['.about-panel', 120],
+            ['.about-side-card', 160],
+            ['.about-feature-card', 180],
+            ['.about-values > .about-section-title', 120],
+            ['.about-value-card', 180],
+        ];
+
+        revealGroups.forEach(([selector, baseDelay]) => {
+            page.querySelectorAll(selector).forEach((item, index) => {
+                item.classList.add('guest-about-reveal');
+                item.style.setProperty('--guest-about-delay', `${Math.min(baseDelay + ((index % 6) * 45), 420)}ms`);
+            });
+        });
+
+        page.querySelectorAll('.about-metric, .about-hero-panel, .about-highlight-list li, .about-panel, .about-side-card, .about-feature-card, .about-value-card').forEach((item) => {
+            item.classList.add('guest-about-card-motion');
+        });
+
+        page.querySelectorAll('.about-kicker, .about-highlight-icon, .about-value-card span').forEach((item, index) => {
+            item.classList.add('guest-about-pop');
+            item.style.setProperty('--guest-about-delay', `${120 + ((index % 5) * 40)}ms`);
+        });
+
+        document.querySelectorAll('.site-footer .footer-contact, .site-footer .footer-link-list a, .site-footer .footer-bottom-links a').forEach((item) => {
+            item.classList.add('guest-about-card-motion');
+        });
+
+        const animatedItems = Array.from(page.querySelectorAll('.guest-about-reveal'));
+        const footer = document.querySelector('.site-footer');
+        if (footer) {
+            footer.classList.add('guest-about-reveal');
+            footer.style.setProperty('--guest-about-delay', '180ms');
+            animatedItems.push(footer);
+        }
+
+        if (!('IntersectionObserver' in window)) {
+            animatedItems.forEach((item) => item.classList.add('is-scroll-animated'));
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.remove('is-scroll-animated');
+                    void entry.target.offsetWidth;
+                    entry.target.classList.add('is-scroll-animated');
+                } else {
+                    entry.target.classList.remove('is-scroll-animated');
+                }
+            });
+        }, {
+            threshold: 0.12,
+            rootMargin: '0px 0px -35px 0px',
+        });
+
+        animatedItems.forEach((item) => observer.observe(item));
+    });
+</script>
 @endsection
 
 

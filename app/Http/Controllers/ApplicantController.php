@@ -54,7 +54,6 @@ class ApplicantController extends Controller
             'documents.3.file' => 'required|file|mimes:pdf,doc,docx|max:5120',
             'documents.7.file' => 'required|file|mimes:pdf,doc,docx|max:5120',
             'documents.*.type' => 'required',
-            'university_address' => 'required',
             'work_position' => 'required_unless:fresh_graduate,1|nullable|string',
             'work_employer' => 'required_unless:fresh_graduate,1|nullable|string',
             'work_location' => 'required_unless:fresh_graduate,1|nullable|string',
@@ -186,7 +185,6 @@ class ApplicantController extends Controller
                 'open_position_id' => $attrs['position'],
                 'application_status' => 'pending',
                 'fresh_graduate' => (bool) ($attrs['fresh_graduate'] ?? false),
-                'university_address' => $attrs['university_address'],
                 // Keep NOT NULL DB constraints satisfied for fresh graduates.
                 'work_position' => !empty($attrs['fresh_graduate']) ? 'N/A' : ($attrs['work_position'] ?? 'N/A'),
                 'work_employer' => !empty($attrs['fresh_graduate']) ? 'N/A' : ($attrs['work_employer'] ?? 'N/A'),

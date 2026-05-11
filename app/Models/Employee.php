@@ -118,7 +118,6 @@ class Employee extends Model
                 'last_name' => $normalize($user->last_name) ?: ('#'.$userId),
                 'email' => $safeEmail,
                 'field_study' => '-',
-                'university_address' => '-',
                 'work_position' => '-',
                 'work_employer' => '-',
                 'work_location' => '-',

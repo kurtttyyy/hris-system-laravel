@@ -73,6 +73,50 @@
       overflow-x: hidden;
       scrollbar-gutter: stable both-edges;
     }
+    .employee-page-reveal {
+      opacity: 0;
+      transform: translate3d(0, 22px, 0) scale(0.985);
+      transition:
+        opacity 680ms cubic-bezier(0.22, 0.9, 0.2, 1),
+        transform 680ms cubic-bezier(0.22, 0.9, 0.2, 1);
+      transition-delay: var(--employee-reveal-delay, 0ms);
+      will-change: opacity, transform;
+      backface-visibility: hidden;
+    }
+    .employee-page-reveal.employee-reveal-from-top {
+      transform: translate3d(0, -22px, 0) scale(0.985);
+    }
+    .employee-page-reveal.employee-reveal-visible {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    .employee-card-motion {
+      transition:
+        transform 260ms cubic-bezier(0.22, 0.9, 0.2, 1),
+        border-color 260ms ease,
+        background-color 260ms ease;
+    }
+    .employee-card-motion:hover {
+      transform: translate3d(0, -3px, 0) scale(1.01);
+    }
+    .employee-table-row-motion {
+      transition: transform 220ms cubic-bezier(0.22, 0.9, 0.2, 1), background-color 220ms ease;
+    }
+    .employee-table-row-motion:hover {
+      transform: translateX(3px);
+      background-color: rgba(240, 253, 250, 0.72);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .employee-page-reveal,
+      .employee-page-reveal.employee-reveal-from-top,
+      .employee-page-reveal.employee-reveal-visible,
+      .employee-card-motion:hover,
+      .employee-table-row-motion:hover {
+        opacity: 1;
+        transform: none;
+        transition: none;
+      }
+    }
   </style>
 </head>
 
@@ -2215,10 +2259,10 @@
     @include('components.adminHeader.employeeHeader', ['departmentOptions' => $departmentOptions])
 
     <!-- ================= DASHBOARD CONTENT ================= -->
-<div class="min-w-0 p-4 md:p-8 space-y-6 pt-20">
+<div id="admin-employee-page" class="min-w-0 p-4 md:p-8 space-y-6 pt-20">
 
     <!-- TOP BAR -->
-<div class="flex flex-wrap items-center justify-between gap-4">
+<div class="employee-status-legend-bar flex flex-wrap items-center justify-between gap-4">
 
     <!-- Status Legend -->
     <div class="flex items-center gap-6 text-sm text-gray-600">
@@ -2386,7 +2430,7 @@
     </div>
 
     <!-- Employee Cards Grid -->
-    <div class="flex flex-wrap gap-6" x-show="!showDepartmentSummary && viewMode === 'cards'">
+    <div class="employee-card-grid flex flex-wrap gap-6" x-show="!showDepartmentSummary && viewMode === 'cards'">
 
         @foreach ($employee as $emp)
         @php
@@ -2507,7 +2551,8 @@
         @endphp
         <!-- Employee Card -->
         <div
-            class="relative bg-white rounded-xl shadow-md overflow-hidden w-72"
+            class="employee-directory-card employee-page-reveal employee-card-motion relative bg-white rounded-xl shadow-md overflow-hidden w-72"
+            style="--employee-reveal-delay: 0ms;"
             x-show="matchesDepartment(@js($resolveDepartment($emp))) &&
                     matchesSearch(@js(trim(($emp->last_name ?? '').', '.trim(($emp->first_name ?? '').' '.($emp->middle_name ?? '')), ', '))) &&
                     matchesStatus(@js($resolveDisplayAccountStatus($emp)), @js($missingCardCount > 0))"
@@ -2968,7 +3013,6 @@
 
         <!-- Footer -->
         <div class="flex gap-3 p-6 border-t">
-          <button class="flex-1 bg-indigo-600 text-white py-2 rounded-lg">Send Message</button>
           <template x-if="canMarkSelectedEmployeePermanent()">
             <form method="POST" action="{{ route('admin.markEmployeePermanent', ['id' => '__USER_ID__']) }}"
               class="flex-1"
@@ -3407,6 +3451,133 @@
     event.preventDefault();
     cell.blur();
   };
+
+  (function () {
+    const initEmployeePageAnimation = () => {
+      const page = document.getElementById('admin-employee-page');
+      if (!page) return;
+
+      const selectors = [
+        '#admin-employee-page > div',
+        '#admin-employee-page table',
+        '#department-staffing-summary',
+        '#employee-directory-table-export',
+      ];
+
+      const revealItems = Array.from(document.querySelectorAll(selectors.join(',')))
+        .filter((item) => {
+          if (!item || item.classList.contains('employee-page-reveal')) return false;
+          if (item.classList.contains('employee-status-legend-bar')) return false;
+          if (item.classList.contains('employee-card-grid')) return false;
+          if (item.classList.contains('employee-directory-card')) return false;
+          const tag = item.tagName.toLowerCase();
+          return !['script', 'style', 'template'].includes(tag);
+        });
+
+      revealItems.forEach((item, index) => {
+        item.classList.add('employee-page-reveal');
+        item.style.setProperty('--employee-reveal-delay', `${Math.min(index % 7, 6) * 45}ms`);
+        if (item.tagName.toLowerCase() !== 'table') {
+          item.classList.add('employee-card-motion');
+        }
+      });
+
+      document.querySelectorAll('#employee-directory-table-export tbody tr').forEach((row) => {
+        row.classList.add('employee-table-row-motion');
+      });
+
+      const cardGrid = document.querySelector('#admin-employee-page .employee-card-grid');
+      const employeeCards = Array.from(document.querySelectorAll('#admin-employee-page .employee-directory-card'));
+      const animatedItems = Array.from(document.querySelectorAll('#admin-employee-page .employee-page-reveal:not(.employee-directory-card)'));
+      if (!animatedItems.length) return;
+
+      if (!('IntersectionObserver' in window)) {
+        animatedItems.forEach((item) => item.classList.add('employee-reveal-visible'));
+        return;
+      }
+
+      let lastScrollY = window.scrollY;
+      let direction = 'down';
+
+      window.addEventListener('scroll', () => {
+        const currentScrollY = window.scrollY;
+        direction = currentScrollY < lastScrollY ? 'up' : 'down';
+        lastScrollY = currentScrollY;
+      }, { passive: true });
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          entry.target.classList.toggle('employee-reveal-from-top', direction === 'up');
+
+          if (entry.isIntersecting) {
+            entry.target.classList.add('employee-reveal-visible');
+            return;
+          }
+
+          entry.target.classList.remove('employee-reveal-visible');
+        });
+      }, {
+        threshold: 0.1,
+        rootMargin: '-7% 0px -8% 0px',
+      });
+
+      animatedItems.forEach((item) => observer.observe(item));
+
+      if (cardGrid && employeeCards.length) {
+        let cardTimers = [];
+
+        const clearCardTimers = () => {
+          cardTimers.forEach((timer) => window.clearTimeout(timer));
+          cardTimers = [];
+        };
+
+        const visibleEmployeeCards = () => employeeCards.filter((card) => {
+          const styles = window.getComputedStyle(card);
+          return styles.display !== 'none' && styles.visibility !== 'hidden';
+        });
+
+        const revealCardsInSequence = () => {
+          clearCardTimers();
+          visibleEmployeeCards().forEach((card, index) => {
+            card.classList.toggle('employee-reveal-from-top', direction === 'up');
+            card.classList.remove('employee-reveal-visible');
+            cardTimers.push(window.setTimeout(() => {
+              card.classList.add('employee-reveal-visible');
+            }, index * 140));
+          });
+        };
+
+        const hideCards = () => {
+          clearCardTimers();
+          employeeCards.forEach((card) => {
+            card.classList.remove('employee-reveal-visible');
+          });
+        };
+
+        const cardObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              revealCardsInSequence();
+              return;
+            }
+
+            hideCards();
+          });
+        }, {
+          threshold: 0.08,
+          rootMargin: '-7% 0px -8% 0px',
+        });
+
+        cardObserver.observe(cardGrid);
+      }
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initEmployeePageAnimation, { once: true });
+    } else {
+      initEmployeePageAnimation();
+    }
+  })();
 
   const sidebar = document.querySelector('aside');
   const main = document.querySelector('main');

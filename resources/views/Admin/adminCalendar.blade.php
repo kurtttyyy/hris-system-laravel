@@ -19,6 +19,60 @@
     .admin-kicker {
       letter-spacing: 0.22em;
     }
+    .calendar-reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.28s ease, transform 0.28s ease;
+      will-change: opacity, transform;
+    }
+    .calendar-reveal.reveal-from-top {
+      transform: translateY(-18px);
+    }
+    .calendar-reveal.is-visible {
+      animation: calendar-fade-up 0.42s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+      animation-delay: var(--calendar-delay, 0ms);
+    }
+    .calendar-card-motion {
+      transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+    }
+    .calendar-card-motion:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+    }
+    .calendar-icon-pop {
+      animation: calendar-pop-in 0.65s cubic-bezier(0.22, 0.9, 0.2, 1) both;
+      animation-delay: var(--calendar-delay, 0ms);
+    }
+    @keyframes calendar-fade-up {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes calendar-pop-in {
+      0% {
+        opacity: 0;
+        transform: scale(0.82) rotate(-4deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .calendar-reveal,
+      .calendar-icon-pop {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+      .calendar-card-motion {
+        transition: none;
+      }
+      .calendar-card-motion:hover {
+        transform: none;
+      }
+    }
   </style>
 </head>
 <body class="bg-[radial-gradient(circle_at_top,_#f8fafc,_#eef2ff_40%,_#f8fafc_100%)] text-slate-900">
@@ -29,8 +83,8 @@
   <main class="flex-1 ml-16 transition-all duration-300">
     @include('components.adminHeader.calenderHeader')
 
-    <div class="space-y-8 p-4 pt-20 md:p-8">
-      <section class="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 py-7 text-white shadow-[0_30px_80px_rgba(15,23,42,0.22)] md:px-8">
+    <div id="admin-calendar-page" class="space-y-8 p-4 pt-20 md:p-8">
+      <section class="calendar-reveal relative overflow-hidden rounded-[2rem] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-6 py-7 text-white shadow-[0_30px_80px_rgba(15,23,42,0.22)] md:px-8" style="--calendar-delay: 0ms;">
         <div class="absolute -left-12 top-0 h-32 w-32 rounded-full bg-sky-400/15 blur-3xl"></div>
         <div class="absolute right-10 top-2 h-28 w-28 rounded-full bg-emerald-400/15 blur-3xl"></div>
 
@@ -47,22 +101,22 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <div class="rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm">
+              <div class="calendar-card-motion calendar-reveal rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm" style="--calendar-delay: 50ms;">
                 <p class="admin-kicker text-[11px] font-semibold uppercase text-slate-300">Holidays</p>
                 <p id="holidayCount" class="admin-display mt-2 text-3xl text-white">0</p>
                 <p class="mt-1 text-xs text-rose-200">Official and custom</p>
               </div>
-              <div class="rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm">
+              <div class="calendar-card-motion calendar-reveal rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm" style="--calendar-delay: 80ms;">
                 <p class="admin-kicker text-[11px] font-semibold uppercase text-slate-300">No Classes</p>
                 <p id="noClassCount" class="admin-display mt-2 text-3xl text-white">0</p>
                 <p class="mt-1 text-xs text-orange-200">Sunday and holiday dates</p>
               </div>
-              <div class="rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm">
+              <div class="calendar-card-motion calendar-reveal rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm" style="--calendar-delay: 110ms;">
                 <p class="admin-kicker text-[11px] font-semibold uppercase text-slate-300">Events</p>
                 <p id="eventCount" class="admin-display mt-2 text-3xl text-white">0</p>
                 <p class="mt-1 text-xs text-amber-200">Special and school activities</p>
               </div>
-              <div class="rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm">
+              <div class="calendar-card-motion calendar-reveal rounded-[1.35rem] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur-sm" style="--calendar-delay: 140ms;">
                 <p class="admin-kicker text-[11px] font-semibold uppercase text-slate-300">Exam Days</p>
                 <p id="examCount" class="admin-display mt-2 text-3xl text-white">0</p>
                 <p class="mt-1 text-xs text-emerald-200">Recurring assessment dates</p>
@@ -70,13 +124,13 @@
             </div>
           </div>
 
-          <div class="rounded-[1.75rem] border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
+          <div class="calendar-card-motion calendar-reveal rounded-[1.75rem] border border-white/10 bg-white/10 p-5 backdrop-blur-sm" style="--calendar-delay: 120ms;">
             <div class="flex items-center justify-between gap-3">
               <div>
                 <p class="admin-kicker text-xs font-semibold uppercase text-sky-100">Selected Date</p>
                 <h2 class="admin-display mt-2 text-2xl text-white">Date Spotlight</h2>
               </div>
-              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-sky-100">
+              <div class="calendar-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-sky-100" style="--calendar-delay: 170ms;">
                 <i class="fa-solid fa-calendar-days text-2xl"></i>
               </div>
             </div>
@@ -113,7 +167,7 @@
       </section>
 
       <section class="grid grid-cols-1 gap-6 xl:grid-cols-[1.45fr_0.75fr]">
-        <div class="rounded-[2rem] border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur-sm md:p-6">
+        <div class="calendar-reveal rounded-[2rem] border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur-sm md:p-6" style="--calendar-delay: 180ms;">
           <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-center md:justify-between">
             <div class="flex items-center gap-3">
               <button id="calendarPrevBtn" type="button" class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:-translate-y-0.5 hover:border-sky-200 hover:text-sky-700 hover:shadow-sm">
@@ -174,13 +228,13 @@
         </div>
 
         <aside class="space-y-6">
-          <section class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <section class="calendar-card-motion calendar-reveal rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm" style="--calendar-delay: 220ms;">
             <div class="flex items-center justify-between gap-3">
               <div>
                 <p class="admin-kicker text-xs font-semibold uppercase text-sky-700">Quick Actions</p>
                 <h3 class="admin-display mt-2 text-2xl text-slate-900">Create</h3>
               </div>
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700">
+              <div class="calendar-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-700" style="--calendar-delay: 260ms;">
                 <i class="fa-solid fa-wand-magic-sparkles text-xl"></i>
               </div>
             </div>
@@ -233,13 +287,13 @@
             </div>
           </section>
 
-          <section class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <section class="calendar-card-motion calendar-reveal rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm" style="--calendar-delay: 260ms;">
             <div class="flex items-center justify-between gap-3">
               <div>
                 <p class="admin-kicker text-xs font-semibold uppercase text-amber-700">Management</p>
                 <h3 class="admin-display mt-2 text-2xl text-slate-900">Refine</h3>
               </div>
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+              <div class="calendar-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700" style="--calendar-delay: 300ms;">
                 <i class="fa-solid fa-sliders text-xl"></i>
               </div>
             </div>
@@ -298,6 +352,54 @@
 </div>
 
 <script>
+  (function () {
+    const initCalendarPageAnimation = () => {
+      const page = document.getElementById('admin-calendar-page');
+      if (!page) return;
+
+      const revealItems = Array.from(page.querySelectorAll('.calendar-reveal'));
+      if (!revealItems.length) return;
+
+      if (!('IntersectionObserver' in window)) {
+        revealItems.forEach((item) => item.classList.add('is-visible'));
+        return;
+      }
+
+      let lastScrollY = window.scrollY;
+      let scrollDirection = 'down';
+
+      window.addEventListener('scroll', () => {
+        const currentScrollY = window.scrollY;
+        scrollDirection = currentScrollY < lastScrollY ? 'up' : 'down';
+        lastScrollY = currentScrollY;
+      }, { passive: true });
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.toggle('reveal-from-top', scrollDirection === 'up');
+            entry.target.classList.add('is-visible');
+            return;
+          }
+
+          entry.target.classList.remove('is-visible');
+        });
+      }, {
+        root: null,
+        threshold: 0.12,
+        rootMargin: '-8% 0px -8% 0px',
+      });
+
+      revealItems.forEach((item) => observer.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initCalendarPageAnimation, { once: true });
+    } else {
+      initCalendarPageAnimation();
+    }
+  })();
+
   const sidebar = document.querySelector('aside');
   const main = document.querySelector('main');
   if (sidebar && main) {

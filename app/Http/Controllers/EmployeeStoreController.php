@@ -106,6 +106,7 @@ class EmployeeStoreController extends Controller
             (int) $applicant->id,
             (string) pathinfo((string) $originalName, PATHINFO_FILENAME)
         );
+        $this->clearDocumentNoticeIfNoRequiredDocuments((int) $applicant->id);
 
         return back()->with('success', $isProfilePhoto ? 'Profile photo updated successfully.' : 'Document uploaded successfully.');
     }
@@ -601,6 +602,28 @@ class EmployeeStoreController extends Controller
                 $metaDoc->delete();
             }
         }
+    }
+
+    private function clearDocumentNoticeIfNoRequiredDocuments(int $applicantId): void
+    {
+        if ($applicantId <= 0) {
+            return;
+        }
+
+        $requiredPrefix = '__REQUIRED__::';
+        $hasRemainingRequirements = ApplicantDocument::query()
+            ->where('applicant_id', $applicantId)
+            ->where('type', 'like', $requiredPrefix.'%')
+            ->exists();
+
+        if ($hasRemainingRequirements) {
+            return;
+        }
+
+        ApplicantDocument::query()
+            ->where('applicant_id', $applicantId)
+            ->where('type', '__NOTICE__')
+            ->delete();
     }
 
     private function normalizeDocumentRequirementLabel(string $value): string

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AttendanceUpload;
 use App\Models\AttendanceRecord;
+use App\Models\ActivityLog;
 use App\Models\Applicant;
 use App\Models\ApplicantDegree;
 use App\Models\ApplicantDocument;
@@ -23,6 +24,7 @@ use App\Models\PayslipUpload;
 use App\Models\Resignation;
 use App\Models\Salary;
 use App\Models\User;
+use App\Support\ActivityChangeLogger;
 use App\Support\EmployeeAccountStatusManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -355,6 +357,7 @@ class AdministratorStoreController extends Controller
             (int) $applicant->id,
             (string) pathinfo((string) $originalName, PATHINFO_FILENAME)
         );
+        $this->clearDocumentNoticeIfNoRequiredDocuments((int) $applicant->id);
 
         return back()->with('success', 'Document uploaded successfully.');
 
@@ -563,6 +566,8 @@ class AdministratorStoreController extends Controller
                 ]);
             });
 
+            ActivityChangeLogger::scannedFile($loadsFile->fresh(), $processedRows, 'Loads File');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Loads file scanned successfully.',
@@ -615,6 +620,8 @@ class AdministratorStoreController extends Controller
                     'processed_rows' => $processedRows,
                 ]);
             });
+
+            ActivityChangeLogger::scannedFile($payslipFile->fresh(), $processedRows, 'Payslip File');
 
             return response()->json([
                 'success' => true,
@@ -2648,7 +2655,6 @@ class AdministratorStoreController extends Controller
                     'last_name' => $lastName ?: ('#'.$userId),
                     'email' => $email ?: ('employee-'.$userId.'@placeholder.local'),
                     'field_study' => '-',
-                    'university_address' => '-',
                     'work_position' => $normalize($attrs['position'] ?? null) ?: '-',
                     'work_employer' => '-',
                     'work_location' => '-',
@@ -3031,10 +3037,6 @@ class AdministratorStoreController extends Controller
         // On approval, store a fresh snapshot of employee identity fields
         // in the resignation record for audit/history purposes.
         if (strcasecmp($status, 'Approved') === 0 && $employeeUser) {
-            $employeeUser->update([
-                'account_status' => 'Inactive',
-            ]);
-
             $employeeName = trim(implode(' ', array_filter([
                 trim((string) ($employeeUser->first_name ?? '')),
                 trim((string) ($employeeUser->middle_name ?? '')),
@@ -3905,6 +3907,28 @@ class AdministratorStoreController extends Controller
         }
     }
 
+    private function clearDocumentNoticeIfNoRequiredDocuments(int $applicantId): void
+    {
+        if ($applicantId <= 0) {
+            return;
+        }
+
+        $requiredPrefix = '__REQUIRED__::';
+        $hasRemainingRequirements = ApplicantDocument::query()
+            ->where('applicant_id', $applicantId)
+            ->where('type', 'like', $requiredPrefix.'%')
+            ->exists();
+
+        if ($hasRemainingRequirements) {
+            return;
+        }
+
+        ApplicantDocument::query()
+            ->where('applicant_id', $applicantId)
+            ->where('type', '__NOTICE__')
+            ->delete();
+    }
+
     private function normalizeDocumentRequirementLabel(string $value): string
     {
         $normalized = strtolower(trim($value));
@@ -3991,6 +4015,8 @@ class AdministratorStoreController extends Controller
                         'processed_rows' => $processedRows,
                     ]);
                 });
+
+                ActivityChangeLogger::scannedFile($attendanceFile->fresh(), $processedRows, 'Attendance File');
             } else {
                 $attendanceFile->update([
                     'status' => $status
@@ -4054,6 +4080,19 @@ class AdministratorStoreController extends Controller
                 'message' => 'Error deleting file'
             ], 500);
         }
+    }
+
+    public function update_activity_log_note(ActivityLog $activityLog, Request $request)
+    {
+        $attrs = $request->validate([
+            'notes' => 'nullable|string|max:5000',
+        ]);
+
+        $activityLog->update([
+            'notes' => trim((string) ($attrs['notes'] ?? '')),
+        ]);
+
+        return redirect()->back()->with('success', 'Log note saved.');
     }
 
     private function mailToAddress(?string $recipient): string

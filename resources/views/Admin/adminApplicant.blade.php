@@ -12,6 +12,69 @@
     body { font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; transition: margin-left 0.3s ease; }
     main { transition: margin-left 0.3s ease; }
     aside ~ main { margin-left: 16rem; }
+    .applicant-reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.28s ease, transform 0.28s ease;
+      will-change: opacity, transform;
+    }
+    .applicant-reveal.reveal-from-top {
+      transform: translateY(-18px);
+    }
+    .applicant-reveal.is-visible {
+      animation: applicant-fade-up 0.42s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+      animation-delay: var(--applicant-delay, 0ms);
+    }
+    .applicant-card-motion {
+      transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+    }
+    .applicant-card-motion:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+    }
+    .applicant-icon-pop {
+      animation: applicant-pop-in 0.65s cubic-bezier(0.22, 0.9, 0.2, 1) both;
+      animation-delay: var(--applicant-delay, 0ms);
+    }
+    .applicant-table-row {
+      transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .applicant-table-row:hover {
+      transform: translateX(4px);
+      box-shadow: inset 3px 0 0 rgba(14, 165, 233, 0.55);
+    }
+    @keyframes applicant-fade-up {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes applicant-pop-in {
+      0% {
+        opacity: 0;
+        transform: scale(0.82) rotate(-4deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .applicant-reveal,
+      .applicant-icon-pop {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+      .applicant-card-motion,
+      .applicant-table-row {
+        transition: none;
+      }
+      .applicant-card-motion:hover,
+      .applicant-table-row:hover {
+        transform: none;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f1f5f9_45%,#eefbf6_100%)]">
@@ -38,9 +101,9 @@
   <main class="flex-1 ml-16 transition-all duration-300">
     @include('components.adminHeader.applicantHeader')
 
-    <div class="p-4 md:p-8 space-y-6 pt-20">
+    <div id="admin-applicant-page" class="p-4 md:p-8 space-y-6 pt-20">
       <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <div class="applicant-card-motion applicant-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--applicant-delay: 30ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Total Applicants</p>
@@ -48,7 +111,7 @@
               <p class="mt-1 text-sm text-slate-500">All candidate submissions</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+              <div class="applicant-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600" style="--applicant-delay: 70ms;">
                 <i class="fa-solid fa-users"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-600">+12%</span>
@@ -56,7 +119,7 @@
           </div>
         </div>
 
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <div class="applicant-card-motion applicant-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--applicant-delay: 60ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Under Review</p>
@@ -64,7 +127,7 @@
               <p class="mt-1 text-sm text-slate-500">Applicants awaiting next step</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-100 text-yellow-600">
+              <div class="applicant-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-100 text-yellow-600" style="--applicant-delay: 100ms;">
                 <i class="fa-regular fa-clock"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-semibold text-yellow-600">Pending</span>
@@ -72,7 +135,7 @@
           </div>
         </div>
 
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <div class="applicant-card-motion applicant-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--applicant-delay: 90ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Interviews Scheduled</p>
@@ -80,7 +143,7 @@
               <p class="mt-1 text-sm text-slate-500">Candidates moved into interview stage</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-100 text-green-600">
+              <div class="applicant-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-green-100 text-green-600" style="--applicant-delay: 130ms;">
                 <i class="fa-regular fa-calendar"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-600">This Week</span>
@@ -88,7 +151,7 @@
           </div>
         </div>
 
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <div class="applicant-card-motion applicant-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--applicant-delay: 120ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Hired This Month</p>
@@ -96,7 +159,7 @@
               <p class="mt-1 text-sm text-slate-500">Successful hires completed</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-100 text-purple-600">
+              <div class="applicant-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-100 text-purple-600" style="--applicant-delay: 160ms;">
                 <i class="fa-solid fa-check"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-600">+8%</span>
@@ -105,7 +168,7 @@
         </div>
       </div>
 
-      <div class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div class="applicant-reveal rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur" style="--applicant-delay: 170ms;">
         <div class="flex flex-col gap-4 mb-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
@@ -411,6 +474,46 @@
   let currentPage = 1;
   let currentApplicantId = null;
 
+  const initApplicantPageAnimation = () => {
+    const page = document.getElementById('admin-applicant-page');
+    if (!page) return;
+
+    const revealItems = Array.from(page.querySelectorAll('.applicant-reveal'));
+    if (!revealItems.length) return;
+
+    if (!('IntersectionObserver' in window)) {
+      revealItems.forEach((item) => item.classList.add('is-visible'));
+      return;
+    }
+
+    let lastScrollY = window.scrollY;
+    let scrollDirection = 'down';
+
+    window.addEventListener('scroll', () => {
+      const currentScrollY = window.scrollY;
+      scrollDirection = currentScrollY < lastScrollY ? 'up' : 'down';
+      lastScrollY = currentScrollY;
+    }, { passive: true });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.toggle('reveal-from-top', scrollDirection === 'up');
+          entry.target.classList.add('is-visible');
+          return;
+        }
+
+        entry.target.classList.remove('is-visible');
+      });
+    }, {
+      root: null,
+      threshold: 0.12,
+      rootMargin: '-8% 0px -8% 0px',
+    });
+
+    revealItems.forEach((item) => observer.observe(item));
+  };
+
   const statusClasses = {
     pending: 'bg-amber-100 text-amber-700',
     'under review': 'bg-sky-100 text-sky-700',
@@ -513,7 +616,7 @@
       const fullName = `${app.first_name ?? ''} ${app.last_name ?? ''}`.trim();
 
       return `
-        <tr class="transition hover:bg-white">
+        <tr class="applicant-table-row transition hover:bg-white">
           <td class="px-5 py-4">
             <div class="flex items-center gap-3">
               <div class="flex h-11 w-11 items-center justify-center rounded-full bg-sky-500 font-semibold text-white">${initials}</div>
@@ -680,11 +783,7 @@
           data.work_duration
         ].filter(Boolean).join(' | ');
 
-        const universityInfo = [
-          data.university_name,
-          data.university_address,
-          data.university_year
-        ].filter(Boolean).join(' | ');
+        const universityInfo = '';
 
         document.getElementById('work_info').innerText = workInfo || 'No work experience information provided.';
         document.getElementById('university_info').innerText = universityInfo || 'No education information provided.';
@@ -833,6 +932,12 @@
       }
     });
   });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApplicantPageAnimation, { once: true });
+  } else {
+    initApplicantPageAnimation();
+  }
 
   renderTable(1);
 </script>

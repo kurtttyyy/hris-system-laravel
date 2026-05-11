@@ -622,11 +622,6 @@
         <button type="button" id="addDoctoralDegreeBtn" class="btn btn-outline-primary btn-sm">+ Add Another Doctoral Degree</button>
     </div>
 
-    <div class="mb-3 floating-input">
-        <input type="text" class="form-select" id="university_address" name="university_address" placeholder=" " required>
-        <label for="university_address">Address<span class="required-asterisk"> *</span></label>
-    </div>
-
     <h4 class="fw-bold mb-3 mt-4">Work Experience</h4>
 
     <div class="mb-3 form-check">
@@ -653,7 +648,7 @@
     </div>
 
     <div class="mb-3 floating-input">
-        <input type="text" class="form-select" id="work_duration" name="work_duration" placeholder=" " required>
+        <input type="text" class="form-control" id="work_duration" name="work_duration" placeholder=" " required>
         <label for="work_duration">Duration<span class="required-asterisk"> *</span></label>
     </div>
 
@@ -876,11 +871,6 @@
             <p class="text-uppercase fw-semibold">
                 Doctoral Degree:
                 <span id="review-doctoral-degree" class="d-block text-uppercase text-secondary fw-semibold"></span>
-            </p>
-
-            <p class="text-uppercase fw-semibold">
-                Address:
-                <span id="uni_add" class="d-block text-uppercase text-secondary fw-semibold"></span>
             </p>
 
             <p class="text-uppercase fw-semibold">
@@ -1467,7 +1457,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('review-experience-years').textContent = document.getElementById('experience_years').value;
         document.getElementById('review-key-skills').textContent = document.getElementById('key_skills').value;
 
-        document.getElementById('uni_add').textContent = document.getElementById('university_address').value;
         document.getElementById('work_po').textContent = document.getElementById('work_position').value;
         document.getElementById('work_em').textContent = document.getElementById('work_employer').value;
         document.getElementById('work_lo').textContent = document.getElementById('work_location').value;

@@ -21,6 +21,69 @@
         aside:hover ~ main {
             margin-left: 14rem;
         }
+
+        #employee-document-page .employee-document-reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition:
+                opacity 0.7s ease,
+                transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-document-delay, 0ms);
+        }
+
+        #employee-document-page .employee-document-reveal.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #employee-document-page .employee-document-card-motion {
+            transition:
+                transform 0.25s ease,
+                box-shadow 0.25s ease,
+                border-color 0.25s ease;
+        }
+
+        #employee-document-page .employee-document-card-motion:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+        }
+
+        #employee-document-page .employee-document-icon-pop {
+            opacity: 0;
+            transform: scale(0.86) rotate(-4deg);
+            transition:
+                opacity 0.55s ease,
+                transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-document-delay, 120ms);
+        }
+
+        #employee-document-page .is-visible .employee-document-icon-pop,
+        #employee-document-page .employee-document-icon-pop.is-visible {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        #employee-document-page .employee-document-progress-fill {
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-document-delay, 180ms);
+        }
+
+        #employee-document-page .employee-document-progress-fill.is-visible {
+            transform: scaleX(1);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #employee-document-page .employee-document-reveal,
+            #employee-document-page .employee-document-icon-pop,
+            #employee-document-page .employee-document-progress-fill,
+            #employee-document-page .employee-document-card-motion {
+                opacity: 1;
+                transform: none;
+                transition: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-slate-100">
@@ -32,7 +95,7 @@
 
     <!-- MAIN -->
     <main class="flex-1 ml-16 transition-all duration-300">
-<div class="p-4 md:p-8 space-y-8 pt-4">
+<div id="employee-document-page" class="p-4 md:p-8 space-y-8 pt-4">
         @php
             $allDocumentCount = $allDocuments->count();
             $folderCount = $folders->count();
@@ -42,7 +105,7 @@
             $completionPercent = min((int) round(($uploadedRequiredCount / $completionBase) * 100), 100);
         @endphp
 
-        <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-2xl md:p-8">
+        <section class="employee-document-reveal relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-2xl md:p-8" style="--employee-document-delay: 0ms;">
             <div class="absolute -right-8 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl"></div>
             <div class="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-emerald-300/10 blur-3xl"></div>
             <div class="relative grid gap-6 xl:grid-cols-[1.7fr_1fr] xl:items-end">
@@ -57,26 +120,26 @@
                         </p>
                     </div>
                     <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        <div class="employee-document-card-motion employee-document-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-document-delay: 80ms;">
                             <p class="text-xs uppercase tracking-wide text-emerald-100">All Documents</p>
                             <p class="mt-2 text-2xl font-black">{{ $allDocumentCount }}</p>
                         </div>
-                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        <div class="employee-document-card-motion employee-document-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-document-delay: 120ms;">
                             <p class="text-xs uppercase tracking-wide text-emerald-100">Folders</p>
                             <p class="mt-2 text-2xl font-black">{{ $folderCount }}</p>
                         </div>
-                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        <div class="employee-document-card-motion employee-document-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-document-delay: 160ms;">
                             <p class="text-xs uppercase tracking-wide text-emerald-100">Missing</p>
                             <p class="mt-2 text-2xl font-black">{{ $missingDocumentCount }}</p>
                         </div>
-                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        <div class="employee-document-card-motion employee-document-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-document-delay: 200ms;">
                             <p class="text-xs uppercase tracking-wide text-emerald-100">Completion</p>
                             <p class="mt-2 text-2xl font-black">{{ $completionPercent }}%</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="rounded-[1.75rem] border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
+                <div class="employee-document-card-motion employee-document-reveal rounded-[1.75rem] border border-white/10 bg-white/10 p-5 backdrop-blur-sm" style="--employee-document-delay: 120ms;">
                     <div class="mb-4 flex justify-end">
                         <div class="relative group">
                             <button class="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-white backdrop-blur-sm transition hover:bg-white/20">
@@ -110,15 +173,15 @@
                                 <span class="font-semibold">{{ $completionPercent }}%</span>
                             </div>
                             <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-white/15">
-                                <div class="h-full rounded-full bg-emerald-300" style="width: {{ $completionPercent }}%;"></div>
+                                <div class="employee-document-progress-fill h-full rounded-full bg-emerald-300" style="width: {{ $completionPercent }}%; --employee-document-delay: 220ms;"></div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
-                            <div class="rounded-2xl bg-white/10 p-4">
+                            <div class="employee-document-card-motion rounded-2xl bg-white/10 p-4">
                                 <p class="text-xs uppercase tracking-wide text-emerald-100">Latest Upload</p>
                                 <p class="mt-2 text-sm font-bold text-white">{{ $latestDocument?->type ?: ($latestDocument?->filename ?? 'None yet') }}</p>
                             </div>
-                            <div class="rounded-2xl bg-white/10 p-4">
+                            <div class="employee-document-card-motion rounded-2xl bg-white/10 p-4">
                                 <p class="text-xs uppercase tracking-wide text-emerald-100">Viewing</p>
                                 <p class="mt-2 text-sm font-bold text-white">{{ $activeFolderLabel }}</p>
                             </div>
@@ -132,9 +195,9 @@
         </section>
 
         <section class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <article class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <article class="employee-document-card-motion employee-document-reveal rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm" style="--employee-document-delay: 120ms;">
                 <div class="flex items-start justify-between gap-4">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/20">
+                    <div class="employee-document-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/20" style="--employee-document-delay: 180ms;">
                         <i class="fa-solid fa-folder-open text-2xl"></i>
                     </div>
                     <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">Workspace</span>
@@ -144,9 +207,9 @@
                 <p class="mt-4 text-xs leading-5 text-slate-500">Total uploaded files currently saved across your personal folders and unfiled records.</p>
             </article>
 
-            <article class="rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm">
+            <article class="employee-document-card-motion employee-document-reveal rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm" style="--employee-document-delay: 160ms;">
                 <div class="flex items-start justify-between gap-4">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                    <div class="employee-document-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" style="--employee-document-delay: 220ms;">
                         <i class="fa-solid fa-circle-check text-2xl"></i>
                     </div>
                     <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Ready</span>
@@ -156,9 +219,9 @@
                 <p class="mt-4 text-xs leading-5 text-slate-500">Documents already uploaded and counted toward your required employee file submission.</p>
             </article>
 
-            <article class="rounded-[1.75rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm">
+            <article class="employee-document-card-motion employee-document-reveal rounded-[1.75rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm" style="--employee-document-delay: 200ms;">
                 <div class="flex items-start justify-between gap-4">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20">
+                    <div class="employee-document-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20" style="--employee-document-delay: 260ms;">
                         <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
                     </div>
                     <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Needs Action</span>
@@ -168,9 +231,9 @@
                 <p class="mt-4 text-xs leading-5 text-slate-500">Use the upload panel to submit any missing files listed under your 201 file requirements.</p>
             </article>
 
-            <article class="rounded-[1.75rem] border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-6 shadow-sm">
+            <article class="employee-document-card-motion employee-document-reveal rounded-[1.75rem] border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-6 shadow-sm" style="--employee-document-delay: 240ms;">
                 <div class="flex items-start justify-between gap-4">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-500/20">
+                    <div class="employee-document-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg shadow-sky-500/20" style="--employee-document-delay: 300ms;">
                         <i class="fa-solid fa-folder-tree text-2xl"></i>
                     </div>
                     <span class="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">Organized</span>
@@ -184,7 +247,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
             <!-- 201 FILE -->
-            <div id="document-folder-area" class="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm">
+            <div id="document-folder-area" class="employee-document-reveal bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm" style="--employee-document-delay: 280ms;">
                 <div class="mb-6 flex items-start justify-between gap-4">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Required Upload</p>
@@ -193,7 +256,7 @@
                             Upload one document at a time for your employee 201 file.
                         </p>
                     </div>
-                    <div class="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                    <div class="employee-document-icon-pop relative flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700" style="--employee-document-delay: 340ms;">
                         <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
                         @if($missingDocumentCount > 0)
                             <span class="absolute -right-2 -top-2 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold leading-none text-white">
@@ -203,7 +266,7 @@
                     </div>
                 </div>
 
-                <div class="mb-6 rounded-[1.5rem] border border-emerald-100 bg-gradient-to-r from-emerald-50 to-white p-4">
+                <div class="employee-document-card-motion mb-6 rounded-[1.5rem] border border-emerald-100 bg-gradient-to-r from-emerald-50 to-white p-4">
                     <div class="flex items-center justify-between gap-4">
                         <div>
                             <p class="text-sm font-semibold text-emerald-900">Requirement Progress</p>
@@ -212,7 +275,7 @@
                         <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700">{{ $completionPercent }}%</span>
                     </div>
                     <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-emerald-100">
-                        <div class="h-full rounded-full bg-emerald-500" style="width: {{ $completionPercent }}%;"></div>
+                        <div class="employee-document-progress-fill h-full rounded-full bg-emerald-500" style="width: {{ $completionPercent }}%; --employee-document-delay: 360ms;"></div>
                     </div>
                 </div>
 
@@ -260,7 +323,7 @@
                         </select>
                     </div>
 
-                    <div class="rounded-[1.5rem] border-2 border-dashed border-emerald-200 bg-emerald-50/70 p-5">
+                    <div class="employee-document-card-motion rounded-[1.5rem] border-2 border-dashed border-emerald-200 bg-emerald-50/70 p-5">
                         <label for="uploadFile" class="block text-sm font-medium text-gray-700 mb-2">Attach File</label>
                         <input
                             id="uploadFile"
@@ -306,9 +369,9 @@
                 <div class="mt-6">
                     <h3 class="text-sm font-semibold text-gray-700 mb-3">Latest Upload</h3>
                     @if($latestDocument)
-                        <div class="rounded-[1.5rem] border border-green-300 bg-green-50 p-4">
+                        <div class="employee-document-card-motion rounded-[1.5rem] border border-green-300 bg-green-50 p-4">
                             <div class="flex items-center gap-3">
-                                <span class="icon bg-green-200 text-green-600 w-10 h-10 rounded-full flex items-center justify-center">
+                                <span class="employee-document-icon-pop is-visible icon bg-green-200 text-green-600 w-10 h-10 rounded-full flex items-center justify-center">
                                     <i class="fa-solid fa-circle-check text-xl"></i>
                                 </span>
                                 <div class="min-w-0">
@@ -319,7 +382,7 @@
                             </div>
                         </div>
                     @else
-                        <div class="rounded-[1.5rem] border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-500">
+                        <div class="employee-document-card-motion rounded-[1.5rem] border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-500">
                             No uploaded document yet.
                         </div>
                     @endif
@@ -327,7 +390,7 @@
             </div>
 
             <!-- PERSONAL DOCUMENTS -->
-            <div class="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm">
+            <div class="employee-document-reveal bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm" style="--employee-document-delay: 320ms;">
                 <div class="flex flex-col gap-4 mb-6 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Personal Workspace</p>
@@ -337,7 +400,7 @@
                         </p>
                     </div>
 
-                    <form action="{{ route('employee.document.folder.store') }}" method="POST" class="flex w-full flex-col gap-2 rounded-[1.5rem] border border-sky-200 bg-sky-50 p-4 lg:w-auto lg:min-w-[20rem]">
+                    <form action="{{ route('employee.document.folder.store') }}" method="POST" class="employee-document-card-motion flex w-full flex-col gap-2 rounded-[1.5rem] border border-sky-200 bg-sky-50 p-4 lg:w-auto lg:min-w-[20rem]">
                         @csrf
                         <label for="folder_name" class="text-xs font-semibold uppercase tracking-wide text-sky-900">Create Folder</label>
                         <div class="flex gap-2">
@@ -360,10 +423,10 @@
                     </form>
                 </div>
 
-                <div class="mb-5 rounded-[1.5rem] border border-sky-200 bg-gradient-to-r from-sky-50 to-cyan-50 p-4">
+                <div class="employee-document-card-motion mb-5 rounded-[1.5rem] border border-sky-200 bg-gradient-to-r from-sky-50 to-cyan-50 p-4">
                     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div class="flex items-center gap-3">
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-sm">
+                            <div class="employee-document-icon-pop is-visible flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-sm">
                                 <i class="fa-solid fa-folder-open"></i>
                             </div>
                             <div class="min-w-0">
@@ -381,9 +444,9 @@
 
                 <div class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     <a href="{{ route('employee.employeeDocument') }}#document-folder-area"
-                        class="rounded-2xl border p-4 transition {{ $selectedFolderKey === 'all' ? 'border-sky-400 bg-sky-50 shadow-sm' : 'border-gray-200 bg-white hover:border-sky-200 hover:bg-sky-50/50' }}">
+                        class="employee-document-card-motion rounded-2xl border p-4 transition {{ $selectedFolderKey === 'all' ? 'border-sky-400 bg-sky-50 shadow-sm' : 'border-gray-200 bg-white hover:border-sky-200 hover:bg-sky-50/50' }}">
                         <div class="flex items-center gap-3">
-                            <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+                            <span class="employee-document-icon-pop is-visible flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
                                 <i class="fa-solid fa-layer-group"></i>
                             </span>
                             <div>
@@ -396,9 +459,9 @@
                     <a href="{{ route('employee.employeeDocument', ['folder' => 'unfiled']) }}#document-folder-area"
                         data-folder-drop-target
                         data-folder-key=""
-                        class="rounded-2xl border p-4 transition {{ $selectedFolderKey === 'unfiled' ? 'border-amber-400 bg-amber-50 shadow-sm' : 'border-gray-200 bg-white hover:border-amber-200 hover:bg-amber-50/60' }}">
+                        class="employee-document-card-motion rounded-2xl border p-4 transition {{ $selectedFolderKey === 'unfiled' ? 'border-amber-400 bg-amber-50 shadow-sm' : 'border-gray-200 bg-white hover:border-amber-200 hover:bg-amber-50/60' }}">
                         <div class="flex items-center gap-3">
-                            <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                            <span class="employee-document-icon-pop is-visible flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
                                 <i class="fa-solid fa-inbox"></i>
                             </span>
                             <div>
@@ -412,11 +475,11 @@
                         <div
                             data-folder-drop-target
                             data-folder-key="{{ $folder['key'] }}"
-                            class="rounded-2xl border p-4 transition {{ $selectedFolderKey === $folder['key'] ? 'border-sky-400 bg-sky-50 shadow-sm' : 'border-gray-200 bg-white hover:border-sky-200 hover:bg-sky-50/50' }}"
+                            class="employee-document-card-motion rounded-2xl border p-4 transition {{ $selectedFolderKey === $folder['key'] ? 'border-sky-400 bg-sky-50 shadow-sm' : 'border-gray-200 bg-white hover:border-sky-200 hover:bg-sky-50/50' }}"
                         >
                             <div class="flex items-center justify-between gap-3">
                                 <a href="{{ route('employee.employeeDocument', ['folder' => $folder['key']]) }}#document-folder-area" class="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
-                                    <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
+                                    <span class="employee-document-icon-pop is-visible flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
                                         <i class="fa-solid fa-folder"></i>
                                     </span>
                                     <div class="min-w-0 flex-1 overflow-hidden">
@@ -445,7 +508,7 @@
                     @endforeach
 
                     @if($folders->isEmpty())
-                        <div class="rounded-[1.5rem] border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-500 sm:col-span-2 xl:col-span-3">
+                        <div class="employee-document-card-motion rounded-[1.5rem] border border-dashed border-gray-300 bg-gray-50 p-5 text-sm text-gray-500 sm:col-span-2 xl:col-span-3">
                             No folders yet. Use the Create Folder box above to add one.
                         </div>
                     @endif
@@ -474,10 +537,10 @@
                             data-document-drag
                             data-document-id="{{ $document->id }}"
                             data-current-folder-key="{{ $currentFolderKey }}"
-                            class="rounded-[1.5rem] border border-gray-200 bg-gradient-to-r from-white to-slate-50 p-4 shadow-sm transition hover:border-sky-200 hover:shadow-md"
+                            class="employee-document-card-motion rounded-[1.5rem] border border-gray-200 bg-gradient-to-r from-white to-slate-50 p-4 shadow-sm transition hover:border-sky-200 hover:shadow-md"
                         >
                             <div class="flex items-center gap-4">
-                            <span class="doc-icon bg-sky-100 text-sky-600 w-11 h-11 rounded-xl flex items-center justify-center">
+                            <span class="employee-document-icon-pop is-visible doc-icon bg-sky-100 text-sky-600 w-11 h-11 rounded-xl flex items-center justify-center">
                                 <i class="fa-solid fa-file-lines"></i>
                             </span>
                             <div class="flex-1">
@@ -573,7 +636,7 @@
                             </div>
                         </div>
                     @empty
-                        <div class="rounded-[1.5rem] border border-dashed border-gray-300 bg-gray-50 p-6 text-sm text-gray-500">
+                        <div class="employee-document-card-motion rounded-[1.5rem] border border-dashed border-gray-300 bg-gray-50 p-6 text-sm text-gray-500">
                             No files in {{ strtolower($activeFolderLabel) }} yet.
                         </div>
                     @endforelse
@@ -621,6 +684,38 @@
 </form>
 
 <script>
+    const initEmployeeDocumentAnimation = () => {
+        const page = document.getElementById('employee-document-page');
+        if (!page) return;
+
+        const animatedItems = page.querySelectorAll('.employee-document-reveal, .employee-document-progress-fill');
+
+        if (!('IntersectionObserver' in window)) {
+            animatedItems.forEach((item) => item.classList.add('is-visible'));
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.14,
+            rootMargin: '0px 0px -40px 0px',
+        });
+
+        animatedItems.forEach((item) => observer.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEmployeeDocumentAnimation, { once: true });
+    } else {
+        initEmployeeDocumentAnimation();
+    }
+
     const sidebar = document.querySelector('aside');
     const main = document.querySelector('main');
 

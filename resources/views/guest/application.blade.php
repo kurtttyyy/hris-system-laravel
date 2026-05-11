@@ -452,7 +452,6 @@
                 <ul class="footer-link-list">
                     <li><a href="{{ route('guest.index') }}">Home</a></li>
                     <li><a href="{{ route('guest.jobOpenLanding') }}">Job Vacancies</a></li>
-                    <li><a href="{{ route('guest.index') }}#departmentFilter">Departments</a></li>
                     <li><a href="{{ route('login_display') }}">Applicant Login</a></li>
                     <li><a href="{{ route('register') }}">Create Account</a></li>
                 </ul>

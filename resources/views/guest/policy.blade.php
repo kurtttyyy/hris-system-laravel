@@ -189,6 +189,74 @@
         gap: 1rem;
     }
 
+    #guest-policy-page .guest-policy-reveal {
+        opacity: 1;
+        transform: translateY(0);
+        will-change: opacity, transform;
+    }
+
+    #guest-policy-page .guest-policy-reveal.is-scroll-animated,
+    .site-footer.guest-policy-reveal.is-scroll-animated {
+        animation: guest-policy-fade-up 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--guest-policy-delay, 0ms);
+    }
+
+    #guest-policy-page .guest-policy-card-motion,
+    .site-footer .guest-policy-card-motion {
+        transition:
+            transform 0.25s ease,
+            box-shadow 0.25s ease,
+            border-color 0.25s ease;
+    }
+
+    #guest-policy-page .guest-policy-card-motion:hover,
+    .site-footer .guest-policy-card-motion:hover {
+        transform: translateY(-4px);
+    }
+
+    #guest-policy-page .guest-policy-pop {
+        animation: guest-policy-pop 0.58s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--guest-policy-delay, 120ms);
+    }
+
+    @keyframes guest-policy-fade-up {
+        0% {
+            opacity: 0;
+            transform: translateY(26px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes guest-policy-pop {
+        0% {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #guest-policy-page .guest-policy-reveal,
+        #guest-policy-page .guest-policy-card-motion,
+        #guest-policy-page .guest-policy-pop,
+        .site-footer.guest-policy-reveal,
+        .site-footer .guest-policy-card-motion {
+            opacity: 1;
+            transform: none;
+            transition: none;
+            animation: none;
+            will-change: auto;
+        }
+    }
+
     .site-footer {
         background:
             radial-gradient(circle at top left, rgba(21, 115, 71, 0.12), transparent 24%),
@@ -410,7 +478,7 @@
     }
 </style>
 
-<main class="policy-page">
+<main id="guest-policy-page" class="policy-page">
     <section class="policy-hero">
         <div class="policy-shell">
             <div class="policy-hero-card">
@@ -606,6 +674,69 @@
         </div>
     </div>
 </footer>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const page = document.getElementById('guest-policy-page');
+        if (!page) return;
+
+        const revealGroups = [
+            ['.policy-hero-card', 0],
+            ['.policy-side-card', 120],
+            ['.policy-side-item', 160],
+            ['.policy-card', 180],
+        ];
+
+        revealGroups.forEach(([selector, baseDelay]) => {
+            page.querySelectorAll(selector).forEach((item, index) => {
+                item.classList.add('guest-policy-reveal');
+                item.style.setProperty('--guest-policy-delay', `${Math.min(baseDelay + ((index % 6) * 45), 420)}ms`);
+            });
+        });
+
+        page.querySelectorAll('.policy-hero-card, .policy-side-card, .policy-side-item, .policy-card').forEach((item) => {
+            item.classList.add('guest-policy-card-motion');
+        });
+
+        page.querySelectorAll('.policy-kicker, .policy-side-item summary').forEach((item, index) => {
+            item.classList.add('guest-policy-pop');
+            item.style.setProperty('--guest-policy-delay', `${120 + ((index % 5) * 35)}ms`);
+        });
+
+        document.querySelectorAll('.site-footer .footer-contact, .site-footer .footer-link-list a, .site-footer .footer-bottom-links a').forEach((item) => {
+            item.classList.add('guest-policy-card-motion');
+        });
+
+        const animatedItems = Array.from(page.querySelectorAll('.guest-policy-reveal'));
+        const footer = document.querySelector('.site-footer');
+        if (footer) {
+            footer.classList.add('guest-policy-reveal');
+            footer.style.setProperty('--guest-policy-delay', '180ms');
+            animatedItems.push(footer);
+        }
+
+        if (!('IntersectionObserver' in window)) {
+            animatedItems.forEach((item) => item.classList.add('is-scroll-animated'));
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.remove('is-scroll-animated');
+                    void entry.target.offsetWidth;
+                    entry.target.classList.add('is-scroll-animated');
+                } else {
+                    entry.target.classList.remove('is-scroll-animated');
+                }
+            });
+        }, {
+            threshold: 0.12,
+            rootMargin: '0px 0px -35px 0px',
+        });
+
+        animatedItems.forEach((item) => observer.observe(item));
+    });
+</script>
 @endsection
 
 

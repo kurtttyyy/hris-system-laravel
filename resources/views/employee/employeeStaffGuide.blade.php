@@ -11,6 +11,61 @@
         main { transition: margin-left 0.3s ease; }
         aside:not(:hover) ~ main { margin-left: 4rem; }
         aside:hover ~ main { margin-left: 14rem; }
+
+        #employee-staff-guide-page .employee-staff-guide-reveal {
+            opacity: 1;
+            transform: translateY(0);
+            will-change: opacity, transform;
+        }
+
+        #employee-staff-guide-page .employee-staff-guide-reveal.is-scroll-animated {
+            animation: employee-staff-guide-scroll-fade-up 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+            animation-delay: var(--employee-staff-guide-delay, 0ms);
+        }
+
+        @keyframes employee-staff-guide-scroll-fade-up {
+            0% { opacity: 0; transform: translateY(26px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        #employee-staff-guide-page .employee-staff-guide-card-motion {
+            transition:
+                transform 0.25s ease,
+                box-shadow 0.25s ease,
+                border-color 0.25s ease;
+        }
+
+        #employee-staff-guide-page .employee-staff-guide-card-motion:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+        }
+
+        #employee-staff-guide-page .employee-staff-guide-icon-pop {
+            opacity: 0;
+            transform: scale(0.86) rotate(-4deg);
+            transition:
+                opacity 0.55s ease,
+                transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-staff-guide-delay, 120ms);
+        }
+
+        #employee-staff-guide-page .is-visible .employee-staff-guide-icon-pop,
+        #employee-staff-guide-page .employee-staff-guide-icon-pop.is-visible {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #employee-staff-guide-page .employee-staff-guide-reveal,
+            #employee-staff-guide-page .employee-staff-guide-icon-pop,
+            #employee-staff-guide-page .employee-staff-guide-card-motion {
+                opacity: 1;
+                transform: none;
+                transition: none;
+                animation: none;
+                will-change: auto;
+            }
+        }
     </style>
 </head>
 <body class="bg-slate-100">
@@ -19,7 +74,7 @@
     @include('components.employeeSideBar')
 
     <main class="flex-1 ml-16 transition-all duration-300">
-        <div class="space-y-8 p-4 md:p-8">
+        <div id="employee-staff-guide-page" class="space-y-8 p-4 md:p-8">
             @php
                 $systemOverview = [
                     [
@@ -337,8 +392,11 @@
                     <div class="flex flex-1 flex-wrap gap-3">
                         @foreach ($guideSections as $section)
                             <a href="#{{ $section['id'] }}" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">
-                                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-700 text-[11px] text-white">{{ (int) $section['number'] }}</span>
-                                {{ $section['short'] }}
+                                <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-700 text-[11px] text-white">
+                                    <i class="fa {{ $section['icon'] }}"></i>
+                                </span>
+                                <span class="text-[10px] font-black text-slate-400">{{ $section['number'] }}</span>
+                                <span>{{ $section['short'] }}</span>
                             </a>
                         @endforeach
                     </div>
@@ -384,8 +442,15 @@
                                             <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
                                                 @foreach ($section['manual'] as $manualTitle => $manualText)
                                                     <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                                        <h3 class="text-sm font-black text-slate-900">{{ $manualTitle }}</h3>
-                                                        <p class="mt-2 text-sm leading-6 text-slate-600">{{ $manualText }}</p>
+                                                        <div class="flex items-start gap-3">
+                                                            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                                                                <i class="fa {{ $section['icon'] }} text-xs"></i>
+                                                            </span>
+                                                            <div>
+                                                                <h3 class="text-sm font-black text-slate-900">{{ $manualTitle }}</h3>
+                                                                <p class="mt-2 text-sm leading-6 text-slate-600">{{ $manualText }}</p>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 @endforeach
                                             </div>
@@ -400,7 +465,9 @@
                                                     {{ $stepIndex + 1 }}
                                                 </div>
                                                 <div class="pb-1">
-                                                    <h3 class="text-base font-black text-slate-900">{{ $step['title'] }}</h3>
+                                                    <h3 class="text-base font-black text-slate-900">
+                                                        <i class="fa fa-check-circle mr-2 text-emerald-600"></i>{{ $step['title'] }}
+                                                    </h3>
                                                     <p class="mt-2 text-sm leading-6 text-slate-600">{{ $step['text'] }}</p>
                                                 </div>
                                             </div>
@@ -437,8 +504,15 @@
                                         <div class="mt-4 space-y-3">
                                             @foreach (($section['manual'] ?? []) as $manualTitle => $manualText)
                                                 <div class="rounded-2xl bg-white p-4 shadow-sm">
-                                                    <h3 class="text-sm font-black text-slate-900">{{ $manualTitle }}</h3>
-                                                    <p class="mt-2 text-sm leading-6 text-slate-600">{{ $manualText }}</p>
+                                                    <div class="flex items-start gap-3">
+                                                        <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                                                            <i class="fa {{ $section['icon'] }} text-xs"></i>
+                                                        </span>
+                                                        <div>
+                                                            <h3 class="text-sm font-black text-slate-900">{{ $manualTitle }}</h3>
+                                                            <p class="mt-2 text-sm leading-6 text-slate-600">{{ $manualText }}</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -448,7 +522,9 @@
                                         @foreach ($section['steps'] as $stepIndex => $step)
                                             <div class="rounded-[1.5rem] border border-emerald-100 bg-white p-5 shadow-sm">
                                                 <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-700 text-sm font-black text-white">{{ $stepIndex + 1 }}</span>
-                                                <h3 class="mt-4 text-base font-black text-slate-900">{{ $step['title'] }}</h3>
+                                                <h3 class="mt-4 text-base font-black text-slate-900">
+                                                    <i class="fa fa-check-circle mr-2 text-emerald-600"></i>{{ $step['title'] }}
+                                                </h3>
                                                 <p class="mt-2 text-sm leading-6 text-slate-600">{{ $step['text'] }}</p>
                                             </div>
                                         @endforeach
@@ -496,8 +572,15 @@
                                     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                         @foreach (($section['manual'] ?? []) as $manualTitle => $manualText)
                                             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                                <h3 class="text-sm font-black text-slate-900">{{ $manualTitle }}</h3>
-                                                <p class="mt-2 text-sm leading-6 text-slate-600">{{ $manualText }}</p>
+                                                <div class="flex items-start gap-3">
+                                                    <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                                                        <i class="fa {{ $section['icon'] }} text-xs"></i>
+                                                    </span>
+                                                    <div>
+                                                        <h3 class="text-sm font-black text-slate-900">{{ $manualTitle }}</h3>
+                                                        <p class="mt-2 text-sm leading-6 text-slate-600">{{ $manualText }}</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         @endforeach
                                     </div>
@@ -509,7 +592,9 @@
                                                 <div class="flex gap-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
                                                     <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-sm font-black text-white">{{ $stepIndex + 1 }}</span>
                                                     <div>
-                                                        <h3 class="text-base font-black text-slate-900">{{ $step['title'] }}</h3>
+                                                        <h3 class="text-base font-black text-slate-900">
+                                                            <i class="fa fa-check-circle mr-2 text-emerald-600"></i>{{ $step['title'] }}
+                                                        </h3>
                                                         <p class="mt-2 text-sm leading-6 text-slate-600">{{ $step['text'] }}</p>
                                                     </div>
                                                 </div>
@@ -546,8 +631,15 @@
                                     <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                                         @foreach (($section['manual'] ?? []) as $manualTitle => $manualText)
                                             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                                <h3 class="text-sm font-black text-slate-900">{{ $manualTitle }}</h3>
-                                                <p class="mt-2 text-sm leading-6 text-slate-600">{{ $manualText }}</p>
+                                                <div class="flex items-start gap-3">
+                                                    <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                                                        <i class="fa {{ $section['icon'] }} text-xs"></i>
+                                                    </span>
+                                                    <div>
+                                                        <h3 class="text-sm font-black text-slate-900">{{ $manualTitle }}</h3>
+                                                        <p class="mt-2 text-sm leading-6 text-slate-600">{{ $manualText }}</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         @endforeach
                                     </div>
@@ -558,7 +650,9 @@
                                         <div class="rounded-[1.5rem] border border-emerald-100 bg-gradient-to-br from-white to-emerald-50 p-5 shadow-sm">
                                             <div class="flex items-center gap-3">
                                                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-sm font-black text-white">{{ $stepIndex + 1 }}</span>
-                                                <h3 class="text-base font-black text-slate-900">{{ $step['title'] }}</h3>
+                                                <h3 class="text-base font-black text-slate-900">
+                                                    <i class="fa fa-check-circle mr-2 text-emerald-600"></i>{{ $step['title'] }}
+                                                </h3>
                                             </div>
                                             <p class="mt-3 text-sm leading-6 text-slate-600">{{ $step['text'] }}</p>
                                         </div>
@@ -574,6 +668,72 @@
 </div>
 
 <script>
+    const initEmployeeStaffGuideAnimation = () => {
+        const page = document.getElementById('employee-staff-guide-page');
+        if (!page) return;
+
+        const topSections = Array.from(page.children).filter((child) => child.tagName === 'SECTION');
+        topSections.forEach((section, index) => {
+            section.classList.add('employee-staff-guide-reveal');
+            section.style.setProperty('--employee-staff-guide-delay', `${Math.min(index * 80, 240)}ms`);
+        });
+
+        page.querySelectorAll('section:nth-of-type(2) article').forEach((card, index) => {
+            card.classList.add('employee-staff-guide-card-motion', 'employee-staff-guide-reveal');
+            card.style.setProperty('--employee-staff-guide-delay', `${120 + (index * 60)}ms`);
+        });
+
+        page.querySelectorAll('section:nth-of-type(3) a').forEach((link, index) => {
+            link.classList.add('employee-staff-guide-card-motion');
+            link.style.setProperty('--employee-staff-guide-delay', `${Math.min(120 + (index * 20), 320)}ms`);
+        });
+
+        page.querySelectorAll('section:nth-of-type(4) > article').forEach((article, index) => {
+            article.classList.add('employee-staff-guide-card-motion', 'employee-staff-guide-reveal');
+            article.style.setProperty('--employee-staff-guide-delay', `${Math.min(80 + ((index % 4) * 60), 260)}ms`);
+        });
+
+        page.querySelectorAll('[class*="rounded-"]').forEach((card) => {
+            if (!card.classList.contains('employee-staff-guide-reveal')) {
+                card.classList.add('employee-staff-guide-card-motion');
+            }
+        });
+
+        page.querySelectorAll('.fa').forEach((icon) => {
+            const iconBox = icon.closest('.flex[class*="h-"], span[class*="h-"]');
+            if (iconBox) {
+                iconBox.classList.add('employee-staff-guide-icon-pop', 'is-visible');
+            }
+        });
+
+        const animatedItems = Array.from(page.querySelectorAll('.employee-staff-guide-reveal'));
+
+        if (!('IntersectionObserver' in window)) {
+            animatedItems.forEach((item) => item.classList.add('is-visible'));
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+
+                entry.target.classList.add('is-scroll-animated', 'is-visible');
+                observer.unobserve(entry.target);
+            });
+        }, {
+            threshold: 0.12,
+            rootMargin: '0px 0px -35px 0px',
+        });
+
+        animatedItems.forEach((item) => observer.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEmployeeStaffGuideAnimation, { once: true });
+    } else {
+        initEmployeeStaffGuideAnimation();
+    }
+
     const sidebar = document.querySelector('aside');
     const main = document.querySelector('main');
 

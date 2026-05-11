@@ -15,7 +15,7 @@
             <a href="{{ route('guest.about') }}" class="btn btn-outline-light border-0 nav-home-link">About</a>
 
             <!-- Buttons -->
-            <a href="{{ route('guest.jobOpenLanding') }}" class=" btn btn-outline-light border-0 nav-home-link">Job Applicant</a>
+            <a href="{{ route('guest.jobOpenLanding') }}" class=" btn btn-outline-light border-0 nav-home-link">Job Vacancies</a>
 
             <!-- Application Status button triggers modal -->
             <button id="applicationStatusBtn"

@@ -11,6 +11,69 @@
         main { transition: margin-left 0.3s ease; }
         aside:not(:hover) ~ main { margin-left: 4rem; }
         aside:hover ~ main { margin-left: 14rem; }
+
+        #employee-resignation-page .employee-resignation-reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition:
+                opacity 0.7s ease,
+                transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-resignation-delay, 0ms);
+        }
+
+        #employee-resignation-page .employee-resignation-reveal.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #employee-resignation-page .employee-resignation-card-motion {
+            transition:
+                transform 0.25s ease,
+                box-shadow 0.25s ease,
+                border-color 0.25s ease;
+        }
+
+        #employee-resignation-page .employee-resignation-card-motion:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+        }
+
+        #employee-resignation-page .employee-resignation-icon-pop {
+            opacity: 0;
+            transform: scale(0.86) rotate(-4deg);
+            transition:
+                opacity 0.55s ease,
+                transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-resignation-delay, 120ms);
+        }
+
+        #employee-resignation-page .is-visible .employee-resignation-icon-pop,
+        #employee-resignation-page .employee-resignation-icon-pop.is-visible {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        #employee-resignation-page .employee-resignation-progress-fill {
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-resignation-delay, 180ms);
+        }
+
+        #employee-resignation-page .employee-resignation-progress-fill.is-visible {
+            transform: scaleX(1);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #employee-resignation-page .employee-resignation-reveal,
+            #employee-resignation-page .employee-resignation-icon-pop,
+            #employee-resignation-page .employee-resignation-progress-fill,
+            #employee-resignation-page .employee-resignation-card-motion {
+                opacity: 1;
+                transform: none;
+                transition: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-[radial-gradient(circle_at_top,_#ecfdf5,_#f8fafc_40%,_#eef2ff_100%)]">
@@ -28,8 +91,8 @@
     @include('components.employeeSideBar')
 
     <main class="flex-1 ml-16 transition-all duration-300">
-        <div class="space-y-8 p-4 pt-4 md:p-8">
-            <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-2xl md:p-8">
+        <div id="employee-resignation-page" class="space-y-8 p-4 pt-4 md:p-8">
+            <section class="employee-resignation-reveal relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-2xl md:p-8" style="--employee-resignation-delay: 0ms;">
                 <div class="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl"></div>
                 <div class="absolute bottom-0 right-20 h-24 w-24 rounded-full bg-emerald-300/10 blur-2xl"></div>
                 <div class="relative grid gap-6 xl:grid-cols-[1.55fr_0.95fr] xl:items-end">
@@ -46,26 +109,26 @@
                         </div>
 
                         <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-                            <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                            <div class="employee-resignation-card-motion employee-resignation-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-resignation-delay: 80ms;">
                                 <p class="text-xs uppercase tracking-wide text-emerald-100">Requests</p>
                                 <p class="mt-2 text-2xl font-black">{{ $resignationCollection->count() }}</p>
                             </div>
-                            <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                            <div class="employee-resignation-card-motion employee-resignation-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-resignation-delay: 120ms;">
                                 <p class="text-xs uppercase tracking-wide text-amber-100">Pending</p>
                                 <p class="mt-2 text-2xl font-black">{{ $pendingCount }}</p>
                             </div>
-                            <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                            <div class="employee-resignation-card-motion employee-resignation-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-resignation-delay: 160ms;">
                                 <p class="text-xs uppercase tracking-wide text-lime-100">Approved</p>
                                 <p class="mt-2 text-2xl font-black">{{ $approvedCount }}</p>
                             </div>
-                            <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                            <div class="employee-resignation-card-motion employee-resignation-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-resignation-delay: 200ms;">
                                 <p class="text-xs uppercase tracking-wide text-rose-100">Closed</p>
                                 <p class="mt-2 text-2xl font-black">{{ $rejectedCount }}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="rounded-[1.75rem] border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
+                    <div class="employee-resignation-card-motion employee-resignation-reveal rounded-[1.75rem] border border-white/10 bg-white/10 p-5 backdrop-blur-sm" style="--employee-resignation-delay: 120ms;">
                         <div class="mb-4 flex justify-end">
                             <div class="relative group">
                                 <button class="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-white backdrop-blur-sm transition hover:bg-white/20">
@@ -100,16 +163,16 @@
                                     <span class="font-semibold">{{ $latestStatus !== '' ? $latestStatus : 'No Request Yet' }}</span>
                                 </div>
                                 <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-white/15">
-                                    <div class="h-full rounded-full bg-emerald-300" style="width: {{ $resignationCollection->isEmpty() ? 0 : ($approvedCount > 0 ? 100 : ($pendingCount > 0 ? 55 : 30)) }}%;"></div>
+                                    <div class="employee-resignation-progress-fill h-full rounded-full bg-emerald-300" style="width: {{ $resignationCollection->isEmpty() ? 0 : ($approvedCount > 0 ? 100 : ($pendingCount > 0 ? 55 : 30)) }}%; --employee-resignation-delay: 220ms;"></div>
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-3">
-                                <div class="rounded-2xl bg-white/10 p-4">
+                                <div class="employee-resignation-card-motion rounded-2xl bg-white/10 p-4">
                                     <p class="text-xs uppercase tracking-wide text-emerald-100">Current Status</p>
                                     <p class="mt-2 text-sm font-bold text-white">{{ $latestStatus !== '' ? $latestStatus : 'No Request Yet' }}</p>
                                 </div>
-                                <div class="rounded-2xl bg-white/10 p-4">
+                                <div class="employee-resignation-card-motion rounded-2xl bg-white/10 p-4">
                                     <p class="text-xs uppercase tracking-wide text-emerald-100">Effective Date</p>
                                     <p class="mt-2 text-sm font-bold text-white">{{ $latestEffectiveDate }}</p>
                                 </div>
@@ -124,21 +187,21 @@
             </section>
 
             @if (session('success'))
-                <div class="rounded-[1.25rem] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700 shadow-sm">
+                <div class="employee-resignation-reveal rounded-[1.25rem] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700 shadow-sm" style="--employee-resignation-delay: 80ms;">
                     {{ session('success') }}
                 </div>
             @endif
 
             @if ($errors->any())
-                <div class="rounded-[1.25rem] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-sm">
+                <div class="employee-resignation-reveal rounded-[1.25rem] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-sm" style="--employee-resignation-delay: 80ms;">
                     {{ $errors->first() }}
                 </div>
             @endif
 
             <section class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-                <article class="rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm">
+                <article class="employee-resignation-card-motion employee-resignation-reveal rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm" style="--employee-resignation-delay: 120ms;">
                     <div class="flex items-start justify-between gap-4">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                        <div class="employee-resignation-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" style="--employee-resignation-delay: 180ms;">
                             <i class="fa fa-file-text-o fa-2x"></i>
                         </div>
                         <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Requests</span>
@@ -148,9 +211,9 @@
                     <p class="mt-4 text-xs leading-5 text-slate-500">All requests you have submitted, including pending, approved, completed, rejected, or cancelled records.</p>
                 </article>
 
-                <article class="rounded-[1.75rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm">
+                <article class="employee-resignation-card-motion employee-resignation-reveal rounded-[1.75rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm" style="--employee-resignation-delay: 160ms;">
                     <div class="flex items-start justify-between gap-4">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20">
+                        <div class="employee-resignation-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20" style="--employee-resignation-delay: 220ms;">
                             <i class="fa fa-hourglass-half fa-2x"></i>
                         </div>
                         <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">In Review</span>
@@ -160,9 +223,9 @@
                     <p class="mt-4 text-xs leading-5 text-slate-500">Requests that are still waiting for final HR or admin action.</p>
                 </article>
 
-                <article class="rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
+                <article class="employee-resignation-card-motion employee-resignation-reveal rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm" style="--employee-resignation-delay: 200ms;">
                     <div class="flex items-start justify-between gap-4">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/20">
+                        <div class="employee-resignation-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/20" style="--employee-resignation-delay: 260ms;">
                             <i class="fa fa-check-circle-o fa-2x"></i>
                         </div>
                         <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">Processed</span>
@@ -172,9 +235,9 @@
                     <p class="mt-4 text-xs leading-5 text-slate-500">Requests that have already moved forward or reached final processing status.</p>
                 </article>
 
-                <article class="rounded-[1.75rem] border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-6 shadow-sm">
+                <article class="employee-resignation-card-motion employee-resignation-reveal rounded-[1.75rem] border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-6 shadow-sm" style="--employee-resignation-delay: 240ms;">
                     <div class="flex items-start justify-between gap-4">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/20">
+                        <div class="employee-resignation-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/20" style="--employee-resignation-delay: 300ms;">
                             <i class="fa fa-ban fa-2x"></i>
                         </div>
                         <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">Closed</span>
@@ -186,7 +249,7 @@
             </section>
 
             <section class="grid grid-cols-1 gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-                <div class="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+                <div class="employee-resignation-reveal rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-8" style="--employee-resignation-delay: 280ms;">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Submit Request</p>
@@ -195,12 +258,12 @@
                                 Provide the official submission date, intended effectivity date, and any supporting explanation for your request.
                             </p>
                         </div>
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                        <div class="employee-resignation-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700" style="--employee-resignation-delay: 340ms;">
                             <i class="fa fa-pencil-square-o fa-2x"></i>
                         </div>
                     </div>
 
-                    <div class="mt-6 rounded-[1.5rem] border border-emerald-100 bg-gradient-to-r from-emerald-50 to-white p-4">
+                    <div class="employee-resignation-card-motion mt-6 rounded-[1.5rem] border border-emerald-100 bg-gradient-to-r from-emerald-50 to-white p-4">
                         <div class="flex items-center justify-between gap-4">
                             <div>
                                 <p class="text-sm font-semibold text-emerald-900">Before you submit</p>
@@ -253,14 +316,14 @@
                     </form>
                 </div>
 
-                <div id="resignation-timeline-section" class="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                <div id="resignation-timeline-section" class="employee-resignation-reveal rounded-[2rem] border border-slate-200 bg-white shadow-sm" style="--employee-resignation-delay: 320ms;">
                     <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-5 md:flex-row md:items-end md:justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Request History</p>
                             <h2 class="mt-2 text-2xl font-black text-slate-900">My Resignation Timeline</h2>
                             <p class="mt-1 text-sm text-slate-500">Track status changes, effective dates, and any admin remarks attached to each request.</p>
                         </div>
-                        <div class="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+                        <div class="employee-resignation-card-motion rounded-2xl bg-slate-50 px-4 py-3 text-sm">
                             <p class="text-xs uppercase tracking-wide text-slate-500">Latest Status</p>
                             <p class="mt-1 font-semibold text-slate-900">{{ $latestStatus !== '' ? $latestStatus : 'No Request Yet' }}</p>
                         </div>
@@ -286,10 +349,10 @@
                                 };
                             @endphp
 
-                            <article class="rounded-[1.5rem] border border-slate-200 bg-gradient-to-r from-white to-slate-50 p-5 shadow-sm">
+                            <article class="employee-resignation-card-motion rounded-[1.5rem] border border-slate-200 bg-gradient-to-r from-white to-slate-50 p-5 shadow-sm">
                                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                     <div class="flex items-start gap-4">
-                                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl {{ $iconClass }}">
+                                        <div class="employee-resignation-icon-pop is-visible flex h-14 w-14 items-center justify-center rounded-2xl {{ $iconClass }}">
                                             <i class="fa fa-briefcase"></i>
                                         </div>
 
@@ -306,11 +369,11 @@
                                             </p>
 
                                             <div class="mt-4 grid gap-3 md:grid-cols-2">
-                                                <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                                <div class="employee-resignation-card-motion rounded-2xl border border-slate-200 bg-white px-4 py-3">
                                                     <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Reason</p>
                                                     <p class="mt-2 text-sm leading-6 text-slate-600">{{ $row->reason ?: 'No reason provided.' }}</p>
                                                 </div>
-                                                <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                                <div class="employee-resignation-card-motion rounded-2xl border border-slate-200 bg-white px-4 py-3">
                                                     <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Admin Note</p>
                                                     <p class="mt-2 text-sm leading-6 text-slate-600">{{ $row->admin_note ?: 'No admin note yet.' }}</p>
                                                 </div>
@@ -320,8 +383,8 @@
                                 </div>
                             </article>
                         @empty
-                            <div class="flex flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center">
-                                <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200 text-slate-500">
+                            <div class="employee-resignation-card-motion flex flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 px-6 py-14 text-center">
+                                <div class="employee-resignation-icon-pop is-visible flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200 text-slate-500">
                                     <i class="fa fa-folder-open fa-2x"></i>
                                 </div>
                                 <h4 class="mt-5 text-xl font-bold text-slate-900">No resignation requests yet</h4>
@@ -336,6 +399,38 @@
 </div>
 
 <script>
+    const initEmployeeResignationAnimation = () => {
+        const page = document.getElementById('employee-resignation-page');
+        if (!page) return;
+
+        const animatedItems = page.querySelectorAll('.employee-resignation-reveal, .employee-resignation-progress-fill');
+
+        if (!('IntersectionObserver' in window)) {
+            animatedItems.forEach((item) => item.classList.add('is-visible'));
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.14,
+            rootMargin: '0px 0px -40px 0px',
+        });
+
+        animatedItems.forEach((item) => observer.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEmployeeResignationAnimation, { once: true });
+    } else {
+        initEmployeeResignationAnimation();
+    }
+
     const sidebar = document.querySelector('aside');
     const main = document.querySelector('main');
 

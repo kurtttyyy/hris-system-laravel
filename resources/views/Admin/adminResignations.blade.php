@@ -10,6 +10,69 @@
     body { font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; transition: margin-left 0.3s ease; }
     main { transition: margin-left 0.3s ease; }
     aside ~ main { margin-left: 16rem; }
+    .resignation-reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.28s ease, transform 0.28s ease;
+      will-change: opacity, transform;
+    }
+    .resignation-reveal.reveal-from-top {
+      transform: translateY(-18px);
+    }
+    .resignation-reveal.is-visible {
+      animation: resignation-fade-up 0.42s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+      animation-delay: var(--resignation-delay, 0ms);
+    }
+    .resignation-card-motion {
+      transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+    }
+    .resignation-card-motion:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+    }
+    .resignation-icon-pop {
+      animation: resignation-pop-in 0.65s cubic-bezier(0.22, 0.9, 0.2, 1) both;
+      animation-delay: var(--resignation-delay, 0ms);
+    }
+    .resignation-row-motion {
+      transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .resignation-row-motion:hover {
+      transform: translateX(4px);
+      box-shadow: inset 3px 0 0 rgba(16, 185, 129, 0.55);
+    }
+    @keyframes resignation-fade-up {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes resignation-pop-in {
+      0% {
+        opacity: 0;
+        transform: scale(0.82) rotate(-4deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .resignation-reveal,
+      .resignation-icon-pop {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+      .resignation-card-motion,
+      .resignation-row-motion {
+        transition: none;
+      }
+      .resignation-card-motion:hover,
+      .resignation-row-motion:hover {
+        transform: none;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f1f5f9_45%,#eefbf6_100%)] text-slate-800">
@@ -17,8 +80,8 @@
   @include('components.adminSideBar')
 
   <main class="flex-1 ml-16 transition-all duration-300">
-    <div class="space-y-6 p-4 pt-10 md:p-8">
-      <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/70 bg-[linear-gradient(135deg,_#03131d_0%,_#052f2a_42%,_#116149_100%)] px-6 py-7 text-white shadow-[0_24px_60px_rgba(3,19,29,0.34)] md:px-8">
+    <div id="admin-resignation-page" class="space-y-6 p-4 pt-10 md:p-8">
+      <section class="resignation-reveal relative overflow-hidden rounded-[2rem] border border-emerald-950/70 bg-[linear-gradient(135deg,_#03131d_0%,_#052f2a_42%,_#116149_100%)] px-6 py-7 text-white shadow-[0_24px_60px_rgba(3,19,29,0.34)] md:px-8" style="--resignation-delay: 0ms;">
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(110,231,183,0.14),_transparent_32%)]"></div>
         <div class="absolute -right-12 -top-16 h-44 w-44 rounded-full bg-cyan-300/10 blur-2xl"></div>
         <div class="absolute bottom-0 right-24 h-28 w-28 rounded-full bg-emerald-300/20 blur-2xl"></div>
@@ -35,12 +98,12 @@
           </div>
 
             <div class="grid gap-3 sm:grid-cols-2">
-            <div class="rounded-[1.5rem] border border-white/10 bg-white/8 px-5 py-4 backdrop-blur">
+            <div class="resignation-card-motion resignation-reveal rounded-[1.5rem] border border-white/10 bg-white/8 px-5 py-4 backdrop-blur" style="--resignation-delay: 70ms;">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-50/75">Today</p>
               <p class="mt-2 text-lg font-bold">{{ now()->format('F j, Y') }}</p>
               <p class="text-sm text-emerald-50/80">{{ now()->format('l') }}</p>
             </div>
-            <div class="rounded-[1.5rem] border border-white/10 bg-white/8 px-5 py-4 backdrop-blur">
+            <div class="resignation-card-motion resignation-reveal rounded-[1.5rem] border border-white/10 bg-white/8 px-5 py-4 backdrop-blur" style="--resignation-delay: 100ms;">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-50/75">Pending Queue</p>
               <p class="mt-2 text-2xl font-black">{{ $pendingResignations->count() }}</p>
               <p class="text-sm text-emerald-50/80">Requests waiting for review</p>
@@ -66,7 +129,7 @@
       @endif
 
       <section class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-        <article class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <article class="resignation-card-motion resignation-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--resignation-delay: 120ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pending</p>
@@ -74,7 +137,7 @@
               <p class="mt-1 text-sm text-slate-500">Requests awaiting approval decision</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+              <div class="resignation-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600" style="--resignation-delay: 150ms;">
                 <i class="fa-regular fa-hourglass-half"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">Review</span>
@@ -82,7 +145,7 @@
           </div>
         </article>
 
-        <article class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <article class="resignation-card-motion resignation-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--resignation-delay: 150ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Approved</p>
@@ -90,7 +153,7 @@
               <p class="mt-1 text-sm text-slate-500">Confirmed resignations in process</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
+              <div class="resignation-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600" style="--resignation-delay: 180ms;">
                 <i class="fa-solid fa-thumbs-up"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">Approved</span>
@@ -98,7 +161,7 @@
           </div>
         </article>
 
-        <article class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <article class="resignation-card-motion resignation-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--resignation-delay: 180ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Rejected</p>
@@ -106,7 +169,7 @@
               <p class="mt-1 text-sm text-slate-500">Requests declined after review</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+              <div class="resignation-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600" style="--resignation-delay: 210ms;">
                 <i class="fa-solid fa-ban"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700">Declined</span>
@@ -114,7 +177,7 @@
           </div>
         </article>
 
-        <article class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <article class="resignation-card-motion resignation-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--resignation-delay: 210ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Cancelled</p>
@@ -122,7 +185,7 @@
               <p class="mt-1 text-sm text-slate-500">Requests withdrawn or voided</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-200 text-slate-700">
+              <div class="resignation-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-200 text-slate-700" style="--resignation-delay: 240ms;">
                 <i class="fa-solid fa-rotate-left"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700">Closed</span>
@@ -132,7 +195,7 @@
       </section>
 
       <section class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur xl:col-span-1">
+        <div class="resignation-reveal rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur xl:col-span-1" style="--resignation-delay: 250ms;">
           <div class="flex items-center justify-between gap-3">
             <div>
               <div class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
@@ -155,7 +218,7 @@
                   ->map(fn ($part) => strtoupper(substr($part, 0, 1)))
                   ->implode('');
               @endphp
-              <article class="rounded-[1.75rem] border border-amber-100 bg-[linear-gradient(180deg,rgba(255,251,235,0.95),rgba(255,255,255,0.98))] p-5 shadow-[0_12px_30px_rgba(245,158,11,0.08)]" data-pending-item="{{ $pending->id }}">
+              <article class="resignation-card-motion rounded-[1.75rem] border border-amber-100 bg-[linear-gradient(180deg,rgba(255,251,235,0.95),rgba(255,255,255,0.98))] p-5 shadow-[0_12px_30px_rgba(245,158,11,0.08)]" data-pending-item="{{ $pending->id }}">
                 <div class="flex items-start gap-4">
                   <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white">
                     {{ $initials !== '' ? $initials : 'NA' }}
@@ -222,7 +285,7 @@
           </div>
         </div>
 
-        <div class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur xl:col-span-2">
+        <div class="resignation-reveal rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur xl:col-span-2" style="--resignation-delay: 290ms;">
           <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
@@ -298,7 +361,7 @@
                       default => 'bg-amber-100 text-amber-700',
                     };
                   @endphp
-                  <tr class="transition hover:bg-slate-50/80">
+                  <tr class="resignation-row-motion transition hover:bg-slate-50/80">
                     <td class="px-5 py-4">
                       <p class="font-semibold text-slate-800">{{ $row->employee_name }}</p>
                       <p class="mt-1 text-xs text-slate-500">
@@ -346,6 +409,52 @@
 </div>
 
 <script>
+  const initResignationPageAnimation = () => {
+    const page = document.getElementById('admin-resignation-page');
+    if (!page) return;
+
+    const revealItems = Array.from(page.querySelectorAll('.resignation-reveal'));
+    if (!revealItems.length) return;
+
+    if (!('IntersectionObserver' in window)) {
+      revealItems.forEach((item) => item.classList.add('is-visible'));
+      return;
+    }
+
+    let lastScrollY = window.scrollY;
+    let scrollDirection = 'down';
+
+    window.addEventListener('scroll', () => {
+      const currentScrollY = window.scrollY;
+      scrollDirection = currentScrollY < lastScrollY ? 'up' : 'down';
+      lastScrollY = currentScrollY;
+    }, { passive: true });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.toggle('reveal-from-top', scrollDirection === 'up');
+          entry.target.classList.add('is-visible');
+          return;
+        }
+
+        entry.target.classList.remove('is-visible');
+      });
+    }, {
+      root: null,
+      threshold: 0.12,
+      rootMargin: '-8% 0px -8% 0px',
+    });
+
+    revealItems.forEach((item) => observer.observe(item));
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initResignationPageAnimation, { once: true });
+  } else {
+    initResignationPageAnimation();
+  }
+
   const sidebar = document.querySelector('aside');
   const main = document.querySelector('main');
   if (sidebar && main) {

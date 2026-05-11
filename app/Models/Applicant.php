@@ -42,7 +42,6 @@ class Applicant extends Model
         'open_position_id',
         'application_status',
         'user_id',
-        'university_address',
         'work_position',
         'work_employer',
         'work_location',

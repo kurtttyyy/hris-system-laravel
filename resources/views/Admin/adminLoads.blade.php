@@ -18,6 +18,70 @@
     .loads-progress-bar {
       transition: width 0.45s ease;
     }
+    .loads-reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.28s ease, transform 0.28s ease;
+      will-change: opacity, transform;
+    }
+    .loads-reveal.reveal-from-top {
+      transform: translateY(-18px);
+    }
+    .loads-reveal.is-visible {
+      animation: loads-fade-up 0.42s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+      animation-delay: var(--loads-delay, 0ms);
+    }
+    .loads-card-motion {
+      transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+    }
+    .loads-card-motion:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+    }
+    .loads-icon-pop {
+      animation: loads-pop-in 0.65s cubic-bezier(0.22, 0.9, 0.2, 1) both;
+      animation-delay: var(--loads-delay, 0ms);
+    }
+    .loads-row-motion {
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .loads-row-motion:hover {
+      transform: translateX(4px);
+      border-color: rgb(186 230 253);
+      box-shadow: inset 3px 0 0 rgba(14, 165, 233, 0.55), 0 10px 24px rgba(15, 23, 42, 0.08);
+    }
+    @keyframes loads-fade-up {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes loads-pop-in {
+      0% {
+        opacity: 0;
+        transform: scale(0.82) rotate(-4deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .loads-reveal,
+      .loads-icon-pop {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+      .loads-card-motion,
+      .loads-row-motion {
+        transition: none;
+      }
+      .loads-card-motion:hover,
+      .loads-row-motion:hover {
+        transform: none;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#eef4ff_45%,#f8fafc_100%)] text-slate-800">
@@ -33,8 +97,8 @@
       $pendingCount = max($uploadedCount - $scannedCount, 0);
       $latestUpload = $loadsFiles->sortByDesc(fn ($file) => optional($file->uploaded_at)?->timestamp ?? 0)->first();
     @endphp
-    <div class="p-4 md:p-8 pt-10 space-y-6">
-      <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/70 bg-[linear-gradient(135deg,_#03131d_0%,_#052f2a_42%,_#116149_100%)] px-6 py-6 shadow-[0_24px_60px_rgba(3,19,29,0.34)] md:px-8">
+    <div id="admin-loads-page" class="p-4 md:p-8 pt-10 space-y-6">
+      <section class="loads-reveal relative overflow-hidden rounded-[2rem] border border-emerald-950/70 bg-[linear-gradient(135deg,_#03131d_0%,_#052f2a_42%,_#116149_100%)] px-6 py-6 shadow-[0_24px_60px_rgba(3,19,29,0.34)] md:px-8" style="--loads-delay: 0ms;">
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(110,231,183,0.14),_transparent_32%)]"></div>
         <div class="absolute -left-8 top-6 h-24 w-24 rounded-full bg-cyan-300/10 blur-3xl"></div>
         <div class="absolute right-0 top-0 h-32 w-32 translate-x-10 -translate-y-8 rounded-full bg-emerald-300/20 blur-3xl"></div>
@@ -56,12 +120,12 @@
           </div>
 
           <div class="grid gap-3 sm:grid-cols-2 xl:min-w-[420px]">
-            <div class="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 shadow-sm backdrop-blur">
+            <div class="loads-card-motion loads-reveal rounded-2xl border border-white/10 bg-white/8 px-4 py-4 shadow-sm backdrop-blur" style="--loads-delay: 70ms;">
               <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-50/70">Latest Upload</p>
               <p class="mt-2 text-sm font-semibold text-white">{{ $latestUpload?->original_name ?? 'No file yet' }}</p>
               <p class="mt-1 text-xs text-emerald-50/75">{{ optional($latestUpload?->uploaded_at)->format('M d, Y h:i A') ?? 'Waiting for first upload' }}</p>
             </div>
-            <div class="rounded-2xl border border-white/10 bg-white/8 px-4 py-4 shadow-sm backdrop-blur">
+            <div class="loads-card-motion loads-reveal rounded-2xl border border-white/10 bg-white/8 px-4 py-4 shadow-sm backdrop-blur" style="--loads-delay: 100ms;">
               <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-50/70">Queue Status</p>
               <p class="mt-2 text-sm font-semibold text-white">{{ $pendingCount }} pending scan</p>
               <p class="mt-1 text-xs text-emerald-50/75">Upload is active. Scan remains a visual placeholder for now.</p>
@@ -71,8 +135,8 @@
       </section>
 
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
+        <div class="loads-card-motion loads-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--loads-delay: 120ms;">
+          <span class="loads-icon-pop inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600" style="--loads-delay: 150ms;">
             <i class="fa-solid fa-folder-tree text-lg"></i>
           </span>
           <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Uploaded Files</p>
@@ -80,8 +144,8 @@
           <p class="mt-1 text-sm text-slate-500">Stored source load files</p>
         </div>
 
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+        <div class="loads-card-motion loads-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--loads-delay: 150ms;">
+          <span class="loads-icon-pop inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600" style="--loads-delay: 180ms;">
             <i class="fa-solid fa-circle-check text-lg"></i>
           </span>
           <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Scanned Files</p>
@@ -89,8 +153,8 @@
           <p class="mt-1 text-sm text-slate-500">Preview-ready load data</p>
         </div>
 
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+        <div class="loads-card-motion loads-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--loads-delay: 180ms;">
+          <span class="loads-icon-pop inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600" style="--loads-delay: 210ms;">
             <i class="fa-solid fa-hourglass-half text-lg"></i>
           </span>
           <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pending Scan</p>
@@ -98,8 +162,8 @@
           <p class="mt-1 text-sm text-slate-500">Files waiting for scan</p>
         </div>
 
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+        <div class="loads-card-motion loads-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--loads-delay: 210ms;">
+          <span class="loads-icon-pop inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600" style="--loads-delay: 240ms;">
             <i class="fa-solid fa-eye text-lg"></i>
           </span>
           <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">View Ready</p>
@@ -110,7 +174,7 @@
 
       <div class="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
         <section class="space-y-6">
-          <div class="overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+          <div class="loads-reveal overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur" style="--loads-delay: 250ms;">
             <div class="flex items-start justify-between gap-4">
               <div>
                 <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
@@ -186,7 +250,7 @@
           </div>
         </section>
 
-        <section class="overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+        <section class="loads-reveal overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur" style="--loads-delay: 290ms;">
           <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
@@ -209,7 +273,7 @@
                 $statusLabel = $isScanned ? 'Scanned' : (trim((string) ($file->status ?? '')) !== '' ? trim((string) $file->status) : 'Uploaded');
                 $progress = $isScanned ? 100 : 0;
               @endphp
-              <div class="loads-file-item group rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] p-4 transition hover:border-sky-200 hover:shadow-md" data-file-id="{{ $file->id }}">
+              <div class="loads-file-item loads-row-motion group rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] p-4" data-file-id="{{ $file->id }}">
                 <div class="flex flex-col gap-4 xl:flex-row xl:items-center">
                   <div class="flex items-center gap-4">
                     <input type="radio" name="selected_loads_file" value="{{ $file->id }}" class="loads-file-radio h-4 w-4 cursor-pointer border-slate-300 text-sky-600 focus:ring-sky-500">
@@ -275,7 +339,7 @@
         </section>
       </div>
 
-      <section class="overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+      <section class="loads-reveal overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/90 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur" style="--loads-delay: 330ms;">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-700">
@@ -327,6 +391,52 @@
 </div>
 
 <script>
+  const initLoadsPageAnimation = () => {
+    const page = document.getElementById('admin-loads-page');
+    if (!page) return;
+
+    const revealItems = Array.from(page.querySelectorAll('.loads-reveal'));
+    if (!revealItems.length) return;
+
+    if (!('IntersectionObserver' in window)) {
+      revealItems.forEach((item) => item.classList.add('is-visible'));
+      return;
+    }
+
+    let lastScrollY = window.scrollY;
+    let scrollDirection = 'down';
+
+    window.addEventListener('scroll', () => {
+      const currentScrollY = window.scrollY;
+      scrollDirection = currentScrollY < lastScrollY ? 'up' : 'down';
+      lastScrollY = currentScrollY;
+    }, { passive: true });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.toggle('reveal-from-top', scrollDirection === 'up');
+          entry.target.classList.add('is-visible');
+          return;
+        }
+
+        entry.target.classList.remove('is-visible');
+      });
+    }, {
+      root: null,
+      threshold: 0.12,
+      rootMargin: '-8% 0px -8% 0px',
+    });
+
+    revealItems.forEach((item) => observer.observe(item));
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLoadsPageAnimation, { once: true });
+  } else {
+    initLoadsPageAnimation();
+  }
+
   const loadsInput = document.getElementById('loads_file');
   const loadsName = document.getElementById('selected_loads_name');
   const uploadLoadsBtn = document.getElementById('upload_loads_btn');

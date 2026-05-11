@@ -11,6 +11,75 @@
         main { transition: margin-left 0.3s ease; }
         aside:not(:hover) ~ main { margin-left: 4rem; }
         aside:hover ~ main { margin-left: 14rem; }
+        .employee-dashboard-reveal {
+            opacity: 0;
+            transform: translateY(18px);
+            transition: opacity 0.28s ease, transform 0.28s ease;
+            will-change: opacity, transform;
+        }
+        .employee-dashboard-reveal.reveal-from-top {
+            transform: translateY(-18px);
+        }
+        .employee-dashboard-reveal.is-visible {
+            animation: employee-dashboard-fade-up 0.42s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+            animation-delay: var(--employee-dashboard-delay, 0ms);
+        }
+        .employee-dashboard-card-motion {
+            transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+        }
+        .employee-dashboard-card-motion:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+        }
+        .employee-dashboard-icon-pop {
+            animation: employee-dashboard-pop-in 0.65s cubic-bezier(0.22, 0.9, 0.2, 1) both;
+            animation-delay: var(--employee-dashboard-delay, 0ms);
+        }
+        .employee-dashboard-progress-fill {
+            transform-origin: left center;
+            transform: scaleX(0);
+            transition: transform 0.28s ease;
+            will-change: transform;
+        }
+        .employee-dashboard-progress-fill.is-visible {
+            animation: employee-dashboard-progress-grow 0.5s cubic-bezier(0.22, 0.9, 0.2, 1) both;
+            animation-delay: var(--employee-dashboard-delay, 90ms);
+        }
+        @keyframes employee-dashboard-fade-up {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes employee-dashboard-pop-in {
+            0% {
+                opacity: 0;
+                transform: scale(0.82) rotate(-4deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0);
+            }
+        }
+        @keyframes employee-dashboard-progress-grow {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(1); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .employee-dashboard-reveal,
+            .employee-dashboard-icon-pop,
+            .employee-dashboard-progress-fill {
+                animation: none;
+                opacity: 1;
+                transform: none;
+            }
+            .employee-dashboard-card-motion {
+                transition: none;
+            }
+            .employee-dashboard-card-motion:hover {
+                transform: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-slate-100">
@@ -34,8 +103,8 @@
             'notifications' => (int) ($notifications ?? 0),
         ])
 
-        <div class="space-y-8 p-4 pt-20 md:p-8">
-            <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-2xl md:p-8">
+        <div id="employee-dashboard-page" class="space-y-8 p-4 pt-20 md:p-8">
+            <section class="employee-dashboard-reveal relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-2xl md:p-8" style="--employee-dashboard-delay: 0ms;">
                 <div class="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10 blur-2xl"></div>
                 <div class="absolute bottom-0 right-20 h-24 w-24 rounded-full bg-emerald-300/10 blur-2xl"></div>
                 <div class="relative grid gap-6 lg:grid-cols-[1.7fr_1fr] lg:items-start">
@@ -50,15 +119,15 @@
                             </p>
                         </div>
                         <div class="flex flex-wrap gap-3 text-sm">
-                            <div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+                            <div class="employee-dashboard-card-motion employee-dashboard-reveal rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm" style="--employee-dashboard-delay: 50ms;">
                                 <p class="text-xs uppercase tracking-wide text-emerald-100">Month</p>
                                 <p class="mt-1 font-semibold">{{ now()->format('F Y') }}</p>
                             </div>
-                            <div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+                            <div class="employee-dashboard-card-motion employee-dashboard-reveal rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm" style="--employee-dashboard-delay: 80ms;">
                                 <p class="text-xs uppercase tracking-wide text-emerald-100">Attendance</p>
                                 <p class="mt-1 font-semibold">{{ $attendanceStatusLabel ?? 'No Data' }}</p>
                             </div>
-                            <div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+                            <div class="employee-dashboard-card-motion employee-dashboard-reveal rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm" style="--employee-dashboard-delay: 110ms;">
                                 <p class="text-xs uppercase tracking-wide text-emerald-100">Available Leave</p>
                                 <p class="mt-1 font-semibold">{{ rtrim(rtrim(number_format((float) ($combinedLeaveAvailable ?? 0), 1, '.', ''), '0'), '.') }} Days</p>
                             </div>
@@ -67,7 +136,7 @@
                     </div>
 
                     <div class="space-y-4">
-                        <div class="rounded-[1.75rem] border border-white/15 bg-white/10 p-5 backdrop-blur-sm">
+                        <div class="employee-dashboard-card-motion employee-dashboard-reveal rounded-[1.75rem] border border-white/15 bg-white/10 p-5 backdrop-blur-sm" style="--employee-dashboard-delay: 90ms;">
                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">Focus Panel</p>
                             <div class="mt-5 space-y-4">
                                 <div>
@@ -76,15 +145,15 @@
                                         <span class="font-semibold">{{ (int) ($combinedLeavePercentUsed ?? 0) }}%</span>
                                     </div>
                                     <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-white/15">
-                                        <div class="h-full rounded-full bg-emerald-300" style="width: {{ (int) ($combinedLeavePercentUsed ?? 0) }}%;"></div>
+                                        <div class="employee-dashboard-progress-fill h-full rounded-full bg-emerald-300" style="width: {{ (int) ($combinedLeavePercentUsed ?? 0) }}%; --employee-dashboard-delay: 140ms;"></div>
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
-                                    <div class="rounded-2xl bg-white/10 p-4">
+                                    <div class="employee-dashboard-card-motion rounded-2xl bg-white/10 p-4">
                                         <p class="text-xs uppercase tracking-wide text-emerald-100">Vacation</p>
                                         <p class="mt-2 text-xl font-bold">{{ rtrim(rtrim(number_format((float) ($vacationCardAvailable ?? 0), 1, '.', ''), '0'), '.') }}</p>
                                     </div>
-                                    <div class="rounded-2xl bg-white/10 p-4">
+                                    <div class="employee-dashboard-card-motion rounded-2xl bg-white/10 p-4">
                                         <p class="text-xs uppercase tracking-wide text-emerald-100">Sick</p>
                                         <p class="mt-2 text-xl font-bold">{{ rtrim(rtrim(number_format((float) ($sickCardAvailable ?? 0), 1, '.', ''), '0'), '.') }}</p>
                                     </div>
@@ -95,7 +164,7 @@
                             </div>
                         </div>
 
-                        <div class="rounded-[1.5rem] border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
+                        <div class="employee-dashboard-card-motion employee-dashboard-reveal rounded-[1.5rem] border border-white/15 bg-white/10 p-4 backdrop-blur-sm" style="--employee-dashboard-delay: 130ms;">
                             <div class="flex items-center justify-between gap-2">
                                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">Quick Actions</p>
                                 <span class="text-[11px] text-emerald-50/85">Most-used tools</span>
@@ -124,7 +193,7 @@
             </section>
 
             @if (!empty($accountAlerts ?? []))
-                <section class="rounded-[1.75rem] border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm md:p-6">
+                <section class="employee-dashboard-reveal rounded-[1.75rem] border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm md:p-6" style="--employee-dashboard-delay: 150ms;">
                     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Account Alerts</p>
@@ -149,7 +218,7 @@
                                     default => 'border-slate-200 bg-slate-50',
                                 };
                             @endphp
-                            <a href="{{ $alert['href'] ?? '#' }}" class="block rounded-2xl border px-4 py-3 transition hover:-translate-y-0.5 hover:shadow-sm {{ $alertToneClass }}">
+                            <a href="{{ $alert['href'] ?? '#' }}" class="employee-dashboard-card-motion block rounded-2xl border px-4 py-3 {{ $alertToneClass }}">
                                 <p class="text-sm font-bold text-slate-900">{{ $alert['title'] ?? 'Account update' }}</p>
                                 <p class="mt-1 text-xs leading-5 text-slate-600">{{ $alert['desc'] ?? '' }}</p>
                             </a>
@@ -159,9 +228,9 @@
             @endif
 
             <section class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-                <article class="rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm">
+                <article class="employee-dashboard-card-motion employee-dashboard-reveal rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm" style="--employee-dashboard-delay: 170ms;">
                     <div class="flex items-start justify-between gap-4">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/25">
+                        <div class="employee-dashboard-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/25" style="--employee-dashboard-delay: 200ms;">
                             <i class="fa fa-calendar fa-2x"></i>
                         </div>
                         <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">{{ (int) ($combinedLeavePercentUsed ?? 0) }}% Used</span>
@@ -173,13 +242,13 @@
                         <p>Sick: {{ rtrim(rtrim(number_format((float) ($sickCardAvailable ?? 0), 1, '.', ''), '0'), '.') }} / {{ rtrim(rtrim(number_format((float) ($sickLimit ?? 0), 1, '.', ''), '0'), '.') }}</p>
                     </div>
                     <div class="mt-5 h-2.5 overflow-hidden rounded-full bg-blue-100">
-                        <div class="h-full rounded-full bg-blue-500" style="width: {{ (int) ($combinedLeavePercentUsed ?? 0) }}%;"></div>
+                        <div class="employee-dashboard-progress-fill h-full rounded-full bg-blue-500" style="width: {{ (int) ($combinedLeavePercentUsed ?? 0) }}%; --employee-dashboard-delay: 230ms;"></div>
                     </div>
                 </article>
 
-                <article class="rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm">
+                <article class="employee-dashboard-card-motion employee-dashboard-reveal rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm" style="--employee-dashboard-delay: 200ms;">
                     <div class="flex items-start justify-between gap-4">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/25">
+                        <div class="employee-dashboard-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" style="--employee-dashboard-delay: 230ms;">
                             <i class="fa fa-clock-o fa-2x"></i>
                         </div>
                         <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">{{ $attendanceStatusLabel ?? 'No Data' }}</span>
@@ -189,9 +258,9 @@
                     <p class="mt-5 text-xs leading-5 text-slate-500">{{ $attendanceMonthLabel ?? now()->format('F Y') }} • {{ (int) ($attendancePresentDays ?? 0) }}/{{ (int) ($attendanceTotalDays ?? 0) }} days present</p>
                 </article>
 
-                <article class="rounded-[1.75rem] border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-6 shadow-sm">
+                <article class="employee-dashboard-card-motion employee-dashboard-reveal rounded-[1.75rem] border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-6 shadow-sm" style="--employee-dashboard-delay: 230ms;">
                     <div class="flex items-start justify-between gap-4">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-500/25">
+                        <div class="employee-dashboard-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-500/25" style="--employee-dashboard-delay: 260ms;">
                             <i class="fa fa-calendar-o fa-2x"></i>
                         </div>
                         <span id="month-events-badge" class="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">0 Events</span>
@@ -201,9 +270,9 @@
                     <p id="month-events-caption" class="mt-5 text-xs leading-5 text-slate-500">{{ now()->format('F Y') }}</p>
                 </article>
 
-                <article class="rounded-[1.75rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm">
+                <article class="employee-dashboard-card-motion employee-dashboard-reveal rounded-[1.75rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm" style="--employee-dashboard-delay: 260ms;">
                     <div class="flex items-start justify-between gap-4">
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/25">
+                        <div class="employee-dashboard-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/25" style="--employee-dashboard-delay: 290ms;">
                             <i class="fa fa-credit-card fa-2x"></i>
                         </div>
                         <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Salary</span>
@@ -215,7 +284,7 @@
             </section>
 
             <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div id="weekly-attendance-section" class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6">
+                <div id="weekly-attendance-section" class="employee-dashboard-reveal bg-white rounded-2xl border border-gray-200 p-4 md:p-6" style="--employee-dashboard-delay: 300ms;">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-bold text-gray-900">This Week's Attendance</h3>
                         <span class="text-sm text-gray-500 font-medium">{{ $weeklyAttendanceRangeLabel ?? '-' }}</span>
@@ -267,7 +336,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+                <div class="employee-dashboard-reveal rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm md:p-6" style="--employee-dashboard-delay: 340ms;">
                     <div class="mb-4 flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-violet-700">Events</p>
@@ -370,6 +439,52 @@
 @endif
 
 <script>
+    const initEmployeeDashboardAnimation = () => {
+        const page = document.getElementById('employee-dashboard-page');
+        if (!page) return;
+
+        const revealItems = Array.from(page.querySelectorAll('.employee-dashboard-reveal, .employee-dashboard-progress-fill'));
+        if (!revealItems.length) return;
+
+        if (!('IntersectionObserver' in window)) {
+            revealItems.forEach((item) => item.classList.add('is-visible'));
+            return;
+        }
+
+        let lastScrollY = window.scrollY;
+        let scrollDirection = 'down';
+
+        window.addEventListener('scroll', () => {
+            const currentScrollY = window.scrollY;
+            scrollDirection = currentScrollY < lastScrollY ? 'up' : 'down';
+            lastScrollY = currentScrollY;
+        }, { passive: true });
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.toggle('reveal-from-top', scrollDirection === 'up');
+                    entry.target.classList.add('is-visible');
+                    return;
+                }
+
+                entry.target.classList.remove('is-visible');
+            });
+        }, {
+            root: null,
+            threshold: 0.12,
+            rootMargin: '-8% 0px -8% 0px',
+        });
+
+        revealItems.forEach((item) => observer.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEmployeeDashboardAnimation, { once: true });
+    } else {
+        initEmployeeDashboardAnimation();
+    }
+
     const sidebar = document.querySelector('aside');
     const main = document.querySelector('main');
 

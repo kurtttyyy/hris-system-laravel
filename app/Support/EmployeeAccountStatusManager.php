@@ -2,12 +2,15 @@
 
 namespace App\Support;
 
+use App\Mail\EmployeeAccountInactiveMail;
 use App\Models\Applicant;
 use App\Models\LeaveApplication;
 use App\Models\Resignation;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class EmployeeAccountStatusManager
 {
@@ -18,7 +21,7 @@ class EmployeeAccountStatusManager
 
         User::query()
             ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
-            ->select(['id', 'role', 'account_status'])
+            ->select(['id', 'first_name', 'middle_name', 'last_name', 'email', 'role', 'account_status'])
             ->chunkById(100, function ($users) use (&$synced, $date) {
                 foreach ($users as $user) {
                     $this->syncUserAccountStatus($user, $date);
@@ -40,10 +43,19 @@ class EmployeeAccountStatusManager
         }
 
         $resolvedStatus = $this->resolveAccountStatus($model, $targetDate);
-        if (trim((string) ($model->account_status ?? '')) !== $resolvedStatus) {
+        $previousStatus = trim((string) ($model->account_status ?? ''));
+
+        if ($previousStatus !== $resolvedStatus) {
             $model->forceFill([
                 'account_status' => $resolvedStatus,
             ])->save();
+
+            if (
+                strcasecmp($resolvedStatus, 'Inactive') === 0
+                && strcasecmp($previousStatus, 'Inactive') !== 0
+            ) {
+                $this->queueInactiveAccountEmail($model->fresh() ?? $model);
+            }
         }
 
         return $resolvedStatus;
@@ -180,5 +192,33 @@ class EmployeeAccountStatusManager
         }
 
         return [$startDate, $endDate];
+    }
+
+    private function queueInactiveAccountEmail(User $user): void
+    {
+        $recipient = trim((string) ($user->email ?? ''));
+        if ($recipient === '') {
+            return;
+        }
+
+        try {
+            Mail::to($this->mailToAddress($recipient))
+                ->queue(new EmployeeAccountInactiveMail($user));
+        } catch (\Throwable $exception) {
+            Log::warning('Employee account marked inactive but notification email could not be queued.', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'to_override' => config('mail.to_override'),
+                'account_status' => $user->account_status,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function mailToAddress(string $recipient): string
+    {
+        $override = trim((string) config('mail.to_override'));
+
+        return $override !== '' ? $override : $recipient;
     }
 }

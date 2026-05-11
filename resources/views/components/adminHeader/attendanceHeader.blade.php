@@ -33,7 +33,7 @@
 
 @include('components.adminHeader.scrollBehavior')
 
-<header data-admin-scroll-header class="sticky top-0 z-40 px-4 py-4 md:px-8 md:py-5">
+<header data-admin-scroll-header class="relative z-40 px-4 py-4 md:px-8 md:py-5">
     <div data-admin-scroll-card class="relative overflow-hidden rounded-[2rem] border border-emerald-950/70 bg-[linear-gradient(135deg,_#03131d_0%,_#052f2a_42%,_#116149_100%)] shadow-[0_24px_60px_rgba(3,19,29,0.34)] backdrop-blur-xl">
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(110,231,183,0.14),_transparent_32%)]"></div>
         <div class="absolute -left-8 top-6 h-28 w-28 rounded-full bg-cyan-300/10 blur-3xl"></div>

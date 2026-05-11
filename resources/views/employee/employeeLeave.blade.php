@@ -22,6 +22,69 @@
         aside:hover ~ main {
             margin-left: 14rem;
         }
+
+        #employee-leave-page .employee-leave-reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition:
+                opacity 0.7s ease,
+                transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-leave-delay, 0ms);
+        }
+
+        #employee-leave-page .employee-leave-reveal.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #employee-leave-page .employee-leave-card-motion {
+            transition:
+                transform 0.25s ease,
+                box-shadow 0.25s ease,
+                border-color 0.25s ease;
+        }
+
+        #employee-leave-page .employee-leave-card-motion:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+        }
+
+        #employee-leave-page .employee-leave-icon-pop {
+            opacity: 0;
+            transform: scale(0.86) rotate(-4deg);
+            transition:
+                opacity 0.55s ease,
+                transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-leave-delay, 120ms);
+        }
+
+        #employee-leave-page .is-visible .employee-leave-icon-pop,
+        #employee-leave-page .employee-leave-icon-pop.is-visible {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        #employee-leave-page .employee-leave-progress-fill {
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-leave-delay, 180ms);
+        }
+
+        #employee-leave-page .employee-leave-progress-fill.is-visible {
+            transform: scaleX(1);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #employee-leave-page .employee-leave-reveal,
+            #employee-leave-page .employee-leave-icon-pop,
+            #employee-leave-page .employee-leave-progress-fill,
+            #employee-leave-page .employee-leave-card-motion {
+                opacity: 1;
+                transform: none;
+                transition: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-slate-100">
@@ -32,7 +95,7 @@
 
     <!-- Main Content -->
     <main class="flex-1 ml-16 transition-all duration-300">
-<div class="p-4 md:p-8 space-y-8 pt-4">
+<div id="employee-leave-page" class="p-4 md:p-8 space-y-8 pt-4">
     @php
         $authUser = auth()->user();
         $activeEmployeeForm = request()->query('form', 'leave');
@@ -72,7 +135,7 @@
         $selectedMonthValue = $selectedMonth ?? now()->format('Y-m');
         $selectedMonthLabel = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonthValue)->format('F Y');
     @endphp
-    <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-xl md:p-8">
+    <section class="employee-leave-reveal relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-xl md:p-8" style="--employee-leave-delay: 0ms;">
         <div class="absolute -right-12 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl"></div>
         <div class="absolute bottom-0 left-1/3 h-28 w-28 rounded-full bg-emerald-300/10 blur-3xl"></div>
         <div class="relative grid gap-6 xl:grid-cols-[1.5fr_0.9fr] xl:items-end">
@@ -87,26 +150,26 @@
                     </p>
                 </div>
                 <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-                    <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                    <div class="employee-leave-card-motion employee-leave-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-leave-delay: 80ms;">
                         <p class="text-xs uppercase tracking-wide text-emerald-100">Total Requests</p>
                         <p class="mt-2 text-2xl font-black">{{ $totalRequestCount }}</p>
                     </div>
-                    <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                    <div class="employee-leave-card-motion employee-leave-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-leave-delay: 120ms;">
                         <p class="text-xs uppercase tracking-wide text-lime-100">Approved</p>
                         <p class="mt-2 text-2xl font-black">{{ $approvedCount }}</p>
                     </div>
-                    <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                    <div class="employee-leave-card-motion employee-leave-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-leave-delay: 160ms;">
                         <p class="text-xs uppercase tracking-wide text-emerald-100">Pending</p>
                         <p class="mt-2 text-2xl font-black">{{ $pendingCount }}</p>
                     </div>
-                    <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                    <div class="employee-leave-card-motion employee-leave-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-leave-delay: 200ms;">
                         <p class="text-xs uppercase tracking-wide text-emerald-100">Rejected</p>
                         <p class="mt-2 text-2xl font-black">{{ $rejectedCount }}</p>
                     </div>
                 </div>
             </div>
 
-            <div class="rounded-[1.75rem] border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
+            <div class="employee-leave-card-motion employee-leave-reveal rounded-[1.75rem] border border-white/10 bg-white/10 p-5 backdrop-blur-sm" style="--employee-leave-delay: 120ms;">
                 <div class="flex items-start justify-between gap-3">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">Month Filter</p>
@@ -139,7 +202,7 @@
                             </div>
                         </div>
 
-                        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-emerald-100">
+                        <div class="employee-leave-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-emerald-100" style="--employee-leave-delay: 220ms;">
                             <i class="fa fa-calendar fa-lg"></i>
                         </div>
                     </div>
@@ -163,9 +226,9 @@
     </section>
 
     <section class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <article class="rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+        <article class="employee-leave-card-motion employee-leave-reveal rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6 shadow-sm" style="--employee-leave-delay: 120ms;">
             <div class="flex items-start justify-between gap-4">
-                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/20">
+                <div class="employee-leave-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg shadow-blue-500/20" style="--employee-leave-delay: 180ms;">
                     <i class="fa fa-calendar fa-2x"></i>
                 </div>
                 <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">{{ rtrim(rtrim(number_format($vacationPercentUsed, 1, '.', ''), '0'), '.') }}% used</span>
@@ -174,13 +237,13 @@
             <p class="mt-1 text-sm font-medium text-slate-600">Vacation Leave</p>
             <p class="mt-4 text-xs leading-5 text-slate-500">Available out of {{ rtrim(rtrim(number_format($vacationLimit, 1, '.', ''), '0'), '.') }} days with {{ rtrim(rtrim(number_format($vacationUsed, 1, '.', ''), '0'), '.') }} day(s) already used.</p>
             <div class="mt-5 h-2.5 overflow-hidden rounded-full bg-blue-100">
-                <div class="h-full rounded-full bg-blue-500" style="width: {{ $vacationPercentUsed }}%;"></div>
+                <div class="employee-leave-progress-fill h-full rounded-full bg-blue-500" style="width: {{ $vacationPercentUsed }}%; --employee-leave-delay: 220ms;"></div>
             </div>
         </article>
 
-        <article class="rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+        <article class="employee-leave-card-motion employee-leave-reveal rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm" style="--employee-leave-delay: 160ms;">
             <div class="flex items-start justify-between gap-4">
-                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                <div class="employee-leave-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" style="--employee-leave-delay: 220ms;">
                     <i class="fa fa-bed fa-2x"></i>
                 </div>
                 <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">{{ rtrim(rtrim(number_format($sickPercentUsed, 1, '.', ''), '0'), '.') }}% used</span>
@@ -189,13 +252,13 @@
             <p class="mt-1 text-sm font-medium text-slate-600">Sick Leave</p>
             <p class="mt-4 text-xs leading-5 text-slate-500">Available out of {{ rtrim(rtrim(number_format($sickLimitValue, 1, '.', ''), '0'), '.') }} days with {{ rtrim(rtrim(number_format($sickUsedValue, 1, '.', ''), '0'), '.') }} day(s) already used.</p>
             <div class="mt-5 h-2.5 overflow-hidden rounded-full bg-emerald-100">
-                <div class="h-full rounded-full bg-emerald-500" style="width: {{ $sickPercentUsed }}%;"></div>
+                <div class="employee-leave-progress-fill h-full rounded-full bg-emerald-500" style="width: {{ $sickPercentUsed }}%; --employee-leave-delay: 260ms;"></div>
             </div>
         </article>
 
-        <article class="rounded-[1.75rem] border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+        <article class="employee-leave-card-motion employee-leave-reveal rounded-[1.75rem] border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-6 shadow-sm" style="--employee-leave-delay: 200ms;">
             <div class="flex items-start justify-between gap-4">
-                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-500/20">
+                <div class="employee-leave-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-white shadow-lg shadow-violet-500/20" style="--employee-leave-delay: 260ms;">
                     <i class="fa fa-calendar-o fa-2x"></i>
                 </div>
                 <span class="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">{{ rtrim(rtrim(number_format($otherPercentUsed, 1, '.', ''), '0'), '.') }}% used</span>
@@ -204,13 +267,13 @@
             <p class="mt-1 text-sm font-medium text-slate-600">Other Leave</p>
             <p class="mt-4 text-xs leading-5 text-slate-500">Available out of {{ rtrim(rtrim(number_format($otherLimit, 1, '.', ''), '0'), '.') }} days with {{ rtrim(rtrim(number_format($otherUsed, 1, '.', ''), '0'), '.') }} day(s) already used.</p>
             <div class="mt-5 h-2.5 overflow-hidden rounded-full bg-violet-100">
-                <div class="h-full rounded-full bg-violet-500" style="width: {{ $otherPercentUsed }}%;"></div>
+                <div class="employee-leave-progress-fill h-full rounded-full bg-violet-500" style="width: {{ $otherPercentUsed }}%; --employee-leave-delay: 300ms;"></div>
             </div>
         </article>
 
-        <article class="rounded-[1.75rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+        <article class="employee-leave-card-motion employee-leave-reveal rounded-[1.75rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm" style="--employee-leave-delay: 240ms;">
             <div class="flex items-start justify-between gap-4">
-                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20">
+                <div class="employee-leave-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20" style="--employee-leave-delay: 300ms;">
                     <i class="fa fa-hourglass-half fa-2x"></i>
                 </div>
                 <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">{{ $selectedMonthLabel }}</span>
@@ -224,7 +287,7 @@
         </article>
     </section>
 
-    <section id="leave-history-section" class="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+    <section id="leave-history-section" class="employee-leave-reveal rounded-[2rem] border border-slate-200 bg-white shadow-sm" style="--employee-leave-delay: 260ms;">
         <div class="flex flex-col gap-4 border-b border-slate-200 px-6 py-5 md:flex-row md:items-end md:justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Request History</p>
@@ -271,7 +334,7 @@
                         : $startDate->format('M d, Y').' - '. $endDate->format('M d, Y');
                 }
             @endphp
-            <div class="mb-4 flex flex-col gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 last:mb-0 md:flex-row md:items-start md:justify-between">
+            <div class="employee-leave-card-motion mb-4 flex flex-col gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 last:mb-0 md:flex-row md:items-start md:justify-between">
                 <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-3">
                         <p class="text-lg font-bold text-slate-900">{{ $record['leave_type'] ?? 'Leave' }}</p>
@@ -298,7 +361,7 @@
         </div>
     </section>
 
-    <section id="employee-form-panel" class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+    <section id="employee-form-panel" class="employee-leave-reveal rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm md:p-6" style="--employee-leave-delay: 300ms;">
         <div class="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Request Forms</p>
@@ -310,7 +373,7 @@
 
         <div class="flex flex-col gap-6 xl:flex-row">
             <div class="w-full xl:w-[320px] xl:min-w-[320px]">
-                <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                <div class="employee-leave-card-motion rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
                     <h4 class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Select Form</h4>
                     <div class="mt-4 space-y-3 text-sm">
                         <a
@@ -329,7 +392,7 @@
                 </div>
             </div>
 
-            <div class="min-w-0 flex-1 overflow-x-auto rounded-[1.5rem] border border-slate-200 bg-white p-6 text-base md:p-8">
+            <div class="employee-leave-card-motion min-w-0 flex-1 overflow-x-auto rounded-[1.5rem] border border-slate-200 bg-white p-6 text-base md:p-8">
                 @if ($activeEmployeeForm === 'official')
                     <div class="mb-6 text-center">
                         <img src="{{ asset('images/logo.png') }}" alt="Logo" class="mx-auto mb-2 h-28 w-auto">
@@ -355,6 +418,38 @@
     </main>
 </div>
 <script>
+    const initEmployeeLeaveAnimation = () => {
+        const page = document.getElementById('employee-leave-page');
+        if (!page) return;
+
+        const animatedItems = page.querySelectorAll('.employee-leave-reveal, .employee-leave-progress-fill');
+
+        if (!('IntersectionObserver' in window)) {
+            animatedItems.forEach((item) => item.classList.add('is-visible'));
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.14,
+            rootMargin: '0px 0px -40px 0px',
+        });
+
+        animatedItems.forEach((item) => observer.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEmployeeLeaveAnimation, { once: true });
+    } else {
+        initEmployeeLeaveAnimation();
+    }
+
     // Sidebar responsive adjustment
     const sidebar = document.querySelector('aside');
     const main = document.querySelector('main');

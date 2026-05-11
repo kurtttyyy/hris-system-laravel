@@ -17,6 +17,57 @@
       background: linear-gradient(180deg, rgba(224, 242, 254, 0.85), rgba(255, 255, 255, 0.95));
       box-shadow: 0 18px 38px rgba(14, 165, 233, 0.12);
     }
+    .attendance-page-reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      will-change: opacity, transform;
+    }
+    .attendance-page-reveal.attendance-reveal-from-top {
+      transform: translateY(-18px);
+    }
+    .attendance-page-reveal.attendance-reveal-visible {
+      animation: attendance-fade-up 0.42s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+      animation-delay: var(--attendance-reveal-delay, 0ms);
+    }
+    .attendance-card-motion {
+      transition:
+        transform 240ms ease,
+        border-color 240ms ease,
+        background-color 240ms ease,
+        box-shadow 240ms ease;
+    }
+    .attendance-card-motion:hover {
+      transform: translateY(-4px);
+    }
+    .attendance-progress-fill {
+      transform-origin: left center;
+      transform: scaleX(0);
+    }
+    .attendance-progress-fill.attendance-reveal-visible {
+      animation: attendance-progress-grow 0.5s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+    }
+    @keyframes attendance-fade-up {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes attendance-progress-grow {
+      to {
+        transform: scaleX(1);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .attendance-page-reveal,
+      .attendance-page-reveal.attendance-reveal-from-top,
+      .attendance-page-reveal.attendance-reveal-visible,
+      .attendance-card-motion:hover,
+      .attendance-progress-fill {
+        opacity: 1;
+        transform: none;
+        transition: none;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-800">
@@ -27,7 +78,7 @@
   <main class="flex-1 ml-16 transition-all duration-300">
     @include('components.adminHeader.attendanceHeader')
 
-    <div class="p-4 md:p-8 space-y-6 pt-20">
+    <div id="admin-attendance-page" class="p-4 md:p-8 space-y-6 pt-20">
       @php
         $currentAttendanceRoute = match ($activeAttendanceTab) {
           'present' => 'admin.attendance.present',
@@ -56,8 +107,8 @@
         $baseCardClasses = 'group relative overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/88 p-6 shadow-[0_20px_45px_rgba(15,23,42,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(15,23,42,0.12)]';
       @endphp
 
-      <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-        <a href="{{ route('admin.attendance.present', $attendanceQuery) }}" class="{{ $baseCardClasses }} {{ $activeAttendanceTab === 'present' ? 'border-emerald-300 bg-emerald-50/80' : '' }}">
+      <div class="attendance-stat-grid grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <a href="{{ route('admin.attendance.present', $attendanceQuery) }}" class="attendance-stat-card attendance-page-reveal attendance-card-motion {{ $baseCardClasses }} {{ $activeAttendanceTab === 'present' ? 'border-emerald-300 bg-emerald-50/80' : '' }}" style="--attendance-reveal-delay: 30ms;">
           <div class="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-emerald-200/40 blur-2xl"></div>
           <div class="relative flex items-start justify-between gap-4">
             <div>
@@ -72,7 +123,7 @@
           </div>
         </a>
 
-        <a href="{{ route('admin.attendance.absent', $attendanceQuery) }}" class="{{ $baseCardClasses }} {{ $activeAttendanceTab === 'absent' ? 'border-rose-300 bg-rose-50/80' : '' }}">
+        <a href="{{ route('admin.attendance.absent', $attendanceQuery) }}" class="attendance-stat-card attendance-page-reveal attendance-card-motion {{ $baseCardClasses }} {{ $activeAttendanceTab === 'absent' ? 'border-rose-300 bg-rose-50/80' : '' }}" style="--attendance-reveal-delay: 60ms;">
           <div class="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-rose-200/40 blur-2xl"></div>
           <div class="relative flex items-start justify-between gap-4">
             <div>
@@ -87,7 +138,7 @@
           </div>
         </a>
 
-        <a href="{{ route('admin.attendance.tardiness', $attendanceQuery) }}" class="{{ $baseCardClasses }} {{ $activeAttendanceTab === 'tardiness' ? 'border-amber-300 bg-amber-50/80' : '' }}">
+        <a href="{{ route('admin.attendance.tardiness', $attendanceQuery) }}" class="attendance-stat-card attendance-page-reveal attendance-card-motion {{ $baseCardClasses }} {{ $activeAttendanceTab === 'tardiness' ? 'border-amber-300 bg-amber-50/80' : '' }}" style="--attendance-reveal-delay: 90ms;">
           <div class="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-amber-200/40 blur-2xl"></div>
           <div class="relative flex items-start justify-between gap-4">
             <div>
@@ -102,7 +153,7 @@
           </div>
         </a>
 
-        <a href="{{ route('admin.attendance.totalEmployee', $attendanceQuery) }}" class="{{ $baseCardClasses }} {{ $activeAttendanceTab === 'total_employee' ? 'border-sky-300 bg-sky-50/80' : '' }}">
+        <a href="{{ route('admin.attendance.totalEmployee', $attendanceQuery) }}" class="attendance-stat-card attendance-page-reveal attendance-card-motion {{ $baseCardClasses }} {{ $activeAttendanceTab === 'total_employee' ? 'border-sky-300 bg-sky-50/80' : '' }}" style="--attendance-reveal-delay: 120ms;">
           <div class="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-sky-200/40 blur-2xl"></div>
           <div class="relative flex items-start justify-between gap-4">
             <div>
@@ -297,7 +348,7 @@
                       <div class="attendance-progress-percent min-w-[40px] text-right text-xs font-semibold text-slate-700">{{ $progress }}%</div>
                     </div>
                     <div class="h-2.5 w-full rounded-full bg-slate-200">
-                      <div class="h-2.5 rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 transition-all duration-500" style="width: {{ $progress }}%"></div>
+                    <div class="attendance-progress-fill h-2.5 rounded-full bg-gradient-to-r from-emerald-400 via-sky-500 to-indigo-500 transition-all duration-500" style="width: {{ $progress }}%"></div>
                     </div>
                   </div>
 
@@ -472,6 +523,145 @@
   const deleteButtons = document.querySelectorAll('.delete-btn');
   const fromDateInput = document.querySelector('input[name="from_date"]');
   const toDateInput = document.querySelector('input[name="to_date"]');
+
+  (function () {
+    const initAttendancePageAnimation = () => {
+      const page = document.getElementById('admin-attendance-page');
+      if (!page) return;
+
+      const revealSelectors = [
+        '#admin-attendance-page .attendance-stat-card',
+        '#admin-attendance-page section > div',
+        '#admin-attendance-page > div:not(.attendance-stat-grid)',
+        '#admin-attendance-page .file-item',
+        '#admin-attendance-page table',
+      ];
+
+      const revealItems = Array.from(document.querySelectorAll(revealSelectors.join(',')))
+        .filter((item) => {
+          if (!item || item.classList.contains('attendance-page-reveal')) return false;
+          if (item.classList.contains('attendance-stat-grid')) return false;
+          const tag = item.tagName.toLowerCase();
+          if (tag === 'div' && item.querySelector(':scope > section')) return false;
+          return !['script', 'style', 'template'].includes(tag);
+        });
+
+      revealItems.forEach((item, index) => {
+        item.classList.add('attendance-page-reveal');
+        item.style.setProperty('--attendance-reveal-delay', `${Math.min(index % 7, 6) * 35}ms`);
+
+        if (item.tagName.toLowerCase() !== 'table') {
+          item.classList.add('attendance-card-motion');
+        }
+      });
+
+      const attendanceFiles = Array.from(document.querySelectorAll('#admin-attendance-page .file-item'));
+      attendanceFiles.forEach((item) => {
+        item.style.setProperty('--attendance-reveal-delay', '0ms');
+      });
+
+      const progressFills = Array.from(document.querySelectorAll('#admin-attendance-page .attendance-progress-fill'));
+      const animatedItems = Array.from(document.querySelectorAll('#admin-attendance-page .attendance-page-reveal'));
+
+      if (!animatedItems.length && !progressFills.length) return;
+
+      if (!('IntersectionObserver' in window)) {
+        animatedItems.forEach((item) => item.classList.add('attendance-reveal-visible'));
+        progressFills.forEach((item) => item.classList.add('attendance-reveal-visible'));
+        return;
+      }
+
+      let lastScrollY = window.scrollY;
+      let direction = 'down';
+
+      window.addEventListener('scroll', () => {
+        const currentScrollY = window.scrollY;
+        direction = currentScrollY < lastScrollY ? 'up' : 'down';
+        lastScrollY = currentScrollY;
+      }, { passive: true });
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          entry.target.classList.toggle('attendance-reveal-from-top', direction === 'up');
+
+          if (entry.isIntersecting) {
+            entry.target.classList.remove('attendance-reveal-visible');
+            void entry.target.offsetWidth;
+            entry.target.classList.add('attendance-reveal-visible');
+            return;
+          }
+
+          entry.target.classList.remove('attendance-reveal-visible');
+        });
+      }, {
+        threshold: 0.1,
+        rootMargin: '-7% 0px -8% 0px',
+      });
+
+      animatedItems
+        .filter((item) => !item.classList.contains('file-item'))
+        .forEach((item) => observer.observe(item));
+
+      const fileContainer = attendanceFiles[0]?.parentElement;
+      if (fileContainer && attendanceFiles.length) {
+        let fileTimers = [];
+
+        const clearFileTimers = () => {
+          fileTimers.forEach((timer) => window.clearTimeout(timer));
+          fileTimers = [];
+        };
+
+        const revealFilesInSequence = () => {
+          clearFileTimers();
+          attendanceFiles.forEach((item, index) => {
+            item.classList.toggle('attendance-reveal-from-top', direction === 'up');
+            item.classList.remove('attendance-reveal-visible');
+            void item.offsetWidth;
+            fileTimers.push(window.setTimeout(() => {
+              item.classList.add('attendance-reveal-visible');
+            }, index * 70));
+          });
+        };
+
+        const hideFiles = () => {
+          clearFileTimers();
+          attendanceFiles.forEach((item) => item.classList.remove('attendance-reveal-visible'));
+        };
+
+        const fileObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              revealFilesInSequence();
+              return;
+            }
+
+            hideFiles();
+          });
+        }, {
+          threshold: 0.08,
+          rootMargin: '-7% 0px -8% 0px',
+        });
+
+        fileObserver.observe(fileContainer);
+      }
+
+      const progressObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          entry.target.classList.toggle('attendance-reveal-visible', entry.isIntersecting);
+        });
+      }, {
+        threshold: 0.35,
+      });
+
+      progressFills.forEach((item) => progressObserver.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initAttendancePageAnimation, { once: true });
+    } else {
+      initAttendancePageAnimation();
+    }
+  })();
 
   function setActiveFileItem(activeItem) {
     fileItems.forEach(item => {

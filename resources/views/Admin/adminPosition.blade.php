@@ -12,6 +12,60 @@
         body { font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; transition: margin-left 0.3s ease; }
         main { transition: margin-left 0.3s ease; }
         aside ~ main { margin-left: 16rem; }
+        .position-reveal {
+            opacity: 0;
+            transform: translateY(18px);
+            transition: opacity 0.28s ease, transform 0.28s ease;
+            will-change: opacity, transform;
+        }
+        .position-reveal.reveal-from-top {
+            transform: translateY(-18px);
+        }
+        .position-reveal.is-visible {
+            animation: position-fade-up 0.42s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+            animation-delay: var(--position-delay, 0ms);
+        }
+        .position-card-motion {
+            transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+        }
+        .position-card-motion:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+        }
+        .position-icon-pop {
+            animation: position-pop-in 0.65s cubic-bezier(0.22, 0.9, 0.2, 1) both;
+            animation-delay: var(--position-delay, 0ms);
+        }
+        @keyframes position-fade-up {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes position-pop-in {
+            0% {
+                opacity: 0;
+                transform: scale(0.82) rotate(-4deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0);
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .position-reveal,
+            .position-icon-pop {
+                animation: none;
+                opacity: 1;
+                transform: none;
+            }
+            .position-card-motion {
+                transition: none;
+            }
+            .position-card-motion:hover {
+                transform: none;
+            }
+        }
   </style>
 </head>
 <body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f1f5f9_45%,#eefbf6_100%)]">
@@ -45,7 +99,7 @@
     <main class="flex-1 ml-16 transition-all duration-300">
         @include('components.adminHeader.positionHeader')
 
-        <div class="space-y-6 p-4 pt-20 md:p-8">
+        <div id="admin-position-page" class="space-y-6 p-4 pt-20 md:p-8">
             @if (session('error'))
                 <div class="rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800 shadow-sm">
                     {{ session('error') }}
@@ -57,7 +111,7 @@
                     $activePositionCount = collect($openPosition ?? [])->whereNull('deleted_at')->count();
                     $closedPositionCount = collect($openPosition ?? [])->filter(fn ($position) => !is_null($position->deleted_at))->count();
                 @endphp
-                <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+                <div class="position-card-motion position-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--position-delay: 30ms;">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Open Positions</p>
@@ -65,7 +119,7 @@
                             <p class="mt-1 text-sm text-slate-500">Roles currently available for applicants</p>
                         </div>
                         <div class="text-right">
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
+                            <div class="position-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600" style="--position-delay: 70ms;">
                                 <i class="fa-solid fa-briefcase"></i>
                             </div>
                             <span class="mt-3 inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">Active</span>
@@ -73,7 +127,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+                <div class="position-card-motion position-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--position-delay: 60ms;">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Total Views</p>
@@ -81,7 +135,7 @@
                             <p class="mt-1 text-sm text-slate-500">Audience engagement across posted roles</p>
                         </div>
                         <div class="text-right">
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+                            <div class="position-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600" style="--position-delay: 100ms;">
                                 <i class="fa-regular fa-eye"></i>
                             </div>
                             <span class="mt-3 inline-flex rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700">+24%</span>
@@ -89,7 +143,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+                <div class="position-card-motion position-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--position-delay: 90ms;">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">New Applications</p>
@@ -97,7 +151,7 @@
                             <p class="mt-1 text-sm text-slate-500">Applicants flowing into the hiring board</p>
                         </div>
                         <div class="text-right">
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                            <div class="position-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600" style="--position-delay: 130ms;">
                                 <i class="fa-solid fa-user-plus"></i>
                             </div>
                             <span class="mt-3 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">This Week</span>
@@ -105,7 +159,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+                <div class="position-card-motion position-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--position-delay: 120ms;">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Closed Positions</p>
@@ -113,7 +167,7 @@
                             <p class="mt-1 text-sm text-slate-500">Positions removed from the applicant-facing board</p>
                         </div>
                         <div class="text-right">
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+                            <div class="position-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600" style="--position-delay: 160ms;">
                                 <i class="fa-solid fa-ban"></i>
                             </div>
                             <span class="mt-3 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">Archived</span>
@@ -122,7 +176,7 @@
                 </div>
             </div>
 
-            <div class="rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur">
+            <div class="position-reveal rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur" style="--position-delay: 170ms;">
                 <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                     <div>
                         <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
@@ -190,7 +244,8 @@
                     @endphp
 
                     <article
-                        class="position-card group relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/95 p-6 shadow-[0_20px_48px_rgba(15,23,42,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_55px_rgba(15,23,42,0.12)] {{ $open->deleted_at ? 'opacity-90' : '' }}"
+                        class="position-card position-card-motion position-reveal group relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/95 p-6 shadow-[0_20px_48px_rgba(15,23,42,0.08)] {{ $open->deleted_at ? 'opacity-90' : '' }}"
+                        style="--position-delay: {{ 210 + (($loop->index % 6) * 35) }}ms;"
                         data-search="{{ strtolower(trim(($open->title ?? '') . ' ' . ($open->department ?? '') . ' ' . ($open->employment ?? '') . ' ' . ($open->job_type ?? '') . ' ' . ($open->skills ?? '') . ' ' . ($open->location ?? ''))) }}"
                         data-department="{{ strtolower(trim((string) ($open->department ?? ''))) }}"
                         data-employment="{{ strtolower(trim((string) ($open->employment ?? ''))) }}"
@@ -303,6 +358,54 @@
 </body>
 
 <script>
+  (function () {
+    const initPositionPageAnimation = () => {
+      const page = document.getElementById('admin-position-page');
+      if (!page) return;
+
+      const revealItems = Array.from(page.querySelectorAll('.position-reveal'));
+      if (!revealItems.length) return;
+
+      if (!('IntersectionObserver' in window)) {
+        revealItems.forEach((item) => item.classList.add('is-visible'));
+        return;
+      }
+
+      let lastScrollY = window.scrollY;
+      let scrollDirection = 'down';
+
+      window.addEventListener('scroll', () => {
+        const currentScrollY = window.scrollY;
+        scrollDirection = currentScrollY < lastScrollY ? 'up' : 'down';
+        lastScrollY = currentScrollY;
+      }, { passive: true });
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.toggle('reveal-from-top', scrollDirection === 'up');
+            entry.target.classList.add('is-visible');
+            return;
+          }
+
+          entry.target.classList.remove('is-visible');
+        });
+      }, {
+        root: null,
+        threshold: 0.12,
+        rootMargin: '-8% 0px -8% 0px',
+      });
+
+      revealItems.forEach((item) => observer.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPositionPageAnimation, { once: true });
+    } else {
+      initPositionPageAnimation();
+    }
+  })();
+
   (function () {
     const searchInput = document.getElementById('positionSearchInput');
     const departmentFilter = document.getElementById('departmentFilter');

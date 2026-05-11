@@ -12,6 +12,69 @@
     body { font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; transition: margin-left 0.3s ease; }
     main { transition: margin-left 0.3s ease; }
     aside ~ main { margin-left: 16rem; }
+    .leave-management-reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.28s ease, transform 0.28s ease;
+      will-change: opacity, transform;
+    }
+    .leave-management-reveal.reveal-from-top {
+      transform: translateY(-18px);
+    }
+    .leave-management-reveal.is-visible {
+      animation: leave-management-fade-up 0.42s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+      animation-delay: var(--leave-management-delay, 0ms);
+    }
+    .leave-management-card-motion {
+      transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+    }
+    .leave-management-card-motion:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+    }
+    .leave-management-icon-pop {
+      animation: leave-management-pop-in 0.65s cubic-bezier(0.22, 0.9, 0.2, 1) both;
+      animation-delay: var(--leave-management-delay, 0ms);
+    }
+    .leave-management-row-motion {
+      transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .leave-management-row-motion:hover {
+      transform: translateX(4px);
+      box-shadow: inset 3px 0 0 rgba(16, 185, 129, 0.55), 0 10px 24px rgba(15, 23, 42, 0.08);
+    }
+    @keyframes leave-management-fade-up {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes leave-management-pop-in {
+      0% {
+        opacity: 0;
+        transform: scale(0.82) rotate(-4deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .leave-management-reveal,
+      .leave-management-icon-pop {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+      .leave-management-card-motion,
+      .leave-management-row-motion {
+        transition: none;
+      }
+      .leave-management-card-motion:hover,
+      .leave-management-row-motion:hover {
+        transform: none;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f7fafc_45%,#eefbf6_100%)] text-slate-800">
@@ -21,7 +84,7 @@
   <main class="flex-1 ml-16 transition-all duration-300">
     @include('components.adminHeader.leaveHeader')
 
-    <div class="p-4 md:p-8 pt-20 space-y-6">
+    <div id="leave-management-page" class="p-4 md:p-8 pt-20 space-y-6">
       @php
         $selectedMonthValue = $selectedMonth ?? now()->format('Y-m');
         $selectedMonthLabel = \Carbon\Carbon::createFromFormat('Y-m', $selectedMonthValue)->format('F Y');
@@ -39,8 +102,8 @@
       @endif
 
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
+        <div class="leave-management-card-motion leave-management-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--leave-management-delay: 30ms;">
+          <span class="leave-management-icon-pop inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600" style="--leave-management-delay: 70ms;">
             <i class="fa-regular fa-calendar-check text-lg"></i>
           </span>
           <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Leave Used This Month</p>
@@ -48,8 +111,8 @@
           <p class="mt-1 text-sm text-slate-500">Total approved leave days</p>
         </div>
 
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+        <div class="leave-management-card-motion leave-management-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--leave-management-delay: 60ms;">
+          <span class="leave-management-icon-pop inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600" style="--leave-management-delay: 100ms;">
             <i class="fa-solid fa-notes-medical text-lg"></i>
           </span>
           <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Sick Leave Used</p>
@@ -57,8 +120,8 @@
           <p class="mt-1 text-sm text-slate-500">Approved sick leave days</p>
         </div>
 
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+        <div class="leave-management-card-motion leave-management-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--leave-management-delay: 90ms;">
+          <span class="leave-management-icon-pop inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600" style="--leave-management-delay: 130ms;">
             <i class="fa-solid fa-circle-check text-lg"></i>
           </span>
           <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Approved Requests</p>
@@ -66,8 +129,8 @@
           <p class="mt-1 text-sm text-slate-500">Approved leave records in month</p>
         </div>
 
-        <div class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
-          <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 text-violet-600">
+        <div class="leave-management-card-motion leave-management-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--leave-management-delay: 120ms;">
+          <span class="leave-management-icon-pop inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 text-violet-600" style="--leave-management-delay: 160ms;">
             <i class="fa-solid fa-layer-group text-lg"></i>
           </span>
           <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Top Leave Type</p>
@@ -77,7 +140,7 @@
       </div>
 
       <div class="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.15fr)]">
-        <section class="overflow-hidden rounded-[1.75rem] border border-amber-100/80 bg-white/92 shadow-[0_22px_50px_rgba(15,23,42,0.07)] backdrop-blur">
+        <section class="leave-management-reveal overflow-hidden rounded-[1.75rem] border border-amber-100/80 bg-white/92 shadow-[0_22px_50px_rgba(15,23,42,0.07)] backdrop-blur" style="--leave-management-delay: 160ms;">
           <div class="border-b border-amber-100 bg-[linear-gradient(180deg,rgba(254,243,199,0.45),rgba(255,255,255,0.85))] px-5 py-4">
             <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -104,7 +167,7 @@
                 $nameParts = array_values(array_filter(explode(' ', $employeeName)));
                 $initials = strtoupper(substr($nameParts[0] ?? 'L', 0, 1).substr($nameParts[count($nameParts) - 1] ?? 'R', 0, 1));
               @endphp
-              <div class="rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#fffef7,#ffffff)] p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <div class="leave-management-row-motion rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#fffef7,#ffffff)] p-4 shadow-sm">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div class="flex items-start gap-4">
                     <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-sm font-bold text-amber-700">
@@ -155,7 +218,7 @@
           </div>
         </section>
 
-        <section class="overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/92 shadow-[0_22px_50px_rgba(15,23,42,0.07)] backdrop-blur">
+        <section class="leave-management-reveal overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/92 shadow-[0_22px_50px_rgba(15,23,42,0.07)] backdrop-blur" style="--leave-management-delay: 200ms;">
           <div class="border-b border-slate-200 bg-[linear-gradient(180deg,rgba(239,246,255,0.7),rgba(255,255,255,0.92))] px-5 py-4">
             <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-700">
               Approved Timeline
@@ -207,7 +270,7 @@
                   ? 'Business Trip'
                   : (str_contains(strtolower($leaveType), 'annual leave') ? 'Personal vacation' : (str_contains(strtolower($leaveType), 'sick leave') ? 'Not fit for work due to health reasons' : ($record['reason'] ?? '-')));
               @endphp
-              <div class="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <div class="leave-management-row-motion rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div class="flex items-start gap-4">
                     <div class="flex h-12 w-12 items-center justify-center rounded-2xl {{ $iconToneClass }}">
@@ -243,6 +306,52 @@
 </div>
 
 <script>
+  const initLeaveManagementAnimation = () => {
+    const page = document.getElementById('leave-management-page');
+    if (!page) return;
+
+    const revealItems = Array.from(page.querySelectorAll('.leave-management-reveal'));
+    if (!revealItems.length) return;
+
+    if (!('IntersectionObserver' in window)) {
+      revealItems.forEach((item) => item.classList.add('is-visible'));
+      return;
+    }
+
+    let lastScrollY = window.scrollY;
+    let scrollDirection = 'down';
+
+    window.addEventListener('scroll', () => {
+      const currentScrollY = window.scrollY;
+      scrollDirection = currentScrollY < lastScrollY ? 'up' : 'down';
+      lastScrollY = currentScrollY;
+    }, { passive: true });
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.toggle('reveal-from-top', scrollDirection === 'up');
+          entry.target.classList.add('is-visible');
+          return;
+        }
+
+        entry.target.classList.remove('is-visible');
+      });
+    }, {
+      root: null,
+      threshold: 0.12,
+      rootMargin: '-8% 0px -8% 0px',
+    });
+
+    revealItems.forEach((item) => observer.observe(item));
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLeaveManagementAnimation, { once: true });
+  } else {
+    initLeaveManagementAnimation();
+  }
+
   const sidebar = document.querySelector('aside');
   const main = document.querySelector('main');
   if (sidebar && main) {

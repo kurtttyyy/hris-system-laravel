@@ -192,6 +192,74 @@
         gap: 1.5rem;
     }
 
+    #guest-job-applicant-page .guest-job-reveal {
+        opacity: 1;
+        transform: translateY(0);
+        will-change: opacity, transform;
+    }
+
+    #guest-job-applicant-page .guest-job-reveal.is-scroll-animated,
+    .site-footer.guest-job-reveal.is-scroll-animated {
+        animation: guest-job-fade-up 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--guest-job-delay, 0ms);
+    }
+
+    #guest-job-applicant-page .guest-job-card-motion,
+    .site-footer .guest-job-card-motion {
+        transition:
+            transform 0.25s ease,
+            box-shadow 0.25s ease,
+            border-color 0.25s ease;
+    }
+
+    #guest-job-applicant-page .guest-job-card-motion:hover,
+    .site-footer .guest-job-card-motion:hover {
+        transform: translateY(-4px);
+    }
+
+    #guest-job-applicant-page .guest-job-pop {
+        animation: guest-job-pop 0.58s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--guest-job-delay, 120ms);
+    }
+
+    @keyframes guest-job-fade-up {
+        0% {
+            opacity: 0;
+            transform: translateY(26px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes guest-job-pop {
+        0% {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #guest-job-applicant-page .guest-job-reveal,
+        #guest-job-applicant-page .guest-job-card-motion,
+        #guest-job-applicant-page .guest-job-pop,
+        .site-footer.guest-job-reveal,
+        .site-footer .guest-job-card-motion {
+            opacity: 1;
+            transform: none;
+            transition: none;
+            animation: none;
+            will-change: auto;
+        }
+    }
+
     @media (max-width: 991.98px) {
         .footer-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -223,7 +291,7 @@
 
 <div class="header-divider"></div>
 
-<main class="container my-5 animated-card2 delay-5">
+<main id="guest-job-applicant-page" class="container my-5 animated-card2 delay-5">
     <h2 class="fw-bold mb-4">Job Vacancies</h2>
 
     <form id="jobOpenSearchForm" class="mb-4" role="search">
@@ -397,7 +465,6 @@
                 <ul class="footer-link-list">
                     <li><a href="{{ route('guest.index') }}">Home</a></li>
                     <li><a href="{{ route('guest.jobOpenLanding') }}">Job Vacancies</a></li>
-                    <li><a href="{{ route('guest.index') }}#departmentFilter">Departments</a></li>
                     <li><a href="{{ route('login_display') }}">Applicant Login</a></li>
                     <li><a href="{{ route('register') }}">Create Account</a></li>
                 </ul>
@@ -495,6 +562,68 @@
 </div>
 
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const page = document.getElementById('guest-job-applicant-page');
+        if (!page) return;
+
+        const revealGroups = [
+            ['h2', 0],
+            ['#jobOpenSearchForm', 80],
+            ['.job-open-item', 140],
+            ['#jobOpenNoResults', 120],
+        ];
+
+        revealGroups.forEach(([selector, baseDelay]) => {
+            page.querySelectorAll(selector).forEach((item, index) => {
+                item.classList.add('guest-job-reveal');
+                item.style.setProperty('--guest-job-delay', `${Math.min(baseDelay + ((index % 6) * 45), 420)}ms`);
+            });
+        });
+
+        page.querySelectorAll('.job-open-item, .input-group, .badge, .view-details').forEach((item) => {
+            item.classList.add('guest-job-card-motion');
+        });
+
+        page.querySelectorAll('.badge, .bi').forEach((item, index) => {
+            item.classList.add('guest-job-pop');
+            item.style.setProperty('--guest-job-delay', `${120 + ((index % 5) * 35)}ms`);
+        });
+
+        document.querySelectorAll('.site-footer .footer-contact, .site-footer .footer-link-list a, .site-footer .footer-bottom-links a').forEach((item) => {
+            item.classList.add('guest-job-card-motion');
+        });
+
+        const animatedItems = Array.from(page.querySelectorAll('.guest-job-reveal'));
+        const footer = document.querySelector('.site-footer');
+        if (footer) {
+            footer.classList.add('guest-job-reveal');
+            footer.style.setProperty('--guest-job-delay', '180ms');
+            animatedItems.push(footer);
+        }
+
+        if (!('IntersectionObserver' in window)) {
+            animatedItems.forEach((item) => item.classList.add('is-scroll-animated'));
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.remove('is-scroll-animated');
+                    void entry.target.offsetWidth;
+                    entry.target.classList.add('is-scroll-animated');
+                } else {
+                    entry.target.classList.remove('is-scroll-animated');
+                }
+            });
+        }, {
+            threshold: 0.12,
+            rootMargin: '0px 0px -35px 0px',
+        });
+
+        animatedItems.forEach((item) => observer.observe(item));
+    });
+
     const allJobs = @json($jobOpen);
 
     const sidebar = document.getElementById('jobSidebar');

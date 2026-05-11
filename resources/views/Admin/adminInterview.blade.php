@@ -21,6 +21,60 @@
     aside ~ main {
       margin-left: 16rem;
     }
+    .interview-reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.28s ease, transform 0.28s ease;
+      will-change: opacity, transform;
+    }
+    .interview-reveal.reveal-from-top {
+      transform: translateY(-18px);
+    }
+    .interview-reveal.is-visible {
+      animation: interview-fade-up 0.42s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+      animation-delay: var(--interview-delay, 0ms);
+    }
+    .interview-card-motion {
+      transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+    }
+    .interview-card-motion:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+    }
+    .interview-icon-pop {
+      animation: interview-pop-in 0.65s cubic-bezier(0.22, 0.9, 0.2, 1) both;
+      animation-delay: var(--interview-delay, 0ms);
+    }
+    @keyframes interview-fade-up {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes interview-pop-in {
+      0% {
+        opacity: 0;
+        transform: scale(0.82) rotate(-4deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .interview-reveal,
+      .interview-icon-pop {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+      .interview-card-motion {
+        transition: none;
+      }
+      .interview-card-motion:hover {
+        transform: none;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen bg-[linear-gradient(180deg,#f8fbff_0%,#f1f5f9_48%,#eefbf6_100%)] text-slate-800">
@@ -31,8 +85,8 @@
   <main class="flex-1 ml-16 transition-all duration-300">
     @include('components.adminHeader.interviewHeader')
 
-    <div class="space-y-6 p-4 pt-20 md:p-8">
-      <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/60 bg-[linear-gradient(135deg,rgba(3,19,29,0.96),rgba(5,47,42,0.94),rgba(17,97,73,0.92))] px-6 py-7 text-white shadow-[0_25px_70px_rgba(3,19,29,0.2)] md:px-8">
+    <div id="admin-interview-page" class="space-y-6 p-4 pt-20 md:p-8">
+      <section class="interview-reveal relative overflow-hidden rounded-[2rem] border border-emerald-950/60 bg-[linear-gradient(135deg,rgba(3,19,29,0.96),rgba(5,47,42,0.94),rgba(17,97,73,0.92))] px-6 py-7 text-white shadow-[0_25px_70px_rgba(3,19,29,0.2)] md:px-8" style="--interview-delay: 0ms;">
         <div class="absolute -right-14 -top-16 h-44 w-44 rounded-full bg-white/10 blur-2xl"></div>
         <div class="absolute bottom-0 right-24 h-28 w-28 rounded-full bg-emerald-300/20 blur-2xl"></div>
 
@@ -48,7 +102,7 @@
           </div>
 
           <div class="flex flex-col gap-3 sm:flex-row xl:items-center">
-            <div class="rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-4 backdrop-blur">
+            <div class="interview-card-motion interview-reveal rounded-[1.5rem] border border-white/15 bg-white/10 px-5 py-4 backdrop-blur" style="--interview-delay: 70ms;">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">Today</p>
               <p class="mt-2 text-lg font-bold">{{ now()->format('F j, Y') }}</p>
               <p class="text-sm text-emerald-50/80">{{ now()->format('l') }}</p>
@@ -67,7 +121,7 @@
       </section>
 
       <section class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-        <article class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <article class="interview-card-motion interview-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--interview-delay: 110ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Today</p>
@@ -75,7 +129,7 @@
               <p class="mt-1 text-sm text-slate-500">Interviews scheduled for today</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
+              <div class="interview-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600" style="--interview-delay: 140ms;">
                 <i class="fa-regular fa-calendar-days"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">Daily</span>
@@ -83,7 +137,7 @@
           </div>
         </article>
 
-        <article class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <article class="interview-card-motion interview-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--interview-delay: 140ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">This Month</p>
@@ -91,7 +145,7 @@
               <p class="mt-1 text-sm text-slate-500">Completed interviews this month</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+              <div class="interview-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600" style="--interview-delay: 170ms;">
                 <i class="fa-solid fa-circle-check"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Completed</span>
@@ -99,7 +153,7 @@
           </div>
         </article>
 
-        <article class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <article class="interview-card-motion interview-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--interview-delay: 170ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">This Year</p>
@@ -107,7 +161,7 @@
               <p class="mt-1 text-sm text-slate-500">Completed interviews this year</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600">
+              <div class="interview-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600" style="--interview-delay: 200ms;">
                 <i class="fa-solid fa-chart-line"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700">Yearly</span>
@@ -115,7 +169,7 @@
           </div>
         </article>
 
-        <article class="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur">
+        <article class="interview-card-motion interview-reveal rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur" style="--interview-delay: 200ms;">
           <div class="flex items-start justify-between gap-4">
             <div>
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Upcoming</p>
@@ -123,7 +177,7 @@
               <p class="mt-1 text-sm text-slate-500">Sessions waiting in the queue</p>
             </div>
             <div class="text-right">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+              <div class="interview-icon-pop flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600" style="--interview-delay: 230ms;">
                 <i class="fa-regular fa-clock"></i>
               </div>
               <span class="mt-3 inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">Scheduled</span>
@@ -132,7 +186,7 @@
         </article>
       </section>
 
-      <section class="interview-wrapper rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur md:p-8">
+      <section class="interview-wrapper interview-reveal rounded-[2rem] border border-white/80 bg-white/92 p-6 shadow-[0_20px_50px_rgba(15,23,42,0.08)] backdrop-blur md:p-8" style="--interview-delay: 240ms;">
         <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <div class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-700">
@@ -155,7 +209,7 @@
         </div>
 
         <div class="mt-8 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <section class="rounded-[1.75rem] border border-indigo-100 bg-[linear-gradient(180deg,rgba(238,242,255,0.9),rgba(255,255,255,0.96))] p-5 md:p-6">
+          <section class="interview-reveal rounded-[1.75rem] border border-indigo-100 bg-[linear-gradient(180deg,rgba(238,242,255,0.9),rgba(255,255,255,0.96))] p-5 md:p-6" style="--interview-delay: 280ms;">
             <div class="mb-5 flex items-center justify-between gap-3">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-500">Queue</p>
@@ -175,7 +229,7 @@
                   $positionTitle = $inter->applicant->position->title ?? $inter->applicant->applied_position ?? '-';
                 @endphp
                 <article
-                  class="interview-card group relative overflow-hidden rounded-[1.75rem] border border-indigo-100 bg-white/95 p-5 shadow-[0_12px_30px_rgba(79,70,229,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_38px_rgba(79,70,229,0.12)]"
+                  class="interview-card interview-card-motion group relative overflow-hidden rounded-[1.75rem] border border-indigo-100 bg-white/95 p-5 shadow-[0_12px_30px_rgba(79,70,229,0.08)]"
                   data-scheduled-date="{{ $inter->date->format('Y-m-d') }}"
                   data-scheduled-time="{{ \Carbon\Carbon::parse($inter->time)->format('H:i:s') }}"
                   data-duration-minutes="{{ (int) filter_var($inter->duration, FILTER_SANITIZE_NUMBER_INT) }}"
@@ -263,7 +317,7 @@
             </div>
           </section>
 
-          <section class="rounded-[1.75rem] border border-emerald-100 bg-[linear-gradient(180deg,rgba(236,253,245,0.9),rgba(255,255,255,0.96))] p-5 md:p-6">
+          <section class="interview-reveal rounded-[1.75rem] border border-emerald-100 bg-[linear-gradient(180deg,rgba(236,253,245,0.9),rgba(255,255,255,0.96))] p-5 md:p-6" style="--interview-delay: 320ms;">
             <div class="mb-5 flex items-center justify-between gap-3">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-500">Archive</p>
@@ -283,7 +337,7 @@
                   $positionTitle = $inter->applicant->position->title ?? $inter->applicant->applied_position ?? '-';
                 @endphp
                 <article
-                  class="completed-card relative overflow-hidden rounded-[1.75rem] border border-emerald-100 bg-white/95 p-5 opacity-85 shadow-[0_12px_30px_rgba(16,185,129,0.08)]"
+                  class="completed-card interview-card-motion relative overflow-hidden rounded-[1.75rem] border border-emerald-100 bg-white/95 p-5 opacity-85 shadow-[0_12px_30px_rgba(16,185,129,0.08)]"
                   data-scheduled-date="{{ $inter->date->format('Y-m-d') }}"
                   data-scheduled-time="{{ \Carbon\Carbon::parse($inter->time)->format('H:i:s') }}"
                   data-duration-minutes="{{ (int) filter_var($inter->duration, FILTER_SANITIZE_NUMBER_INT) }}"
@@ -502,6 +556,54 @@
 </div>
 
 <script>
+  (function () {
+    const initInterviewPageAnimation = () => {
+      const page = document.getElementById('admin-interview-page');
+      if (!page) return;
+
+      const revealItems = Array.from(page.querySelectorAll('.interview-reveal'));
+      if (!revealItems.length) return;
+
+      if (!('IntersectionObserver' in window)) {
+        revealItems.forEach((item) => item.classList.add('is-visible'));
+        return;
+      }
+
+      let lastScrollY = window.scrollY;
+      let scrollDirection = 'down';
+
+      window.addEventListener('scroll', () => {
+        const currentScrollY = window.scrollY;
+        scrollDirection = currentScrollY < lastScrollY ? 'up' : 'down';
+        lastScrollY = currentScrollY;
+      }, { passive: true });
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.toggle('reveal-from-top', scrollDirection === 'up');
+            entry.target.classList.add('is-visible');
+            return;
+          }
+
+          entry.target.classList.remove('is-visible');
+        });
+      }, {
+        root: null,
+        threshold: 0.12,
+        rootMargin: '-8% 0px -8% 0px',
+      });
+
+      revealItems.forEach((item) => observer.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initInterviewPageAnimation, { once: true });
+    } else {
+      initInterviewPageAnimation();
+    }
+  })();
+
   function setApplicantInitials(name) {
     const initialsTarget = document.getElementById('applicantInitials');
     if (!initialsTarget) return;

@@ -17,6 +17,15 @@
         .messenger-scroll::-webkit-scrollbar{width:8px}
         .messenger-scroll::-webkit-scrollbar-thumb{background:#4b5563;border-radius:999px}
         .messenger-scroll::-webkit-scrollbar-track{background:transparent}
+        #employee-communication-page .employee-communication-reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s cubic-bezier(.22,1,.36,1);transition-delay:var(--employee-communication-delay,0ms)}
+        #employee-communication-page .employee-communication-reveal.is-visible{opacity:1;transform:translateY(0)}
+        #employee-communication-page .employee-communication-card-motion{transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease}
+        #employee-communication-page .employee-communication-card-motion:hover{transform:translateY(-4px);box-shadow:0 18px 36px rgba(15,23,42,.12)}
+        #employee-communication-page .employee-communication-icon-pop{opacity:0;transform:scale(.86) rotate(-4deg);transition:opacity .55s ease,transform .55s cubic-bezier(.22,1,.36,1);transition-delay:var(--employee-communication-delay,120ms)}
+        #employee-communication-page .is-visible .employee-communication-icon-pop,#employee-communication-page .employee-communication-icon-pop.is-visible{opacity:1;transform:scale(1) rotate(0deg)}
+        #chat-panel.employee-communication-chat-pop{animation:employee-communication-chat-pop .45s cubic-bezier(.22,1,.36,1) both}
+        @keyframes employee-communication-chat-pop{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+        @media (prefers-reduced-motion:reduce){#employee-communication-page .employee-communication-reveal,#employee-communication-page .employee-communication-icon-pop,#employee-communication-page .employee-communication-card-motion{opacity:1;transform:none;transition:none}#chat-panel.employee-communication-chat-pop{animation:none}}
     </style>
 </head>
 <body class="bg-[radial-gradient(circle_at_top,_#f0fdf4,_#eff6ff_35%,_#f8fafc_75%)] text-slate-900">
@@ -32,18 +41,18 @@
     @include('components.employeeSideBar')
     <main class="flex-1 ml-16 transition-all duration-300">
         @include('components.employeeHeader.communicationHeader')
-        <div class="px-4 pb-8 pt-6 md:px-8 md:pb-10">
+        <div id="employee-communication-page" class="px-4 pb-8 pt-6 md:px-8 md:pb-10">
             @if (session('success'))
-                <div class="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('success') }}</div>
+                <div class="employee-communication-reveal mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700" style="--employee-communication-delay: 0ms;">{{ session('success') }}</div>
             @endif
             @if (session('warning'))
-                <div class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">{{ session('warning') }}</div>
+                <div class="employee-communication-reveal mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700" style="--employee-communication-delay: 0ms;">{{ session('warning') }}</div>
             @endif
             @if ($errors->any())
-                <div class="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $errors->first() }}</div>
+                <div class="employee-communication-reveal mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" style="--employee-communication-delay: 0ms;">{{ $errors->first() }}</div>
             @endif
 
-            <section class="rounded-[2rem] border border-white/70 bg-white/75 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl md:p-6">
+            <section class="employee-communication-reveal rounded-[2rem] border border-white/70 bg-white/75 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl md:p-6" style="--employee-communication-delay: 0ms;">
                 <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Directory Controls</p>
@@ -51,7 +60,7 @@
                         <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Use the search box and quick filters to narrow the list without leaving the page.</p>
                     </div>
                     <div class="flex flex-col gap-3 xl:min-w-[560px] xl:max-w-[640px] xl:flex-row">
-                        <label class="group flex flex-1 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                        <label class="employee-communication-card-motion group flex flex-1 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                             <i class="fa fa-search text-slate-400"></i>
                             <input id="directory-search" type="text" placeholder="Search by employee name, role, or account type" class="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400">
                         </label>
@@ -64,13 +73,13 @@
                 </div>
             </section>
 
-            <section class="mt-6">
+            <section class="employee-communication-reveal mt-6" style="--employee-communication-delay: 120ms;">
                 <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">Directory Cards</p>
                         <h3 class="mt-2 text-2xl font-black tracking-tight text-slate-900">Meet the people behind the system.</h3>
                     </div>
-                    <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-4 py-2 text-sm text-slate-600 shadow-sm">
+                    <div class="employee-communication-card-motion inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-4 py-2 text-sm text-slate-600 shadow-sm">
                         <span class="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
                         <span id="directory-results-count">{{ $directoryMembers->count() }}</span>
                         <span>visible member<span id="directory-results-plural">{{ $directoryMembers->count() === 1 ? '' : 's' }}</span></span>
@@ -90,10 +99,10 @@
                             $adminUnreadCount = (int) ($admin->unread_message_count ?? 0);
                             $adminHasUnreadMessages = (bool) ($admin->has_unread_messages ?? false);
                         @endphp
-                        <article class="directory-card rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)]" data-name="{{ strtolower($fullName) }}" data-role="{{ strtolower($jobRole.' '.$role) }}" data-status="{{ $isAvailable ? 'available' : 'other' }}">
+                        <article class="directory-card employee-communication-card-motion employee-communication-reveal rounded-[2rem] border border-white/80 bg-white/90 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)]" style="--employee-communication-delay: {{ 160 + (($loop->index % 6) * 40) }}ms;" data-name="{{ strtolower($fullName) }}" data-role="{{ strtolower($jobRole.' '.$role) }}" data-status="{{ $isAvailable ? 'available' : 'other' }}">
                             <div class="flex items-start justify-between gap-4">
                                 <div class="flex items-center gap-4">
-                                    <div class="flex h-20 w-20 items-center justify-center rounded-[1.6rem] bg-gradient-to-br from-emerald-500 via-teal-500 to-sky-500 text-2xl font-black text-white">{{ $initials !== '' ? $initials : 'AD' }}</div>
+                                    <div class="employee-communication-icon-pop flex h-20 w-20 items-center justify-center rounded-[1.6rem] bg-gradient-to-br from-emerald-500 via-teal-500 to-sky-500 text-2xl font-black text-white">{{ $initials !== '' ? $initials : 'AD' }}</div>
                                     <div class="min-w-0">
                                         <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">{{ $role !== '' ? $role : 'Admin' }}</p>
                                         <div class="mt-1 flex flex-wrap items-center gap-2">
@@ -109,7 +118,7 @@
                                     <span class="h-2 w-2 rounded-full {{ $isAvailable ? 'bg-emerald-500' : 'bg-slate-400' }}"></span>{{ $displayStatus !== '' ? $displayStatus : 'No Status' }}
                                 </span>
                             </div>
-                            <div class="mt-5 rounded-[1.5rem] border border-slate-200 bg-white/80 px-4 py-4">
+                            <div class="employee-communication-card-motion mt-5 rounded-[1.5rem] border border-slate-200 bg-white/80 px-4 py-4">
                                 <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Contact</p>
                                 <p class="mt-1 truncate text-sm text-slate-600">{{ $email !== '' ? $email : 'Email not available' }}</p>
                             </div>
@@ -133,7 +142,7 @@
                                 $participantName = $participantName !== '' ? $participantName : (string) ($selectedParticipant->email ?? 'Admin');
                                 $participantInitials = strtoupper(substr(trim((string) ($selectedParticipant->first_name ?? 'A')), 0, 1).substr(trim((string) ($selectedParticipant->last_name ?? '')), 0, 1));
                             @endphp
-                            <div id="chat-panel" class="fixed bottom-5 right-5 z-50 w-[370px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-t-2xl rounded-b-[1.35rem] border border-slate-800 bg-[#1f1f1f] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
+                            <div id="chat-panel" class="employee-communication-chat-pop fixed bottom-5 right-5 z-50 w-[370px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-t-2xl rounded-b-[1.35rem] border border-slate-800 bg-[#1f1f1f] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
                             <div class="border-b border-slate-700 bg-[#242424] px-4 py-3">
                                 <div class="flex items-center justify-between gap-4">
                                     <div class="flex items-center gap-4">
@@ -168,7 +177,7 @@
                                 @empty
                                     <div class="flex min-h-[16rem] items-center justify-center">
                                         <div class="max-w-sm text-center">
-                                            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-violet-400"><i class="fa-solid fa-comment-dots text-xl"></i></div>
+                                            <div class="employee-communication-icon-pop is-visible mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-violet-400"><i class="fa-solid fa-comment-dots text-xl"></i></div>
                                             <h4 class="mt-4 text-lg font-black text-white">Start the conversation.</h4>
                                             <p class="mt-2 text-sm leading-6 text-slate-400">Your first message creates the chat thread and lets the admin reply from their own inbox.</p>
                                         </div>
@@ -200,6 +209,7 @@
     </main>
 </div>
 <script>
+const initEmployeeCommunicationAnimation=()=>{const page=document.getElementById('employee-communication-page');if(!page)return;const animatedItems=page.querySelectorAll('.employee-communication-reveal');if(!('IntersectionObserver'in window)){animatedItems.forEach((item)=>item.classList.add('is-visible'));return}const observer=new IntersectionObserver((entries)=>{entries.forEach((entry)=>{if(entry.isIntersecting){entry.target.classList.add('is-visible');observer.unobserve(entry.target)}})},{threshold:.14,rootMargin:'0px 0px -40px 0px'});animatedItems.forEach((item)=>observer.observe(item))};if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',initEmployeeCommunicationAnimation,{once:true})}else{initEmployeeCommunicationAnimation()}
 const sidebar=document.querySelector('aside');const main=document.querySelector('main');if(sidebar&&main){sidebar.addEventListener('mouseenter',function(){main.classList.remove('ml-16');main.classList.add('ml-56')});sidebar.addEventListener('mouseleave',function(){main.classList.remove('ml-56');main.classList.add('ml-16')})}
 const searchInput=document.getElementById('directory-search');const filterButtons=Array.from(document.querySelectorAll('.directory-filter'));const directoryCards=Array.from(document.querySelectorAll('.directory-card'));const resultsCount=document.getElementById('directory-results-count');const resultsPlural=document.getElementById('directory-results-plural');let activeFilter='all';
 function applyDirectoryFilters(){const query=(searchInput?.value||'').trim().toLowerCase();let visibleCount=0;directoryCards.forEach((card)=>{const name=card.dataset.name||'';const role=card.dataset.role||'';const status=card.dataset.status||'';const matchesQuery=query===''||name.includes(query)||role.includes(query);const matchesStatus=activeFilter==='all'||status===activeFilter;const isVisible=matchesQuery&&matchesStatus;card.classList.toggle('hidden',!isVisible);if(isVisible){visibleCount+=1}});if(resultsCount){resultsCount.textContent=String(visibleCount)}if(resultsPlural){resultsPlural.textContent=visibleCount===1?'':'s'}}

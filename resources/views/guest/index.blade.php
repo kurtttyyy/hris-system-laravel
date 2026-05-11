@@ -346,7 +346,7 @@
         position: relative;
         z-index: 4;
         max-width: 1160px;
-        margin: -3.7rem auto 0;
+        margin: 2rem auto 0;
         padding: 1.4rem;
         border-radius: 1.75rem;
         border: 1px solid #cfe3d7;
@@ -448,7 +448,7 @@
 
     .job-section {
         max-width: 1160px;
-        margin: 4rem auto 0;
+        margin: 3rem auto 0;
         padding-bottom: 4rem;
     }
 
@@ -596,12 +596,76 @@
         box-shadow: 0 16px 34px rgba(245, 158, 11, 0.08);
     }
 
+    #guest-index-page .guest-index-reveal {
+        opacity: 1;
+        transform: translateY(0);
+        will-change: opacity, transform;
+    }
+
+    #guest-index-page .guest-index-reveal.is-scroll-animated {
+        animation: guest-index-fade-up 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--guest-index-delay, 0ms);
+    }
+
+    #guest-index-page .guest-index-card-motion {
+        transition:
+            transform 0.25s ease,
+            box-shadow 0.25s ease,
+            border-color 0.25s ease;
+    }
+
+    #guest-index-page .guest-index-card-motion:hover {
+        transform: translateY(-4px);
+    }
+
+    #guest-index-page .guest-index-pop {
+        animation: guest-index-pop 0.58s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--guest-index-delay, 120ms);
+    }
+
+    @keyframes guest-index-fade-up {
+        0% {
+            opacity: 0;
+            transform: translateY(26px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes guest-index-pop {
+        0% {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #guest-index-page .guest-index-reveal,
+        #guest-index-page .guest-index-pop,
+        #guest-index-page .guest-index-card-motion {
+            opacity: 1;
+            transform: none;
+            transition: none;
+            animation: none;
+            will-change: auto;
+        }
+    }
+
     .site-footer {
         background:
             radial-gradient(circle at top left, rgba(21, 115, 71, 0.12), transparent 24%),
             linear-gradient(180deg, #0f1113 0%, #0b0c0d 100%);
         color: rgba(255, 255, 255, 0.82);
         margin-top: 4rem;
+        overflow: hidden;
     }
 
     .site-footer a {
@@ -618,7 +682,7 @@
     .footer-shell {
         max-width: 1240px;
         margin: 0 auto;
-        padding: 4rem 1.5rem 2rem;
+        padding: 4rem 8rem 2.5rem 1.5rem;
     }
 
     .footer-grid {
@@ -770,6 +834,7 @@
         gap: 1rem;
         flex-wrap: wrap;
         align-items: center;
+        min-width: 0;
     }
 
     .footer-bottom p {
@@ -1318,7 +1383,7 @@
         }
 
         .filter-panel {
-            margin-top: -2.8rem;
+            margin-top: 1.5rem;
         }
 
         .section-heading,
@@ -1329,6 +1394,10 @@
 
         .footer-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .footer-shell {
+            padding-right: 6.5rem;
         }
     }
 
@@ -1411,7 +1480,7 @@
         }
 
         .filter-panel {
-            margin-top: -2.2rem;
+            margin-top: 1.25rem;
             padding: 1rem;
             border-radius: 1.35rem;
         }
@@ -1443,7 +1512,7 @@
         }
 
         .footer-shell {
-            padding: 3rem 1rem 1.5rem;
+            padding: 3rem 1rem 7.25rem;
         }
 
         .footer-grid {
@@ -1516,7 +1585,7 @@
         }
 
         .filter-panel {
-            margin-top: -1.5rem;
+            margin-top: 1rem;
         }
 
         .section-heading h2 {
@@ -1525,7 +1594,7 @@
     }
 </style>
 
-<main class="careers-page">
+<main id="guest-index-page" class="careers-page">
 <section class="hero careers-hero text-white position-relative overflow-hidden">
 
     <!-- Carousel Background -->
@@ -1775,7 +1844,6 @@
                 <ul class="footer-link-list">
                     <li><a href="#heroCarousel">Home</a></li>
                     <li><a href="{{ route('guest.jobOpenLanding') }}">Job Vacancies</a></li>
-                    <li><a href="#departmentFilter">Departments</a></li>
                     <li><a href="{{ route('login_display') }}">Applicant Login</a></li>
                     <li><a href="{{ route('register') }}">Create Account</a></li>
                 </ul>
@@ -1837,6 +1905,63 @@
         </form>
     </section>
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const page = document.getElementById('guest-index-page');
+        if (!page) return;
+
+        const revealGroups = [
+            ['.hero-shell', 0],
+            ['.hero-search-card', 90],
+            ['.hero-metric', 140],
+            ['.filter-panel', 120],
+            ['.section-heading', 160],
+            ['#jobList > .job-item', 200],
+            ['.site-footer', 180],
+        ];
+
+        revealGroups.forEach(([selector, baseDelay]) => {
+            page.querySelectorAll(selector).forEach((item, index) => {
+                item.classList.add('guest-index-reveal');
+                item.style.setProperty('--guest-index-delay', `${Math.min(baseDelay + ((index % 6) * 45), 420)}ms`);
+            });
+        });
+
+        page.querySelectorAll('.hero-metric, .filter-field, .job-card, .section-pill, .footer-contact, .footer-link-list a, .footer-bottom-links a').forEach((item) => {
+            item.classList.add('guest-index-card-motion');
+        });
+
+        page.querySelectorAll('.hero-kicker, .filter-chip, .badge').forEach((item, index) => {
+            item.classList.add('guest-index-pop');
+            item.style.setProperty('--guest-index-delay', `${120 + ((index % 4) * 40)}ms`);
+        });
+
+        const animatedItems = Array.from(page.querySelectorAll('.guest-index-reveal'));
+
+        if (!('IntersectionObserver' in window)) {
+            animatedItems.forEach((item) => item.classList.add('is-scroll-animated'));
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.remove('is-scroll-animated');
+                    void entry.target.offsetWidth;
+                    entry.target.classList.add('is-scroll-animated');
+                } else {
+                    entry.target.classList.remove('is-scroll-animated');
+                }
+            });
+        }, {
+            threshold: 0.12,
+            rootMargin: '0px 0px -35px 0px',
+        });
+
+        animatedItems.forEach((item) => observer.observe(item));
+    });
+</script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const jobSearchForm = document.getElementById('jobSearchForm');

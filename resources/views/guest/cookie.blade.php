@@ -189,6 +189,74 @@
         gap: 1rem;
     }
 
+    #guest-cookie-page .guest-cookie-reveal {
+        opacity: 1;
+        transform: translateY(0);
+        will-change: opacity, transform;
+    }
+
+    #guest-cookie-page .guest-cookie-reveal.is-scroll-animated,
+    .site-footer.guest-cookie-reveal.is-scroll-animated {
+        animation: guest-cookie-fade-up 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--guest-cookie-delay, 0ms);
+    }
+
+    #guest-cookie-page .guest-cookie-card-motion,
+    .site-footer .guest-cookie-card-motion {
+        transition:
+            transform 0.25s ease,
+            box-shadow 0.25s ease,
+            border-color 0.25s ease;
+    }
+
+    #guest-cookie-page .guest-cookie-card-motion:hover,
+    .site-footer .guest-cookie-card-motion:hover {
+        transform: translateY(-4px);
+    }
+
+    #guest-cookie-page .guest-cookie-pop {
+        animation: guest-cookie-pop 0.58s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation-delay: var(--guest-cookie-delay, 120ms);
+    }
+
+    @keyframes guest-cookie-fade-up {
+        0% {
+            opacity: 0;
+            transform: translateY(26px);
+        }
+
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes guest-cookie-pop {
+        0% {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #guest-cookie-page .guest-cookie-reveal,
+        #guest-cookie-page .guest-cookie-card-motion,
+        #guest-cookie-page .guest-cookie-pop,
+        .site-footer.guest-cookie-reveal,
+        .site-footer .guest-cookie-card-motion {
+            opacity: 1;
+            transform: none;
+            transition: none;
+            animation: none;
+            will-change: auto;
+        }
+    }
+
     .site-footer {
         background:
             radial-gradient(circle at top left, rgba(21, 115, 71, 0.12), transparent 24%),
@@ -410,7 +478,7 @@
     }
 </style>
 
-<main class="policy-page">
+<main id="guest-cookie-page" class="policy-page">
     <section class="policy-hero">
         <div class="policy-shell">
             <div class="policy-hero-card">
@@ -599,6 +667,69 @@
         </div>
     </div>
 </footer>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const page = document.getElementById('guest-cookie-page');
+        if (!page) return;
+
+        const revealGroups = [
+            ['.policy-hero-card', 0],
+            ['.policy-side-card', 120],
+            ['.policy-side-item', 160],
+            ['.policy-card', 180],
+        ];
+
+        revealGroups.forEach(([selector, baseDelay]) => {
+            page.querySelectorAll(selector).forEach((item, index) => {
+                item.classList.add('guest-cookie-reveal');
+                item.style.setProperty('--guest-cookie-delay', `${Math.min(baseDelay + ((index % 6) * 45), 420)}ms`);
+            });
+        });
+
+        page.querySelectorAll('.policy-hero-card, .policy-side-card, .policy-side-item, .policy-card').forEach((item) => {
+            item.classList.add('guest-cookie-card-motion');
+        });
+
+        page.querySelectorAll('.policy-kicker, .policy-side-item summary').forEach((item, index) => {
+            item.classList.add('guest-cookie-pop');
+            item.style.setProperty('--guest-cookie-delay', `${120 + ((index % 5) * 35)}ms`);
+        });
+
+        document.querySelectorAll('.site-footer .footer-contact, .site-footer .footer-link-list a, .site-footer .footer-bottom-links a').forEach((item) => {
+            item.classList.add('guest-cookie-card-motion');
+        });
+
+        const animatedItems = Array.from(page.querySelectorAll('.guest-cookie-reveal'));
+        const footer = document.querySelector('.site-footer');
+        if (footer) {
+            footer.classList.add('guest-cookie-reveal');
+            footer.style.setProperty('--guest-cookie-delay', '180ms');
+            animatedItems.push(footer);
+        }
+
+        if (!('IntersectionObserver' in window)) {
+            animatedItems.forEach((item) => item.classList.add('is-scroll-animated'));
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.remove('is-scroll-animated');
+                    void entry.target.offsetWidth;
+                    entry.target.classList.add('is-scroll-animated');
+                } else {
+                    entry.target.classList.remove('is-scroll-animated');
+                }
+            });
+        }, {
+            threshold: 0.12,
+            rootMargin: '0px 0px -35px 0px',
+        });
+
+        animatedItems.forEach((item) => observer.observe(item));
+    });
+</script>
 @endsection
 
 

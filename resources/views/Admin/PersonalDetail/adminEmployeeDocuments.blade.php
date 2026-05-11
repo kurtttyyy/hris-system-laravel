@@ -352,18 +352,8 @@
 
                             <div class="flex shrink-0 items-center gap-2">
                                 <a
-                                class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:-translate-y-0.5 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
-                                :href="`/storage/${doc.filepath}`"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="View document"
-                                >
-                                    <i class="fa-solid fa-eye"></i>
-                                </a>
-                                <a
                                 class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
-                                :href="`/storage/${doc.filepath}`"
-                                :download="doc.filename"
+                                :href="`/system/personal/detail/employee/documents/${doc.id}/download`"
                                 title="Download document"
                                 >
                                     <i class="fa-solid fa-download"></i>

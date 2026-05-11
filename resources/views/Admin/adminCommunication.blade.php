@@ -18,6 +18,19 @@
         .messenger-scroll::-webkit-scrollbar{width:8px}
         .messenger-scroll::-webkit-scrollbar-thumb{background:#4b5563;border-radius:999px}
         .messenger-scroll::-webkit-scrollbar-track{background:transparent}
+        .communication-reveal{opacity:0;transform:translateY(18px);transition:opacity .28s ease,transform .28s ease;will-change:opacity,transform}
+        .communication-reveal.reveal-from-top{transform:translateY(-18px)}
+        .communication-reveal.is-visible{animation:communication-fade-up .42s cubic-bezier(.22,.9,.2,1) forwards;animation-delay:var(--communication-delay,0ms)}
+        .communication-card-motion{transition:transform .24s ease,box-shadow .24s ease,border-color .24s ease,background-color .24s ease}
+        .communication-card-motion:hover{transform:translateY(-5px);box-shadow:0 18px 36px rgba(15,23,42,.12)}
+        .communication-icon-pop{animation:communication-pop-in .65s cubic-bezier(.22,.9,.2,1) both;animation-delay:var(--communication-delay,0ms)}
+        @keyframes communication-fade-up{to{opacity:1;transform:translateY(0)}}
+        @keyframes communication-pop-in{0%{opacity:0;transform:scale(.82) rotate(-4deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+        @media (prefers-reduced-motion:reduce){
+            .communication-reveal,.communication-icon-pop{animation:none;opacity:1;transform:none}
+            .communication-card-motion{transition:none}
+            .communication-card-motion:hover{transform:none}
+        }
     </style>
 </head>
 <body class="bg-[radial-gradient(circle_at_top,_#f8fafc,_#eef2ff_40%,_#f8fafc_100%)] text-slate-900">
@@ -38,7 +51,7 @@
             'headerSearchPlaceholder' => 'Search employees or conversations...',
             'headerSearchInputId' => 'admin-communication-search',
         ])
-        <div class="space-y-8 p-4 pt-20 md:p-8">
+        <div id="admin-communication-page" class="space-y-8 p-4 pt-20 md:p-8">
             @if (session('success'))
                 <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('success') }}</div>
             @endif
@@ -48,14 +61,14 @@
             @if ($errors->any())
                 <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{{ $errors->first() }}</div>
             @endif
-            <section class="rounded-[2rem] border border-slate-200 bg-white/90 p-6 shadow-sm">
+            <section class="communication-reveal rounded-[2rem] border border-slate-200 bg-white/90 p-6 shadow-sm" style="--communication-delay:0ms">
                 <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Employee Directory</p>
                         <h3 class="mt-2 text-2xl font-black tracking-tight text-slate-900">Choose an employee to start or continue a chat.</h3>
                         <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Use the directory to jump straight into a message thread with any approved employee.</p>
                     </div>
-                    <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-500"><i class="fa-solid fa-user-group text-emerald-500"></i>{{ $availableCount }} available employee{{ $availableCount === 1 ? '' : 's' }}</div>
+                    <div class="communication-card-motion communication-reveal inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-500" style="--communication-delay:70ms"><i class="fa-solid fa-user-group text-emerald-500"></i>{{ $availableCount }} available employee{{ $availableCount === 1 ? '' : 's' }}</div>
                 </div>
                 <div id="admin-communication-directory-grid" class="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
                     @foreach ($directoryMembers as $employee)
@@ -75,11 +88,12 @@
                             data-email="{{ strtolower((string) ($employee->email ?? '')) }}"
                             data-position="{{ strtolower($position) }}"
                             data-department="{{ strtolower($department) }}"
-                            class="rounded-[1.75rem] border border-slate-200 bg-slate-50/70 p-5 shadow-sm"
+                            class="communication-card-motion communication-reveal rounded-[1.75rem] border border-slate-200 bg-slate-50/70 p-5 shadow-sm"
+                            style="--communication-delay: {{ 110 + (($loop->index % 6) * 35) }}ms;"
                         >
                             <div class="flex items-start justify-between gap-4">
                                 <div class="flex items-center gap-4">
-                                    <div class="flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-gradient-to-br from-slate-900 to-emerald-600 text-lg font-black text-white">{{ $employeeInitials !== '' ? $employeeInitials : 'EM' }}</div>
+                                    <div class="communication-icon-pop flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-gradient-to-br from-slate-900 to-emerald-600 text-lg font-black text-white" style="--communication-delay: {{ 140 + (($loop->index % 6) * 35) }}ms;">{{ $employeeInitials !== '' ? $employeeInitials : 'EM' }}</div>
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-2">
                                             <p class="truncate text-lg font-black text-slate-900">{{ $employeeName }}</p>
@@ -191,6 +205,54 @@
     </main>
 </div>
 <script>
+(function(){
+    const initCommunicationPageAnimation = () => {
+        const page = document.getElementById('admin-communication-page');
+        if (!page) return;
+
+        const revealItems = Array.from(page.querySelectorAll('.communication-reveal'));
+        if (!revealItems.length) return;
+
+        if (!('IntersectionObserver' in window)) {
+            revealItems.forEach((item) => item.classList.add('is-visible'));
+            return;
+        }
+
+        let lastScrollY = window.scrollY;
+        let scrollDirection = 'down';
+
+        window.addEventListener('scroll', () => {
+            const currentScrollY = window.scrollY;
+            scrollDirection = currentScrollY < lastScrollY ? 'up' : 'down';
+            lastScrollY = currentScrollY;
+        }, { passive: true });
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.toggle('reveal-from-top', scrollDirection === 'up');
+                    entry.target.classList.add('is-visible');
+                    return;
+                }
+
+                entry.target.classList.remove('is-visible');
+            });
+        }, {
+            root: null,
+            threshold: 0.12,
+            rootMargin: '-8% 0px -8% 0px',
+        });
+
+        revealItems.forEach((item) => observer.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initCommunicationPageAnimation, { once: true });
+    } else {
+        initCommunicationPageAnimation();
+    }
+})();
+
 (function(){const thread=document.getElementById('admin-message-thread');if(thread){thread.scrollTop=thread.scrollHeight}})();
 (function(){
     const searchInput = document.getElementById('admin-communication-search');

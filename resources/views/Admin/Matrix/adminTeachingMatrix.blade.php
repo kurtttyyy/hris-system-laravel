@@ -284,6 +284,71 @@
       max-width: 100%;
     }
 
+    .matrix-reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.28s ease, transform 0.28s ease;
+      will-change: opacity, transform;
+    }
+
+    .matrix-reveal.reveal-from-top {
+      transform: translateY(-18px);
+    }
+
+    .matrix-reveal.is-visible {
+      animation: matrix-fade-up 0.42s cubic-bezier(0.22, 0.9, 0.2, 1) forwards;
+      animation-delay: var(--matrix-delay, 0ms);
+    }
+
+    .matrix-card-motion {
+      transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+    }
+
+    .matrix-card-motion:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+    }
+
+    .matrix-icon-pop {
+      animation: matrix-pop-in 0.65s cubic-bezier(0.22, 0.9, 0.2, 1) both;
+      animation-delay: var(--matrix-delay, 0ms);
+    }
+
+    @keyframes matrix-fade-up {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes matrix-pop-in {
+      0% {
+        opacity: 0;
+        transform: scale(0.82) rotate(-4deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .matrix-reveal,
+      .matrix-icon-pop {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+
+      .matrix-card-motion {
+        transition: none;
+      }
+
+      .matrix-card-motion:hover {
+        transform: none;
+      }
+    }
+
     @media (min-width: 1024px) {
       .matrix-admin-shell > .matrix-print-hide:hover + .matrix-main-content {
         margin-left: 18rem;
@@ -342,6 +407,9 @@
         border-radius: 0 !important;
         box-shadow: none !important;
         background: #ffffff !important;
+        opacity: 1 !important;
+        transform: none !important;
+        animation: none !important;
       }
 
       .matrix-print-wrapper table {
@@ -382,16 +450,16 @@
     }
   </style>
 </head>
-<body class="bg-gradient-to-br from-amber-50 via-stone-100 to-zinc-200">
+<body class="bg-[#f4f7fd]">
 
 <div class="matrix-admin-shell matrix-print-shell flex min-h-screen">
   <div class="matrix-print-hide">
     @include('components.adminSideBar')
   </div>
 
-  <main class="matrix-main-content flex-1 ml-16 transition-all duration-300">
+  <main id="admin-matrix-page" class="matrix-main-content flex-1 ml-16 transition-all duration-300">
     <section class="matrix-content-section matrix-print-hide px-4 md:px-8 pt-8 pb-6">
-      <div class="rounded-2xl border border-stone-300 bg-white/80 backdrop-blur-sm shadow-sm p-5 md:p-7">
+      <div class="matrix-card-motion matrix-reveal rounded-2xl border border-stone-300 bg-white/80 backdrop-blur-sm shadow-sm p-5 md:p-7" style="--matrix-delay: 0ms;">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p class="text-xs uppercase tracking-[0.2em] text-stone-600">Matrix 16</p>
@@ -402,29 +470,29 @@
               Academic teaching staff and subject load assignments
             </p>
           </div>
-          <div class="matrix-export-actions flex flex-wrap items-center gap-2">
+          <div class="matrix-export-actions matrix-reveal flex flex-wrap items-center gap-2" style="--matrix-delay: 80ms;">
             <button
               type="button"
               onclick="downloadMatrixWord('teaching-matrix', 'Academic Teaching Matrix')"
-              class="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+              class="matrix-card-motion inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
             >
-              <i class="fa-solid fa-file-word"></i>
+              <i class="matrix-icon-pop fa-solid fa-file-word" style="--matrix-delay: 110ms;"></i>
               Word
             </button>
             <button
               type="button"
               onclick="openMatrixExcelExportModal('teaching-matrix', 'Academic Teaching Matrix')"
-              class="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+              class="matrix-card-motion inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
             >
-              <i class="fa-solid fa-file-excel"></i>
+              <i class="matrix-icon-pop fa-solid fa-file-excel" style="--matrix-delay: 140ms;"></i>
               Excel
             </button>
             <button
               type="button"
               onclick="window.print()"
-              class="inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
+              class="matrix-card-motion inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
             >
-              <i class="fa-solid fa-file-pdf"></i>
+              <i class="matrix-icon-pop fa-solid fa-file-pdf" style="--matrix-delay: 170ms;"></i>
               PDF
             </button>
           </div>
@@ -436,7 +504,7 @@
       @php
         $rows = collect($teachingEmployees ?? ($administrators ?? []));
       @endphp
-      <div class="matrix-print-wrapper w-full overflow-x-auto rounded-2xl border border-stone-300 bg-white shadow-sm">
+      <div class="matrix-print-wrapper matrix-reveal w-full overflow-x-auto rounded-2xl border border-stone-300 bg-white shadow-sm" style="--matrix-delay: 160ms;">
         <table id="teaching-matrix" class="min-w-[1700px] w-full text-sm text-stone-800 border-collapse">
           <thead class="bg-stone-100">
             <tr class="hidden print:table-row">
@@ -956,6 +1024,54 @@
 </div>
 
 <script>
+  (function () {
+    const initMatrixPageAnimation = () => {
+      const page = document.getElementById('admin-matrix-page');
+      if (!page) return;
+
+      const revealItems = Array.from(page.querySelectorAll('.matrix-reveal'));
+      if (!revealItems.length) return;
+
+      if (!('IntersectionObserver' in window)) {
+        revealItems.forEach((item) => item.classList.add('is-visible'));
+        return;
+      }
+
+      let lastScrollY = window.scrollY;
+      let scrollDirection = 'down';
+
+      window.addEventListener('scroll', () => {
+        const currentScrollY = window.scrollY;
+        scrollDirection = currentScrollY < lastScrollY ? 'up' : 'down';
+        lastScrollY = currentScrollY;
+      }, { passive: true });
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.toggle('reveal-from-top', scrollDirection === 'up');
+            entry.target.classList.add('is-visible');
+            return;
+          }
+
+          entry.target.classList.remove('is-visible');
+        });
+      }, {
+        root: null,
+        threshold: 0.12,
+        rootMargin: '-8% 0px -8% 0px',
+      });
+
+      revealItems.forEach((item) => observer.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initMatrixPageAnimation, { once: true });
+    } else {
+      initMatrixPageAnimation();
+    }
+  })();
+
   let matrixExcelExportState = { tableId: null, title: null };
   let matrixEmployeeSectionIndex = 0;
 

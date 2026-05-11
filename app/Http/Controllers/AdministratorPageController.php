@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AttendanceUpload;
 use App\Models\AttendanceRecord;
+use App\Models\ActivityLog;
 use App\Models\Applicant;
 use App\Models\ApplicantDocument;
 use App\Models\Conversation;
@@ -18,6 +19,7 @@ use App\Models\PayslipUpload;
 use App\Models\LeaveApplication;
 use App\Models\Resignation;
 use App\Models\User;
+use App\Support\ActivityChangeLogger;
 use App\Support\EmployeeAccountStatusManager;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -38,24 +40,6 @@ class AdministratorPageController extends Controller
     private array $holidayDateCheckCache = [];
 
     public function display_home(Request $request){
-        $employee = User::with([
-                        'applicant.documents' => function ($query) {
-                            $query->select([
-                                'id',
-                                'applicant_id',
-                                'filename',
-                                'filepath',
-                                'type',
-                                'mime_type',
-                                'created_at',
-                            ])->orderByDesc('created_at');
-                        },
-                    ])
-                        ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
-                        ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
-                        ->latest()
-                        ->paginate(5, ['*'], 'pending_page')
-                        ->withQueryString();
         $accept = User::with([
             'employee',
             'applicant',
@@ -246,15 +230,7 @@ class AdministratorPageController extends Controller
 
         $openPositionsCount = OpenPosition::query()->count();
         $openPositionApplicationsCount = Applicant::query()->count();
-        $pendingEmployeesForNotifications = User::with([
-            'employee',
-            'applicant.position:id,department,job_type',
-        ])
-            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
-            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
-            ->latest()
-            ->take(10)
-            ->get();
+        $pendingEmployeesForNotifications = collect();
 
         [$adminNotificationItems, $adminNotificationStats] = $this->buildAdminNotifications(
             $pendingEmployeesForNotifications,
@@ -264,7 +240,6 @@ class AdministratorPageController extends Controller
         );
         
         return view('Admin.adminHome', compact(
-            'employee',
             'accept',
             'departments',
             'totalEmployeeCount',
@@ -283,23 +258,7 @@ class AdministratorPageController extends Controller
 
     public function display_notifications()
     {
-        $employee = User::with([
-            'applicant.documents' => function ($query) {
-                $query->select([
-                    'id',
-                    'applicant_id',
-                    'filename',
-                    'filepath',
-                    'type',
-                    'mime_type',
-                    'created_at',
-                ])->orderByDesc('created_at');
-            },
-        ])
-            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
-            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
-            ->latest()
-            ->get();
+        $employee = collect();
 
         $departments = User::with(['employee', 'applicant.position:id,department'])
             ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
@@ -364,11 +323,7 @@ class AdministratorPageController extends Controller
 
     public function notification_summary()
     {
-        $employee = User::query()
-            ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
-            ->whereRaw("LOWER(TRIM(COALESCE(status, ''))) = ?", ['pending'])
-            ->latest()
-            ->get();
+        $employee = collect();
 
         $departments = User::with(['employee', 'applicant.position:id,department'])
             ->whereRaw("LOWER(TRIM(COALESCE(role, ''))) = ?", ['employee'])
@@ -641,25 +596,7 @@ class AdministratorPageController extends Controller
             })->sortByDesc(fn (Carbon $date) => $date->timestamp)->first();
         }
 
-        $approvalNotifications = $pendingEmployees
-            ->take(6)
-            ->map(function ($user) {
-                $fullName = trim(implode(' ', array_filter([
-                    $user->first_name ?? null,
-                    $user->middle_name ?? null,
-                    $user->last_name ?? null,
-                ])));
-
-                return [
-                    'category' => 'Approvals',
-                    'title' => 'Employee account pending review',
-                    'message' => ($fullName !== '' ? $fullName : 'A new employee').' is waiting for approval.',
-                    'date' => $user->created_at ? Carbon::parse($user->created_at) : now(),
-                    'href' => route('admin.adminEmployee'),
-                    'badge' => 'Pending',
-                    'tone' => 'emerald',
-                ];
-            });
+        $approvalNotifications = collect();
 
         $leaveNotifications = $pendingLeaveRequests
             ->take(6)
@@ -2838,6 +2775,36 @@ class AdministratorPageController extends Controller
         return view('Admin.adminReports');
     }
 
+    public function display_activity_logs(Request $request)
+    {
+        $search = trim((string) $request->query('search', ''));
+        $role = trim((string) $request->query('role', ''));
+        $date = trim((string) $request->query('date', ''));
+        $event = trim((string) $request->query('event', ''));
+
+        $activityLogs = ActivityLog::query()
+            ->whereRaw('LOWER(TRIM(method)) != ?', ['get'])
+            ->when($search !== '', function ($query) use ($search) {
+                $like = '%'.$search.'%';
+
+                $query->where(function ($innerQuery) use ($like) {
+                    $innerQuery->where('user_name', 'like', $like)
+                        ->orWhere('user_email', 'like', $like)
+                        ->orWhere('action', 'like', $like)
+                        ->orWhere('description', 'like', $like)
+                        ->orWhere('notes', 'like', $like);
+                });
+            })
+            ->when($role !== '', fn ($query) => $query->whereRaw('LOWER(TRIM(user_role)) = ?', [strtolower($role)]))
+            ->when($event !== '', fn ($query) => $query->whereRaw('LOWER(TRIM(method)) = ?', [strtolower($event)]))
+            ->when($date !== '', fn ($query) => $query->whereDate('created_at', $date))
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('Admin.adminActivityLogs', compact('activityLogs', 'search', 'role', 'date', 'event'));
+    }
+
     public function display_school_administrator(){
         $administrators = User::with([
             'employee',
@@ -3100,9 +3067,6 @@ class AdministratorPageController extends Controller
             'work_employer' => $app->work_employer,
             'work_location' => $app->work_location,
             'work_duration' => $app->work_duration,
-            'university_name' => $app->university_name,
-            'university_address' => $app->university_address,
-            'university_year' => $app->year_complete,
             'skills' => $app->skills_n_expertise,
             'number' => $app->phone,
             'star' => $app->starRatings,
@@ -3541,6 +3505,7 @@ class AdministratorPageController extends Controller
         $safeEmployeeId = preg_replace('/[^A-Za-z0-9_-]+/', '-', $employeeId) ?: ('EMP-'.$employeeUser->id);
         $filename = 'service-record-'.$safeEmployeeId.'.doc';
         $html = view('Admin.PersonalDetail.serviceRecordDownload', compact('employeeUser'))->render();
+        ActivityChangeLogger::downloadedFile($employeeUser, 'Service Record');
 
         $bannerCandidates = [
             public_path('images/logo.png'),
@@ -3585,6 +3550,31 @@ class AdministratorPageController extends Controller
         return response($mhtml)
             ->header('Content-Type', 'application/msword')
             ->header('Content-Disposition', 'attachment; filename="'.$filename.'"');
+    }
+
+    public function download_employee_document(int $id)
+    {
+        $document = ApplicantDocument::query()
+            ->where('id', $id)
+            ->firstOrFail();
+
+        if ($this->isFolderDocumentRecord($document)) {
+            abort(404);
+        }
+
+        $relativePath = ltrim((string) ($document->filepath ?? ''), '/');
+        if ($relativePath === '') {
+            abort(404);
+        }
+
+        $disk = Storage::disk('public');
+        if (!$disk->exists($relativePath)) {
+            abort(404);
+        }
+
+        ActivityChangeLogger::downloadedFile($document, 'Employee Document');
+
+        return $disk->download($relativePath, (string) ($document->filename ?: basename($relativePath)));
     }
 
     public function display_create_position(){
@@ -3749,7 +3739,6 @@ class AdministratorPageController extends Controller
             'work_employer' => [$applicant->work_employer, $previousApplicant->work_employer],
             'work_location' => [$applicant->work_location, $previousApplicant->work_location],
             'work_duration' => [$applicant->work_duration, $previousApplicant->work_duration],
-            'university_address' => [$applicant->university_address, $previousApplicant->university_address],
             'position' => [$applicant->open_position_id, $previousApplicant->open_position_id],
         ];
 

@@ -40,6 +40,34 @@
                 }
                 return preg_replace('/\s+/', ' ', $normalized);
             };
+            $accessibleApplicantIds = collect([(int) $applicant->id]);
+            $normalizedApplicantEmail = strtolower(trim((string) ($applicant->email ?? '')));
+            $previousApplicant = \App\Models\Applicant::query()
+                ->where('id', '!=', (int) $applicant->id)
+                ->whereRaw("LOWER(TRIM(COALESCE(application_status, ''))) = ?", ['hired'])
+                ->where(function ($query) use ($applicant, $normalizedApplicantEmail) {
+                    $userId = (int) ($applicant->user_id ?? 0);
+                    if ($userId > 0) {
+                        $query->orWhere('user_id', $userId);
+                    }
+
+                    if ($normalizedApplicantEmail !== '') {
+                        $query->orWhereRaw('LOWER(TRIM(email)) = ?', [$normalizedApplicantEmail]);
+                    }
+                })
+                ->orderByDesc('date_hired')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->first();
+
+            if ($previousApplicant) {
+                $accessibleApplicantIds->push((int) $previousApplicant->id);
+            }
+            $accessibleApplicantIds = $accessibleApplicantIds
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
 
             $requiredConfig = [];
             $metaDocuments = \App\Models\ApplicantDocument::query()
@@ -97,7 +125,7 @@
             }
 
             $uploadedDocumentTypesNormalized = \App\Models\ApplicantDocument::query()
-                ->where('applicant_id', (int) $applicant->id)
+                ->whereIn('applicant_id', $accessibleApplicantIds)
                 ->where('type', 'not like', $requiredPrefix.'%')
                 ->where('type', '!=', $noticeType)
                 ->where('type', '!=', $folderType)
@@ -218,7 +246,7 @@
     <!-- Navigation -->
     <nav class="p-2 space-y-2">
         <!-- Main -->
-        <div class="px-4 pt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100 employee-sidebar-label">
+        <div class="hidden px-4 pt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500 opacity-0 transition-opacity duration-300 group-hover:block group-hover:opacity-100 employee-sidebar-label">
             Main
         </div>
 
@@ -339,7 +367,7 @@
         </a>
 
         <!-- Help -->
-        <div class="px-4 pt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100 employee-sidebar-label">
+        <div class="hidden px-4 pt-2 text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500 opacity-0 transition-opacity duration-300 group-hover:block group-hover:opacity-100 employee-sidebar-label">
             Help
         </div>
 

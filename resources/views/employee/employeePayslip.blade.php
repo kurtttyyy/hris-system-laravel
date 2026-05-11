@@ -27,6 +27,57 @@
         aside:hover ~ main {
             margin-left: 14rem;
         }
+
+        #employee-payslip-page .employee-payslip-reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition:
+                opacity 0.7s ease,
+                transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-payslip-delay, 0ms);
+        }
+
+        #employee-payslip-page .employee-payslip-reveal.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #employee-payslip-page .employee-payslip-card-motion {
+            transition:
+                transform 0.25s ease,
+                box-shadow 0.25s ease,
+                border-color 0.25s ease;
+        }
+
+        #employee-payslip-page .employee-payslip-card-motion:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+        }
+
+        #employee-payslip-page .employee-payslip-icon-pop {
+            opacity: 0;
+            transform: scale(0.86) rotate(-4deg);
+            transition:
+                opacity 0.55s ease,
+                transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+            transition-delay: var(--employee-payslip-delay, 120ms);
+        }
+
+        #employee-payslip-page .is-visible .employee-payslip-icon-pop,
+        #employee-payslip-page .employee-payslip-icon-pop.is-visible {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #employee-payslip-page .employee-payslip-reveal,
+            #employee-payslip-page .employee-payslip-icon-pop,
+            #employee-payslip-page .employee-payslip-card-motion {
+                opacity: 1;
+                transform: none;
+                transition: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-[radial-gradient(circle_at_top,_#ecfdf5,_#f8fafc_40%,_#eef2ff_100%)]">
@@ -60,9 +111,9 @@
 
     <!-- MAIN CONTENT -->
     <main class="flex-1 ml-16 transition-all duration-300">
-<div class="p-4 md:p-8 space-y-8 pt-4">
+<div id="employee-payslip-page" class="p-4 md:p-8 space-y-8 pt-4">
 
-        <section class="relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-2xl md:p-8">
+        <section class="employee-payslip-reveal relative overflow-hidden rounded-[2rem] border border-emerald-950/40 bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-2xl md:p-8" style="--employee-payslip-delay: 0ms;">
             <div class="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-3xl"></div>
             <div class="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-emerald-300/10 blur-3xl"></div>
             <div class="relative grid gap-6 xl:grid-cols-[1.7fr_1fr] xl:items-end">
@@ -78,26 +129,26 @@
                         </p>
                     </div>
                     <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        <div class="employee-payslip-card-motion employee-payslip-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-payslip-delay: 80ms;">
                             <p class="text-xs uppercase tracking-wide text-emerald-100">Pay Period</p>
                             <p class="mt-2 text-lg font-bold">{{ $latestPeriodLabel }}</p>
                         </div>
-                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        <div class="employee-payslip-card-motion employee-payslip-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-payslip-delay: 120ms;">
                             <p class="text-xs uppercase tracking-wide text-emerald-100">Status</p>
                             <p class="mt-2 text-lg font-bold">{{ $statusLabel }}</p>
                         </div>
-                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        <div class="employee-payslip-card-motion employee-payslip-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-payslip-delay: 160ms;">
                             <p class="text-xs uppercase tracking-wide text-emerald-100">Pay Date</p>
                             <p class="mt-2 text-lg font-bold">{{ $latestPayDateLabel }}</p>
                         </div>
-                        <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm">
+                        <div class="employee-payslip-card-motion employee-payslip-reveal rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-sm" style="--employee-payslip-delay: 200ms;">
                             <p class="text-xs uppercase tracking-wide text-emerald-100">Next Payroll</p>
                             <p class="mt-2 text-lg font-bold">{{ $nextPayrollLabel }}</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="rounded-[1.75rem] border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
+                <div class="employee-payslip-card-motion employee-payslip-reveal rounded-[1.75rem] border border-white/10 bg-white/10 p-5 backdrop-blur-sm" style="--employee-payslip-delay: 120ms;">
                     <div class="mb-4 flex justify-end">
                         <div class="relative group">
                             <button class="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-white backdrop-blur-sm transition hover:bg-white/20">
@@ -137,7 +188,7 @@
                             <span class="text-slate-200">Other Income</span>
                             <span class="font-semibold text-white">{{ $money($otherIncomeValue) }}</span>
                         </div>
-                        <div class="rounded-2xl bg-white/10 px-4 py-4">
+                        <div class="employee-payslip-card-motion rounded-2xl bg-white/10 px-4 py-4">
                             <p class="text-xs uppercase tracking-wide text-emerald-100">Available Payslips</p>
                             <p class="mt-2 text-3xl font-black text-white">{{ $payslipCollection->count() }}</p>
                             <p class="mt-1 text-xs text-slate-200">Use the list below to open older payroll records.</p>
@@ -148,9 +199,9 @@
         </section>
 
         <section class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <article class="rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm">
+            <article class="employee-payslip-card-motion employee-payslip-reveal rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm" style="--employee-payslip-delay: 120ms;">
                 <div class="flex items-start justify-between gap-4">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                    <div class="employee-payslip-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" style="--employee-payslip-delay: 180ms;">
                         <i class="fa-solid fa-wallet text-2xl"></i>
                     </div>
                     <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Earnings</span>
@@ -160,9 +211,9 @@
                 <p class="mt-4 text-xs leading-5 text-slate-500">Base compensation and payroll additions before mandatory deductions are removed.</p>
             </article>
 
-            <article class="rounded-[1.75rem] border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-6 shadow-sm">
+            <article class="employee-payslip-card-motion employee-payslip-reveal rounded-[1.75rem] border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-6 shadow-sm" style="--employee-payslip-delay: 160ms;">
                 <div class="flex items-start justify-between gap-4">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/20">
+                    <div class="employee-payslip-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/20" style="--employee-payslip-delay: 220ms;">
                         <i class="fa-solid fa-file-invoice-dollar text-2xl"></i>
                     </div>
                     <span class="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">Payroll Costs</span>
@@ -172,9 +223,9 @@
                 <p class="mt-4 text-xs leading-5 text-slate-500">Includes taxes, loans, premiums, and any other payroll reductions for the selected payslip.</p>
             </article>
 
-            <article class="rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm">
+            <article class="employee-payslip-card-motion employee-payslip-reveal rounded-[1.75rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm" style="--employee-payslip-delay: 200ms;">
                 <div class="flex items-start justify-between gap-4">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                    <div class="employee-payslip-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20" style="--employee-payslip-delay: 260ms;">
                         <i class="fa-solid fa-money-bill-wave text-2xl"></i>
                     </div>
                     <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">{{ $statusLabel }}</span>
@@ -184,9 +235,9 @@
                 <p class="mt-4 text-xs leading-5 text-slate-500">Take-home amount after payroll deductions have been applied to the current release.</p>
             </article>
 
-            <article class="rounded-[1.75rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm">
+            <article class="employee-payslip-card-motion employee-payslip-reveal rounded-[1.75rem] border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm" style="--employee-payslip-delay: 240ms;">
                 <div class="flex items-start justify-between gap-4">
-                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20">
+                    <div class="employee-payslip-icon-pop flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20" style="--employee-payslip-delay: 300ms;">
                         <i class="fa-solid fa-coins text-2xl"></i>
                     </div>
                     <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">Adjustments</span>
@@ -197,14 +248,14 @@
             </article>
         </section>
 
-        <section id="payslip-history-section" class="rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+        <section id="payslip-history-section" class="employee-payslip-reveal rounded-[2rem] border border-slate-200 bg-white shadow-sm" style="--employee-payslip-delay: 280ms;">
             <div class="flex flex-col gap-3 border-b border-slate-200 px-6 py-5 md:flex-row md:items-end md:justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Payslip History</p>
                     <h3 class="mt-2 text-2xl font-black text-slate-900">Recent Payslips</h3>
                     <p class="mt-1 text-sm text-slate-500">Open any payslip below to review the full payroll advice and detailed breakdown.</p>
                 </div>
-                <div class="rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-white px-4 py-3 text-sm">
+                <div class="employee-payslip-card-motion rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-white px-4 py-3 text-sm">
                     <p class="text-xs uppercase tracking-wide text-emerald-700">Latest Release</p>
                     <p class="mt-1 font-semibold text-slate-900">{{ $latestPayDateLabel }}</p>
                 </div>
@@ -235,10 +286,10 @@
                             + (float) ($payslip->philhealth_premium ?? 0)
                             + (float) ($payslip->other_deduction ?? 0);
                     @endphp
-                    <div class="rounded-[1.5rem] border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/70 p-5 shadow-sm">
+                    <div class="employee-payslip-card-motion rounded-[1.5rem] border border-emerald-100 bg-gradient-to-r from-white to-emerald-50/70 p-5 shadow-sm">
                         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div class="flex items-start gap-4">
-                                <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                                <div class="employee-payslip-icon-pop is-visible flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
                                     <i class="fa-solid fa-receipt text-xl"></i>
                                 </div>
                                 <div>
@@ -386,8 +437,8 @@
                         </div>
                     </div>
                 @empty
-                    <div class="flex flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-emerald-200 bg-emerald-50/60 px-6 py-14 text-center">
-                        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                    <div class="employee-payslip-card-motion flex flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-emerald-200 bg-emerald-50/60 px-6 py-14 text-center">
+                        <div class="employee-payslip-icon-pop is-visible flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
                             <i class="fa-solid fa-file-invoice-dollar text-2xl"></i>
                         </div>
                         <h4 class="mt-5 text-xl font-bold text-slate-900">No payslip data found yet</h4>
@@ -404,6 +455,38 @@
 </div>
 
 <script>
+    const initEmployeePayslipAnimation = () => {
+        const page = document.getElementById('employee-payslip-page');
+        if (!page) return;
+
+        const animatedItems = page.querySelectorAll('.employee-payslip-reveal');
+
+        if (!('IntersectionObserver' in window)) {
+            animatedItems.forEach((item) => item.classList.add('is-visible'));
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.14,
+            rootMargin: '0px 0px -40px 0px',
+        });
+
+        animatedItems.forEach((item) => observer.observe(item));
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEmployeePayslipAnimation, { once: true });
+    } else {
+        initEmployeePayslipAnimation();
+    }
+
     const sidebar = document.querySelector('aside');
     const main = document.querySelector('main');
 

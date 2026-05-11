@@ -134,11 +134,64 @@
         opacity: 0.8;
         transform: translateY(-3px);
     }
+
+    .admin-notification-trigger .admin-notification-bell {
+        transform-origin: 50% 8%;
+        transition: transform 0.2s ease, color 0.2s ease;
+    }
+
+    .admin-notification-trigger:hover .admin-notification-bell,
+    .admin-notification-trigger.has-notifications .admin-notification-bell {
+        animation: admin-bell-ring 1.45s ease-in-out infinite;
+    }
+
+    .admin-notification-trigger.has-notifications::after {
+        content: "";
+        position: absolute;
+        inset: 0.45rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(244, 63, 94, 0.45);
+        animation: admin-bell-halo 1.8s ease-out infinite;
+        pointer-events: none;
+    }
+
+    [data-admin-notification-badge]:not(.hidden) {
+        animation: admin-badge-pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes admin-bell-ring {
+        0%, 100% { transform: rotate(0); }
+        8% { transform: rotate(16deg); }
+        16% { transform: rotate(-14deg); }
+        24% { transform: rotate(10deg); }
+        32% { transform: rotate(-8deg); }
+        40% { transform: rotate(5deg); }
+        48% { transform: rotate(0); }
+    }
+
+    @keyframes admin-bell-halo {
+        0% { opacity: 0.75; transform: scale(0.78); }
+        70%, 100% { opacity: 0; transform: scale(1.45); }
+    }
+
+    @keyframes admin-badge-pulse {
+        0%, 100% { transform: translate(25%, -25%) scale(1); }
+        50% { transform: translate(25%, -25%) scale(1.12); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .admin-notification-trigger:hover .admin-notification-bell,
+        .admin-notification-trigger.has-notifications .admin-notification-bell,
+        .admin-notification-trigger.has-notifications::after,
+        [data-admin-notification-badge]:not(.hidden) {
+            animation: none;
+        }
+    }
 </style>
 
 @include('components.adminHeader.scrollBehavior')
 
-<header id="admin-dashboard-header" data-admin-scroll-header class="admin-header-shell sticky top-0 z-40 px-4 py-4 md:px-8 md:py-5">
+<header id="admin-dashboard-header" data-admin-scroll-header class="admin-header-shell relative z-40 px-4 py-4 md:px-8 md:py-5">
     <div data-admin-scroll-card class="admin-header-card relative overflow-visible flex flex-col gap-5 rounded-[1.75rem] border border-emerald-950/70 bg-[linear-gradient(135deg,_#03131d_0%,_#052f2a_42%,_#116149_100%)] px-5 py-5 shadow-[0_24px_60px_rgba(3,19,29,0.34)] backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between md:px-7">
         <div class="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
             <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(45,212,191,0.14),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(110,231,183,0.14),_transparent_32%)]"></div>
@@ -169,11 +222,11 @@
                 </div>
 
                 <div class="relative group">
-                    <a href="{{ route('admin.adminNotifications') }}" class="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-emerald-50 shadow-sm transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/15" aria-label="Open admin notifications">
+                    <a href="{{ route('admin.adminNotifications') }}" data-admin-notification-trigger class="admin-notification-trigger {{ $adminNotificationTotal > 0 ? 'has-notifications ' : '' }}relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-emerald-50 shadow-sm transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/15" aria-label="Open admin notifications">
                         <span data-admin-notification-badge data-fallback-count="{{ $adminNotificationTotal }}" class="{{ $adminNotificationTotal > 0 ? '' : 'hidden ' }}absolute right-0 top-0 flex h-5 min-w-[1.25rem] -translate-y-1/4 translate-x-1/4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
                             {{ $adminNotificationBadge }}
                         </span>
-                        <i class="fa-regular fa-bell text-lg"></i>
+                        <i class="admin-notification-bell fa-regular fa-bell text-lg"></i>
                     </a>
 
                     <div class="invisible absolute right-0 z-50 mt-3 w-[21rem] overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white opacity-0 shadow-2xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
@@ -243,7 +296,7 @@
                             <i class="fa-solid fa-house text-slate-400"></i>
                             Dashboard
                         </a>
-                        <a href="{{ route('admin.adminAttendance', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50">
+                        <a href="{{ route('admin.activityLogs', $tabSession !== '' ? ['tab_session' => $tabSession] : []) }}" class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50">
                             <i class="fa-solid fa-clipboard-list text-slate-400"></i>
                             Logs
                         </a>
@@ -289,6 +342,7 @@
 
     (function () {
         const badges = Array.from(document.querySelectorAll('[data-admin-notification-badge]'));
+        const triggers = Array.from(document.querySelectorAll('[data-admin-notification-trigger]'));
         const summaryUrl = @json(route('admin.adminNotifications.summary'));
         if (!badges.length || !summaryUrl) {
             return;
@@ -307,6 +361,10 @@
                 } else {
                     badge.classList.add('hidden');
                 }
+            });
+
+            triggers.forEach((trigger) => {
+                trigger.classList.toggle('has-notifications', count > 0);
             });
         };
 

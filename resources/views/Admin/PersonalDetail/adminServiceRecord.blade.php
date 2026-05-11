@@ -48,7 +48,7 @@
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <div class="bg-indigo-50 text-indigo-600 rounded-xl p-6 text-center">
         <p
           class="text-3xl font-bold"
@@ -89,11 +89,6 @@
           x-text="countPromotionEvents()"
         ></p>
         <p class="text-sm">Promotions</p>
-      </div>
-
-      <div class="bg-yellow-50 text-yellow-600 rounded-xl p-6 text-center">
-        <p class="text-3xl font-bold">248</p>
-        <p class="text-sm">Training Hours</p>
       </div>
 
       <div class="bg-purple-50 text-purple-600 rounded-xl p-6 text-center">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResolvesTabSession;
+use App\Models\ActivityLog;
 use App\Models\Applicant;
 use App\Models\Resignation;
 use App\Models\User;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class RegisterLoginController extends Controller
@@ -103,7 +105,7 @@ class RegisterLoginController extends Controller
                 'last_name' => $attrs['last_name'],
                 'middle_name' => $attrs['middle_name'],
                 'role' => 'Employee',
-                'status' => 'Pending',
+                'status' => 'Approved',
                 'account_status' => 'Active',
                 'email' => $attrs['email'],
                 'job_role' => $userPosition !== '' ? $userPosition : 'Employee',
@@ -142,11 +144,32 @@ class RegisterLoginController extends Controller
                 ->withInput();
         }
 
-        if (Auth::attempt([
-            'email'    => $attrs['email'],
-            'password' => $attrs['password'],
-            'status'   => 'Approved',
-        ])) {
+        if ($user && Hash::check($attrs['password'], (string) $user->password)) {
+            $statusIsApproved = strtolower(trim((string) ($user->status ?? ''))) === 'approved';
+            $isEmployee = strtolower(trim((string) ($user->role ?? ''))) === 'employee';
+            $isHiredEmployee = $isEmployee && $this->userHasHiredApplicant($user);
+
+            if ($isEmployee && !$isHiredEmployee) {
+                return back()
+                    ->withErrors([
+                        'email' => 'Your employee account is not linked to a hired application yet.',
+                    ])
+                    ->withInput();
+            }
+
+            if (!$isEmployee && !$statusIsApproved) {
+                return back()
+                    ->withErrors([
+                        'email' => 'Your account is not approved yet.',
+                    ])
+                    ->withInput();
+            }
+
+            if ($isHiredEmployee && !$statusIsApproved) {
+                $user->forceFill(['status' => 'Approved'])->save();
+            }
+
+            Auth::login($user);
             $user = Auth::user();
             $tabSession = $this->resolveTabSessionKey($request);
 
@@ -169,6 +192,8 @@ class RegisterLoginController extends Controller
                 }
             }
 
+            $this->recordAuthActivity($request, $user, 'Login', 'logged in to the system');
+
             Auth::logout();
 
             return match ($user->role) {
@@ -185,6 +210,22 @@ class RegisterLoginController extends Controller
                 'email' => 'The provided credentials do not match our records.',
             ])
             ->withInput();
+    }
+
+    private function userHasHiredApplicant(User $user): bool
+    {
+        $normalizedEmail = strtolower(trim((string) ($user->email ?? '')));
+
+        return Applicant::query()
+            ->whereRaw("LOWER(TRIM(COALESCE(application_status, ''))) = ?", ['hired'])
+            ->where(function ($query) use ($user, $normalizedEmail) {
+                $query->where('user_id', (int) $user->id);
+
+                if ($normalizedEmail !== '') {
+                    $query->orWhereRaw('LOWER(TRIM(email)) = ?', [$normalizedEmail]);
+                }
+            })
+            ->exists();
     }
 
     public function forgot_password()
@@ -305,6 +346,10 @@ class RegisterLoginController extends Controller
         $request->session()->put(self::TAB_AUTH_MAP_ADMIN, $tabAuthUsersAdmin);
         $request->session()->put(self::TAB_AUTH_MAP_EMPLOYEE, $tabAuthUsersEmployee);
 
+        if ($authUser) {
+            $this->recordAuthActivity($request, $authUser, 'Logout', 'logged out of the system');
+        }
+
         Auth::logout();
         $request->session()->regenerateToken();
 
@@ -332,6 +377,36 @@ class RegisterLoginController extends Controller
         }
 
         return null;
+    }
+
+    private function recordAuthActivity(Request $request, User $user, string $event, string $description): void
+    {
+        if (!Schema::hasTable('activity_logs')) {
+            return;
+        }
+
+        $name = trim(implode(' ', array_filter([
+            trim((string) ($user->first_name ?? '')),
+            trim((string) ($user->middle_name ?? '')),
+            trim((string) ($user->last_name ?? '')),
+        ])));
+
+        $role = trim((string) ($user->role ?? ''));
+        $departmentHeadStatus = strtolower(trim((string) ($user->department_head ?? '')));
+
+        ActivityLog::query()->create([
+            'user_id' => $user->id,
+            'user_name' => $name !== '' ? $name : (string) ($user->email ?? 'Unknown user'),
+            'user_email' => $user->email,
+            'user_role' => strtolower($role) === 'employee' && $departmentHeadStatus === 'approved' ? 'Department Head' : ($role !== '' ? $role : 'User'),
+            'method' => $event,
+            'route_name' => (string) optional($request->route())->getName(),
+            'path' => '/'.ltrim($request->path(), '/'),
+            'action' => $event,
+            'description' => ($name !== '' ? $name : (string) ($user->email ?? 'Unknown user')).' '.$description.'.',
+            'ip_address' => $request->ip(),
+            'user_agent' => (string) $request->userAgent(),
+        ]);
     }
 
     private function userHasApprovedResignation(int $userId): bool

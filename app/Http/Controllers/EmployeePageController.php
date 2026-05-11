@@ -1059,6 +1059,10 @@ class EmployeePageController extends Controller
                 })
                 ->values()
                 ->all();
+
+            if (empty($missingDocuments)) {
+                $documentNotice = '';
+            }
         }
 
         return view('employee.employeeDocument', compact(

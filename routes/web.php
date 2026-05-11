@@ -96,6 +96,7 @@ Route::controller(AdministratorPageController::class)->group(function () {
     Route::get('system/payslip/view', 'display_payslip_view')->name('admin.adminPaySlipView');
     Route::get('system/resignations', 'display_resignations')->name('admin.adminResignations');
     Route::get('system/reports', 'display_reports')->name('admin.adminReports');
+    Route::get('system/logs', 'display_activity_logs')->name('admin.activityLogs');
     Route::get('system/matrix/school-administrator', 'display_school_administrator')->name('admin.schoolAdministrator');
     Route::get('system/matrix/non-teaching', 'display_non_teaching_matrix')->name('admin.nonTeachingMatrix');
     Route::get('system/matrix/teaching', 'display_teaching_matrix')->name('admin.teachingMatrix');
@@ -122,6 +123,7 @@ Route::controller(AdministratorPageController::class)->group(function () {
     Route::get('system/personal/detail/edit', 'display_edit')->name('admin.PersonalDetail.editProfile');
     Route::get('system/personal/detail/service-record/edit', 'display_service_record_edit')->name('admin.PersonalDetail.serviceRecordEdit');
     Route::get('system/personal/detail/service-record/download-word', 'download_service_record_word')->name('admin.PersonalDetail.serviceRecordEdit.downloadWord');
+    Route::get('system/personal/detail/employee/documents/{id}/download', 'download_employee_document')->name('admin.employeeDocuments.download');
 });
 
 Route::controller(AdministratorStoreController::class)->group(function () {
@@ -149,6 +151,7 @@ Route::controller(AdministratorStoreController::class)->group(function () {
     Route::post('system/employee/update/profile', 'update_general_profile')->name('admin.updateGeneralProfile');
     Route::post('system/personal/detail/service-record/update', 'update_service_record')->name('admin.PersonalDetail.serviceRecordEdit.update');
     Route::post('system/calendar/hidden-official-holidays/sync', 'sync_hidden_official_holidays')->name('admin.syncHiddenOfficialHolidays');
+    Route::post('system/logs/{activityLog}/note', 'update_activity_log_note')->name('admin.activityLogs.note');
     Route::post('admin/attendance/update-status/{id}', 'update_attendance_status')->name('admin.updateAttendanceStatus');
     Route::post('admin/attendance/delete/{id}', 'delete_attendance_file')->name('admin.deleteAttendanceFile');
     Route::post('admin/payslip/update-status/{id}', 'scan_payslip_file')->name('admin.scanPayslipFile');
