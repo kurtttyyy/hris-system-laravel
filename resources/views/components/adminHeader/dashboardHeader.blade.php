@@ -300,6 +300,10 @@
                             <i class="fa-solid fa-clipboard-list text-slate-400"></i>
                             Logs
                         </a>
+                        <button type="button" class="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50">
+                            <i class="fa-solid fa-gear text-slate-400"></i>
+                            Settings
+                        </button>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             @if($tabSession !== '')

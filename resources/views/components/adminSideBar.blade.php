@@ -347,7 +347,7 @@
 
 <div data-admin-sidebar-overlay class="admin-sidebar-overlay"></div>
 
-<aside id="admin-sidebar" class="admin-sidebar group fixed left-0 top-0 h-screen text-slate-200 flex flex-col w-16 hover:w-72 transition-all duration-300 overflow-x-hidden overflow-y-auto z-50" x-data>
+<aside id="admin-sidebar" class="admin-sidebar group fixed left-0 top-0 h-screen text-slate-200 flex flex-col w-16 hover:w-72 transition-all duration-300 overflow-x-hidden overflow-y-auto z-50" x-data="{ profileMenuOpen: false }">
   <div class="px-3 py-4 flex items-center gap-3 border-b border-slate-800/90">
     <div class="flex items-center justify-center">
       <!-- Small square icon visible when collapsed -->
@@ -637,27 +637,46 @@
   </nav>
 
   <!-- Profile -->
-  <div class="px-3 group-hover:px-6 py-4 border-t border-slate-800/90 flex items-center gap-3 justify-center group-hover:justify-start">
+  <div class="relative px-3 group-hover:px-6 py-4 border-t border-slate-800/90 flex items-center gap-3 justify-center group-hover:justify-start">
     <div class="w-9 h-9 min-w-9 min-h-9 max-w-9 max-h-9 shrink-0 rounded-full bg-emerald-500 flex items-center justify-center text-white font-semibold leading-none">{{ $adminInitials }}</div>
     <div class="admin-sidebar-text text-sm inline-block max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300">
       <div class="flex items-center gap-2">
         <p class="font-medium truncate">{{ $adminDisplayName }}</p>
-        <form method="POST" action="{{ route('logout') }}" class="inline-flex">
-          @csrf
-          @if($tabSession !== '')
-            <input type="hidden" name="tab_session" value="{{ $tabSession }}">
-          @endif
-          <button
-            type="submit"
-            class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 text-slate-200 hover:border-red-500 hover:bg-red-600 hover:text-white"
-            title="Logout"
-            aria-label="Logout"
-          >
-            <i class="fa-solid fa-right-from-bracket"></i>
-          </button>
-        </form>
+        <button
+          type="button"
+          class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-700 text-slate-200 transition hover:border-emerald-400 hover:bg-slate-800 hover:text-white"
+          title="Settings"
+          aria-label="Open settings menu"
+          @click.stop="profileMenuOpen = !profileMenuOpen"
+          :aria-expanded="profileMenuOpen.toString()"
+        >
+          <i class="fa-solid fa-gear"></i>
+        </button>
       </div>
       <p class="text-slate-400">{{ $adminRoleLabel }}</p>
+    </div>
+
+    <div
+      x-cloak
+      x-show="profileMenuOpen"
+      x-transition
+      @click.outside="profileMenuOpen = false"
+      class="absolute bottom-20 left-4 right-4 hidden overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/95 p-2 text-sm shadow-2xl shadow-slate-950/40 group-hover:block"
+    >
+      <button type="button" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-slate-200 transition hover:bg-slate-800 hover:text-white">
+        <i class="fa-solid fa-gear w-4 text-center text-emerald-300"></i>
+        <span>Settings</span>
+      </button>
+      <form method="POST" action="{{ route('logout') }}">
+        @csrf
+        @if($tabSession !== '')
+          <input type="hidden" name="tab_session" value="{{ $tabSession }}">
+        @endif
+        <button type="submit" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-slate-200 transition hover:bg-rose-600 hover:text-white">
+          <i class="fa-solid fa-right-from-bracket w-4 text-center"></i>
+          <span>Logout</span>
+        </button>
+      </form>
     </div>
   </div>
 </aside>

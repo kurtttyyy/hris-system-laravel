@@ -179,6 +179,13 @@
             0 0 34px rgba(34, 197, 94, 0.42) !important;
     }
 
+    #jobList .job-item.is-search-focused .job-card {
+        border-color: #22c55e !important;
+        box-shadow:
+            0 28px 60px rgba(34, 197, 94, 0.36),
+            0 0 0 5px rgba(34, 197, 94, 0.22) !important;
+    }
+
     .careers-hero {
         min-height: 560px;
         padding: 6rem 0 7rem;
@@ -284,6 +291,50 @@
         border: 1px solid rgba(255, 255, 255, 0.16);
         box-shadow: 0 20px 55px rgba(0, 0, 0, 0.18);
         backdrop-filter: blur(10px);
+        position: relative;
+    }
+
+    .search-unavailable-bubble {
+        position: absolute;
+        left: 1.2rem;
+        right: 1.2rem;
+        top: calc(100% + 0.75rem);
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        max-width: 520px;
+        margin: 0 auto;
+        padding: 0.85rem 1rem;
+        border-radius: 1rem;
+        background: #ffffff;
+        border: 1px solid rgba(22, 163, 74, 0.22);
+        color: #122038;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22);
+        font-weight: 700;
+        text-align: left;
+    }
+
+    .search-unavailable-bubble::before {
+        content: "";
+        position: absolute;
+        top: -0.45rem;
+        left: 50%;
+        width: 0.9rem;
+        height: 0.9rem;
+        background: #ffffff;
+        border-left: 1px solid rgba(22, 163, 74, 0.22);
+        border-top: 1px solid rgba(22, 163, 74, 0.22);
+        transform: translateX(-50%) rotate(45deg);
+    }
+
+    .search-unavailable-dot {
+        width: 0.65rem;
+        height: 0.65rem;
+        flex: 0 0 0.65rem;
+        border-radius: 999px;
+        background: #ef4444;
+        box-shadow: 0 0 0 0.35rem rgba(239, 68, 68, 0.12);
     }
 
     .hero-metrics {
@@ -302,6 +353,26 @@
         border: 1px solid rgba(255, 255, 255, 0.12);
         color: #fff;
         text-align: left;
+    }
+
+    button.hero-metric {
+        cursor: pointer;
+        font: inherit;
+        appearance: none;
+        transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    button.hero-metric:hover,
+    button.hero-metric:focus-visible {
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.18);
+        border-color: rgba(255, 255, 255, 0.32);
+        outline: none;
+    }
+
+    .filter-field.is-focused {
+        border-color: rgba(34, 197, 94, 0.65);
+        box-shadow: 0 18px 40px rgba(34, 197, 94, 0.2);
     }
 
     .hero-metric strong {
@@ -1458,6 +1529,16 @@
             border-radius: 1.2rem;
         }
 
+        .search-unavailable-bubble {
+            position: static;
+            margin-top: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .search-unavailable-bubble::before {
+            display: none;
+        }
+
         .search-input {
             flex-direction: column;
         }
@@ -1641,17 +1722,21 @@
                            aria-label="Search">
                     <button class="btn btn-hero" type="submit">Search</button>
                 </div>
+                <div id="searchUnavailableBubble" class="search-unavailable-bubble d-none" role="status" aria-live="polite">
+                    <span class="search-unavailable-dot" aria-hidden="true"></span>
+                    <span id="searchUnavailableText">That position is not available right now.</span>
+                </div>
             </form>
 
             <div class="hero-metrics">
-                <div class="hero-metric">
+                <button type="button" class="hero-metric" id="openPositionsMetric" aria-label="Go to Job Vacancies">
                     <strong>{{ $openCount }}</strong>
                     <span>Open Positions</span>
-                </div>
-                <div class="hero-metric">
+                </button>
+                <button type="button" class="hero-metric" id="departmentsMetric" aria-label="Show all departments">
                     <strong>{{ $department }}</strong>
                     <span>Departments</span>
-                </div>
+                </button>
                 <div class="hero-metric">
                     <strong>{{ $employee }}</strong>
                     <span>Employees</span>
@@ -1723,7 +1808,7 @@
 </div>
         </div>
 
-<div class="container job-section">
+<div id="jobVacanciesSection" class="container job-section">
     <div class="section-heading">
         <div>
             <h2>Job Vacancies</h2>
@@ -1794,7 +1879,7 @@
     </div>
 
     <div id="noResultsMessage" class="alert empty-state mt-4 d-none" role="alert">
-        No jobs matched your filters.
+        That position is not available right now.
     </div>
 </div>
 
@@ -1966,25 +2051,78 @@
     document.addEventListener('DOMContentLoaded', function () {
         const jobSearchForm = document.getElementById('jobSearchForm');
         const searchInput = document.getElementById('jobSearchInput');
+        const openPositionsMetric = document.getElementById('openPositionsMetric');
+        const departmentsMetric = document.getElementById('departmentsMetric');
+        const jobVacanciesSection = document.getElementById('jobVacanciesSection');
         const departmentFilter = document.getElementById('departmentFilter');
         const employmentFilter = document.getElementById('employmentFilter');
         const locationFilter = document.getElementById('locationFilter');
         const jobItems = Array.from(document.querySelectorAll('.job-item'));
         const noResultsMessage = document.getElementById('noResultsMessage');
+        const searchUnavailableBubble = document.getElementById('searchUnavailableBubble');
+        const searchUnavailableText = document.getElementById('searchUnavailableText');
+        let searchBubbleTimer = null;
 
         function normalize(value) {
             return (value || '').toString().trim().toLowerCase();
         }
 
-        function applyFilters() {
+        function hideSearchBubble() {
+            if (searchBubbleTimer) {
+                clearTimeout(searchBubbleTimer);
+                searchBubbleTimer = null;
+            }
+
+            searchUnavailableBubble?.classList.add('d-none');
+        }
+
+        function collapseDepartmentOptions() {
+            if (!departmentFilter) {
+                return;
+            }
+
+            departmentFilter.removeAttribute('size');
+            departmentFilter.closest('.filter-field')?.classList.remove('is-focused');
+        }
+
+        function expandDepartmentOptions() {
+            if (!departmentFilter) {
+                return;
+            }
+
+            departmentFilter.closest('.filter-field')?.classList.add('is-focused');
+            departmentFilter.size = Math.min(Math.max(departmentFilter.options.length, 2), 6);
+            departmentFilter.focus({ preventScroll: true });
+        }
+
+        function showSearchBubble(message) {
+            if (!searchUnavailableBubble) {
+                return;
+            }
+
+            if (searchUnavailableText) {
+                searchUnavailableText.textContent = message;
+            }
+
+            searchUnavailableBubble.classList.remove('d-none');
+            if (searchBubbleTimer) {
+                clearTimeout(searchBubbleTimer);
+            }
+
+            searchBubbleTimer = setTimeout(hideSearchBubble, 4200);
+        }
+
+        function applyFilters(options = {}) {
             const searchTerm = normalize(searchInput?.value);
             const selectedDepartment = normalize(departmentFilter?.value);
             const selectedEmployment = normalize(employmentFilter?.value);
             const selectedLocation = normalize(locationFilter?.value);
 
             let visibleCount = 0;
+            let firstMatch = null;
 
             jobItems.forEach((item) => {
+                item.classList.remove('is-search-focused');
                 const title = normalize(item.dataset.title);
                 const department = normalize(item.dataset.department);
                 const employment = normalize(item.dataset.employment);
@@ -2004,21 +2142,56 @@
                 const isVisible = matchesSearch && matchesDepartment && matchesEmployment && matchesLocation;
 
                 item.classList.toggle('d-none', !isVisible);
-                if (isVisible) visibleCount++;
+                if (isVisible) {
+                    visibleCount++;
+                    firstMatch = firstMatch || item;
+                }
             });
 
-            noResultsMessage.classList.toggle('d-none', visibleCount > 0);
+            const showSearchBubbleForEmptyResult = Boolean(options.showSearchBubble && searchTerm && visibleCount === 0);
+
+            if (noResultsMessage) {
+                noResultsMessage.textContent = searchTerm
+                    ? `The position "${searchInput.value.trim()}" is not available right now.`
+                    : 'No jobs matched your filters.';
+                noResultsMessage.classList.toggle('d-none', visibleCount > 0 || showSearchBubbleForEmptyResult || options.suppressNoResults);
+            }
+
+            if (showSearchBubbleForEmptyResult) {
+                showSearchBubble(`The position "${searchInput.value.trim()}" is not available right now.`);
+            } else if (visibleCount > 0 || !searchTerm || options.hideSearchBubble) {
+                hideSearchBubble();
+            }
+
+            if (options.focusFirstMatch && firstMatch) {
+                firstMatch.classList.add('is-search-focused');
+                firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            return { visibleCount, firstMatch };
         }
 
         jobSearchForm?.addEventListener('submit', function (event) {
             event.preventDefault();
-            applyFilters();
+            applyFilters({ focusFirstMatch: true, showSearchBubble: true });
         });
 
-        searchInput?.addEventListener('input', applyFilters);
+        searchInput?.addEventListener('input', function () {
+            applyFilters({ suppressNoResults: true, hideSearchBubble: true });
+        });
         departmentFilter?.addEventListener('change', applyFilters);
+        departmentFilter?.addEventListener('blur', collapseDepartmentOptions);
         employmentFilter?.addEventListener('change', applyFilters);
         locationFilter?.addEventListener('change', applyFilters);
+
+        openPositionsMetric?.addEventListener('click', function () {
+            jobVacanciesSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+
+        departmentsMetric?.addEventListener('click', function () {
+            departmentFilter?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            window.setTimeout(expandDepartmentOptions, 450);
+        });
     });
 </script>
 
